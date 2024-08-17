@@ -1,12 +1,12 @@
-mod arp;
-mod note;
 mod acid;
-mod trig;
+mod arp;
 mod clock;
-mod message;
-mod track;
-mod midi_controller;
 mod conductor;
+mod message;
+mod midi_controller;
+mod note;
+mod track;
+mod trig;
 pub use acid::{Acid, AcidLead, Timing};
 pub use arp::{Arp, ArpDiv, ArpLead};
 use clock::{clock_gen, compute_period_us};
@@ -151,11 +151,4 @@ pub fn run(
         }
     }
     Ok(())
-}
-
-pub fn log_send(conn: &mut MidiOutputConnection, message: &[u8]) {
-    match conn.send(message) {
-        Err(x) => eprintln!("[ERROR] {} (message: {:?})", x, message),
-        _ => {}
-    }
 }

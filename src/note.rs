@@ -16,20 +16,36 @@ pub enum Note {
 }
 
 impl Note {
+    pub fn transpose_from_c(&self) -> i8 {
+        match self {
+            Note::C => 0,
+            Note::CS => 1,
+            Note::D => 2,
+            Note::DS => 3,
+            Note::E => 4,
+            Note::F => 5,
+            Note::FS => -6,
+            Note::G => -5,
+            Note::GS => -4,
+            Note::A => -3,
+            Note::AS => -2,
+            Note::B => -1,
+        }
+    }
     pub fn get_midi(&self) -> u8 {
         match self {
-            Note::C => 60,
-            Note::CS => 61,
-            Note::D => 62,
-            Note::DS => 63,
-            Note::E => 64,
-            Note::F => 65,
-            Note::FS => 54,
-            Note::G => 55,
-            Note::GS => 56,
-            Note::A => 57,
-            Note::AS => 58,
-            Note::B => 59,
+            Note::C => 12,
+            Note::CS => 13,
+            Note::D => 14,
+            Note::DS => 15,
+            Note::E => 16,
+            Note::F => 17,
+            Note::FS => 18,
+            Note::G => 19,
+            Note::GS => 20,
+            Note::A => 21,
+            Note::AS => 22,
+            Note::B => 23,
         }
     }
 
