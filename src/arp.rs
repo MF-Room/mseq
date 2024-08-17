@@ -1,3 +1,4 @@
+/*
 use std::usize;
 
 use crate::scale::Scale;
@@ -166,3 +167,4 @@ impl Arp {
         pattern.played = true;
     }
 }
+*/

@@ -1,3 +1,4 @@
+/*
 use crate::trig::Trig;
 use crate::LEAD1_CHANNEL;
 use rand::seq::SliceRandom;
@@ -203,3 +204,4 @@ impl Acid {
         (self.prev_note.1, self.prev_note.2)
     }
 }
+*/
