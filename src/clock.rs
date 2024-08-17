@@ -1,6 +1,5 @@
 use crate::log_send;
-use crate::Channel;
-use crate::Step;
+use crate::Context;
 use std::mem::drop;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::sleep;
@@ -8,30 +7,35 @@ use std::time::{Duration, Instant};
 
 pub const CLOCK: u8 = 0xf8;
 
-pub fn clock_gen(channel_arc: &Arc<(Mutex<Channel>, Condvar)>) {
+pub fn clock_gen(context_arc: &Arc<(Mutex<Context>, Condvar)>) {
     loop {
-        let (channel, cvar) = &**channel_arc;
-        let mut channel = channel.lock().unwrap();
-        let step = channel.step;
-        log_send(&mut channel.midi.conn, &[CLOCK]);
-        channel.midi.update(step);
+        let (context, cvar) = &**context_arc;
+        let mut context = context.lock().unwrap();
+        // println!("time stamp elapsed {}",  context.timestamp.elapsed().as_micros());
+        let step = context.step;
+        log_send(&mut context.midi.conn, &[CLOCK]);
+        context.midi.update(step);
 
-        if channel.update_timestamp {
-            channel.update_timestamp = false;
-            channel.timestamp = Instant::now();
-            channel.bpm_step = 0;
+        if context.update_timestamp {
+            context.update_timestamp = false;
+            context.timestamp = Instant::now();
+            context.bpm_step = 0;
+            // println!("reset timestamp");
         }
 
-        let period = channel.period_us;
-        channel.step += 1;
-        channel.bpm_step += 1;
-        let bpm_step = channel.bpm_step;
-        let timestamp = channel.timestamp.clone();
+        let period = context.period_us;
+        context.step += 1;
+        context.bpm_step += 1;
+        let bpm_step = context.bpm_step;
+        let timestamp = context.timestamp.clone();
+
 
         // Unlock the mutex
-        drop(channel);
+        drop(context);
         cvar.notify_one();
         let sleep_time = Duration::from_micros(bpm_step as u64 * period) - timestamp.elapsed();
+        // println!("period total: {}", bpm_step as u64 * period);
+        // println!("sleep time: {}",sleep_time.as_micros());
         sleep(sleep_time);
     }
 }

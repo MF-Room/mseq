@@ -3,16 +3,16 @@ mod arp;
 mod clock;
 mod conductor;
 mod message;
-
-use std::thread::sleep;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 mod midi_controller;
-mod note;
+pub mod note;
 mod track;
+
+pub use conductor::Conductor;
 //pub use acid::{Acid, AcidLead, Timing};
 //pub use arp::{Arp, ArpDiv, ArpLead};
 use clock::{clock_gen, compute_period_us};
-use midi_controller::{MidiController, MidiNote};
+pub use midi_controller::{MidiController, MidiNote};
 //use message::messages_gen;
 use midir::{ConnectError, InitError, MidiOutput, MidiOutputConnection};
 use promptly::{prompt, prompt_default, ReadlineError};
@@ -40,8 +40,8 @@ pub enum TSeqError {
     MidiOutput(#[from] ConnectError<MidiOutput>),
 }
 
-struct Channel {
-    midi: MidiController,
+pub struct Context {
+    pub midi: MidiController,
     period_us: u64,
     timestamp: Instant,
     update_timestamp: bool,
@@ -49,9 +49,14 @@ struct Channel {
     step: u32,
 }
 
-pub struct Step {}
+impl Context {
+    pub fn set_bpm(&mut self, bpm: u8) {
+        self.period_us = compute_period_us(bpm);
+        self.update_timestamp = true;
+    }
+}
 
-pub fn run(channel_id: u8, port: Option<u32>) -> Result<(), TSeqError> {
+pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), TSeqError> {
     let midi_out = MidiOutput::new("out")?;
     let out_ports = midi_out.ports();
 
@@ -90,7 +95,7 @@ pub fn run(channel_id: u8, port: Option<u32>) -> Result<(), TSeqError> {
     let midi = MidiController::new(conn);
 
     // TODO: replace 156 by bpm
-    let channel = Channel {
+    let mut context = Context {
         midi,
         period_us: compute_period_us(120),
         timestamp: Instant::now(),
@@ -98,7 +103,9 @@ pub fn run(channel_id: u8, port: Option<u32>) -> Result<(), TSeqError> {
         bpm_step: 0,
         step: 0,
     };
-    let channel_arc = Arc::new((Mutex::new(channel), Condvar::new()));
+    conductor.init(&mut context);
+
+    let context_arc = Arc::new((Mutex::new(context), Condvar::new()));
 
     /*
         let mut info = Info {
@@ -111,16 +118,16 @@ pub fn run(channel_id: u8, port: Option<u32>) -> Result<(), TSeqError> {
     */
 
     // Clock
-    let channel_arc_1 = channel_arc.clone();
-    let _ = spawn(move || clock_gen(&channel_arc_1));
+    let context_arc_1 = context_arc.clone();
+    let _ = spawn(move || clock_gen(&context_arc_1));
+
+    let (context, cvar) = &*context_arc;
+    let mut context = context.lock().unwrap();
 
     loop {
-        let mut t = channel_arc.0.lock().unwrap();
-        let note = MidiNote::new(note::Note::C, 4, 127);
-        t.midi.play_note(note, 10, 3);
-        let sleep_time = Duration::from_secs(1);
-        drop(t);
-        sleep(sleep_time);
+        context = cvar.wait(context).unwrap();
+        // conductor.update(&mut context);
+        // println!("timestamp elapsed in main: {}",context.timestamp.elapsed().as_micros());
     }
 
     // Messages
