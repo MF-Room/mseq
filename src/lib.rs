@@ -126,7 +126,7 @@ pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), TSeqE
 
     loop {
         context = cvar.wait(context).unwrap();
-        // conductor.update(&mut context);
+        conductor.update(&mut context);
         // println!("timestamp elapsed in main: {}",context.timestamp.elapsed().as_micros());
     }
 

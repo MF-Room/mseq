@@ -36,7 +36,7 @@ pub fn clock_gen(context_arc: &Arc<(Mutex<Context>, Condvar)>) {
         let sleep_time = Duration::from_micros(bpm_step as u64 * period) - timestamp.elapsed();
         // println!("period total: {}", bpm_step as u64 * period);
         // println!("sleep time: {}",sleep_time.as_micros());
-        sleep(sleep_time);
+        spin_sleep::sleep(sleep_time);
     }
 }
 
