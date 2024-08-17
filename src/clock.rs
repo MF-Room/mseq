@@ -1,16 +1,17 @@
 use crate::log_send;
-use crate::message;
 use crate::Channel;
 use std::mem::drop;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
+pub const CLOCK: u8 = 0xf8;
+
 pub fn clock_gen(channel_arc: &Arc<(Mutex<Channel>, Condvar)>) {
     loop {
         let (channel, cvar) = &**channel_arc;
         let mut channel = channel.lock().unwrap();
-        log_send(&mut channel.conn, &[message::CLOCK]);
+        log_send(&mut channel.conn, &[CLOCK]);
 
         if channel.update_timestamp {
             channel.update_timestamp = false;

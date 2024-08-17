@@ -6,18 +6,16 @@ mod message;
 mod midi_controller;
 mod note;
 mod track;
-mod trig;
-pub use acid::{Acid, AcidLead, Timing};
-pub use arp::{Arp, ArpDiv, ArpLead};
+//pub use acid::{Acid, AcidLead, Timing};
+//pub use arp::{Arp, ArpDiv, ArpLead};
 use clock::{clock_gen, compute_period_us};
-use message::messages_gen;
+//use message::messages_gen;
 use midir::{ConnectError, InitError, MidiOutput, MidiOutputConnection};
 use promptly::{prompt, prompt_default, ReadlineError};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::spawn;
 use std::time::Instant;
 use thiserror::Error;
-pub use trig::trigger;
 
 pub const RAMPLE_CHANNEL: u8 = 0;
 pub const CH_CHANNEL: u8 = 1;
@@ -50,14 +48,7 @@ struct Channel {
 
 pub struct Step {}
 
-pub fn run(
-    channel_id: u8,
-    patterns: Vec<Pattern>,
-    stab: Stab,
-    arp: Arp,
-    acid: Acid,
-    port: Option<u32>,
-) -> Result<(), TSeqError> {
+pub fn run(channel_id: u8, port: Option<u32>) -> Result<(), TSeqError> {
     let midi_out = MidiOutput::new("out")?;
     let out_ports = midi_out.ports();
 
@@ -93,9 +84,10 @@ pub fn run(
 
     let conn = midi_out.connect(out_port, "output connection")?;
 
+    // TODO: replace 156 by bpm
     let channel = Channel {
         conn,
-        period_us: compute_period_us(patterns[0].bpm),
+        period_us: compute_period_us(156),
         timestamp: Instant::now(),
         update_timestamp: true,
         bpm_step: 0,
@@ -103,52 +95,58 @@ pub fn run(
     };
     let channel_arc = Arc::new((Mutex::new(channel), Condvar::new()));
 
-    let mut info = Info {
-        root: patterns[0].root,
-        bpm: patterns[0].bpm,
-        lead0: (Lead0State::None, None),
-        lead1: (Lead1State::None, None),
-        scale: Scale::default(),
-    };
-
-    let state = State::new(patterns, stab, arp, acid);
-
-    let state_arc = Arc::new(Mutex::new(state));
+    /*
+        let mut info = Info {
+            root: patterns[0].root,
+            bpm: patterns[0].bpm,
+            lead0: (Lead0State::None, None),
+            lead1: (Lead1State::None, None),
+            scale: Scale::default(),
+        };
+    */
 
     // Clock
     let channel_arc_1 = channel_arc.clone();
     let _ = spawn(move || clock_gen(&channel_arc_1));
 
     // Messages
-    let channel_arc_1 = channel_arc.clone();
-    let state_arc_1 = state_arc.clone();
-    let _ = spawn(move || messages_gen(&channel_arc_1, &state_arc_1, channel_id - 1));
+    /*
+        let channel_arc_1 = channel_arc.clone();
+        let _ = spawn(move || messages_gen(&channel_arc_1, &state_arc_1, channel_id - 1));
 
-    loop {
-        let lead0 = match info.lead0.1 {
-            Some(s) => format!("{}({})", info.lead0.0, s),
-            None => format!("{}", info.lead0.0),
-        };
-        let lead1 = match info.lead1.1 {
-            Some(s) => format!("{}({})", info.lead1.0, s),
-            None => format!("{}", info.lead1.0),
-        };
+        loop {
+            let lead0 = match info.lead0.1 {
+                Some(s) => format!("{}({})", info.lead0.0, s),
+                None => format!("{}", info.lead0.0),
+            };
+            let lead1 = match info.lead1.1 {
+                Some(s) => format!("{}({})", info.lead1.0, s),
+                None => format!("{}", info.lead1.0),
+            };
 
-        let s = format!(
-            "[{} {} | {} | {} | {}]",
-            info.root.get_str(),
-            info.bpm,
-            lead0,
-            lead1,
-            info.scale
-        );
+            let s = format!(
+                "[{} {} | {} | {} | {}]",
+                info.root.get_str(),
+                info.bpm,
+                lead0,
+                lead1,
+                info.scale
+            );
 
-        let s: String = prompt(s)?;
-        if let Some(i) = handle(&s, &channel_arc, &state_arc) {
-            info = i;
-        } else {
-            break;
+            let s: String = prompt(s)?;
+            if let Some(i) = handle(&s, &channel_arc, &state_arc) {
+                info = i;
+            } else {
+                break;
+            }
         }
-    }
+    */
     Ok(())
+}
+
+pub fn log_send(conn: &mut MidiOutputConnection, message: &[u8]) {
+    match conn.send(message) {
+        Err(x) => eprintln!("[ERROR] {} (message: {:?})", x, message),
+        _ => {}
+    }
 }

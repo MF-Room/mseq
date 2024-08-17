@@ -1,3 +1,4 @@
+/*
 use crate::clock;
 use crate::log_send;
 use crate::sequence::{control_change, CC_BANK_SEL, CC_KIT_SEL};
@@ -65,3 +66,4 @@ pub fn messages_gen(
         sequence.run(channel.step, &mut channel.conn, &mut rng, state_data);
     }
 }
+*/

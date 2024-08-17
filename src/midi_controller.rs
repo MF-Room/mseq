@@ -1,3 +1,4 @@
+use crate::log_send;
 use crate::note::Note;
 use midir::MidiOutputConnection;
 use std::collections::HashMap;
@@ -81,13 +82,6 @@ impl MidiController {
             }
             _ => {}
         }
-    }
-}
-
-fn log_send(conn: &mut MidiOutputConnection, message: &[u8]) {
-    match conn.send(message) {
-        Err(x) => eprintln!("[ERROR] {} (message: {:?})", x, message),
-        _ => {}
     }
 }
 
