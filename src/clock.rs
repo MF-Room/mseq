@@ -10,7 +10,6 @@ pub fn clock_gen(context_arc: &Arc<(Mutex<Context>, Condvar)>) {
     loop {
         let (context, cvar) = &**context_arc;
         let mut context = context.lock().unwrap();
-        // println!("time stamp elapsed {}",  context.timestamp.elapsed().as_micros());
         let step = context.step;
         log_send(&mut context.midi.conn, &[CLOCK]);
         context.midi.update(step);
@@ -19,7 +18,6 @@ pub fn clock_gen(context_arc: &Arc<(Mutex<Context>, Condvar)>) {
             context.update_timestamp = false;
             context.timestamp = Instant::now();
             context.bpm_step = 0;
-            // println!("reset timestamp");
         }
 
         let period = context.period_us;
@@ -33,8 +31,6 @@ pub fn clock_gen(context_arc: &Arc<(Mutex<Context>, Condvar)>) {
         drop(context);
         cvar.notify_one();
         let sleep_time = Duration::from_micros(bpm_step as u64 * period) - timestamp.elapsed();
-        // println!("period total: {}", bpm_step as u64 * period);
-        // println!("sleep time: {}",sleep_time.as_micros());
         spin_sleep::sleep(sleep_time);
     }
 }

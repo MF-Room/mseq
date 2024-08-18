@@ -1,3 +1,5 @@
+use std::{convert::From, fmt::Display};
+
 #[derive(Debug, Default, Clone, Copy)]
 pub enum Note {
     #[default]
@@ -15,24 +17,9 @@ pub enum Note {
     B,
 }
 
-impl Note {
-    pub fn add_semitone(&self, semi: u8) -> Self {
-        Self::get_note(self.get_midi() + semi)
-    }
-
-    pub fn transpose(root: Note, note: Note) -> i8 {
-        let root_m = root.get_midi() as i8;
-        let note_m = note.get_midi() as i8;
-        let n = (note_m - root_m) % 12;
-        if n > 6 {
-            n - 12
-        } else {
-            n
-        }
-    }
-
-    pub fn get_midi(&self) -> u8 {
-        match self {
+impl From<Note> for u8 {
+    fn from(note: Note) -> Self {
+        match note {
             Note::C => 12,
             Note::CS => 13,
             Note::D => 14,
@@ -47,9 +34,11 @@ impl Note {
             Note::B => 23,
         }
     }
+}
 
-    pub fn get_note(note: u8) -> Self {
-        let n = note % 12;
+impl From<u8> for Note {
+    fn from(midi: u8) -> Self {
+        let n = midi % 12;
         match n {
             0 => Note::C,
             1 => Note::CS,
@@ -62,12 +51,15 @@ impl Note {
             8 => Note::GS,
             9 => Note::A,
             10 => Note::AS,
-            _ => Note::B,
+            11 => Note::B,
+            _ => unreachable!(),
         }
     }
+}
 
-    pub fn get_str(&self) -> &str {
-        match self {
+impl Display for Note {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
             Note::C => "C",
             Note::CS => "C#",
             Note::D => "D",
@@ -80,6 +72,24 @@ impl Note {
             Note::A => "A",
             Note::AS => "A#",
             Note::B => "B",
+        };
+        write!(f, "{}", str)
+    }
+}
+
+impl Note {
+    pub fn add_semitone(self, semi: u8) -> Self {
+        (u8::from(self) + semi).into()
+    }
+
+    pub fn transpose(root: Note, note: Note) -> i8 {
+        let root_m: u8 = root.into();
+        let note_m: u8 = note.into();
+        let n = (note_m as i8 - root_m as i8) % 12;
+        if n > 6 {
+            n - 12
+        } else {
+            n
         }
     }
 }

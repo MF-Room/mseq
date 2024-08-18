@@ -4,23 +4,24 @@ mod clock;
 mod conductor;
 mod input;
 mod message;
-use std::time::Instant;
 mod midi_controller;
-pub mod note;
+mod note;
 mod track;
 
+// Interface
 pub use conductor::Conductor;
 pub use input::InputManager;
-//pub use acid::{Acid, AcidLead, Timing};
-//pub use arp::{Arp, ArpDiv, ArpLead};
-use clock::{clock_gen, compute_period_us};
 pub use midi_controller::{MidiController, MidiNote};
-//use message::messages_gen;
+pub use track::{Track, DeteTrack};
+pub use note::Note;
+
+use clock::{clock_gen, compute_period_us};
 use midir::{ConnectError, InitError, MidiOutput, MidiOutputConnection};
-use promptly::{prompt, prompt_default, ReadlineError};
+use promptly::{prompt_default, ReadlineError};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::spawn;
 use thiserror::Error;
+use std::time::Instant;
 
 pub const RAMPLE_CHANNEL: u8 = 0;
 pub const CH_CHANNEL: u8 = 1;
@@ -49,12 +50,19 @@ pub struct Context {
     update_timestamp: bool,
     bpm_step: u32,
     step: u32,
+    running: bool,
 }
 
 impl Context {
     pub fn set_bpm(&mut self, bpm: u8) {
         self.period_us = compute_period_us(bpm);
         self.update_timestamp = true;
+    }
+    pub fn terminate(&mut self) {
+        self.running = false
+    }
+    pub fn get_step(&mut self) -> u32 {
+        self.step
     }
 }
 
@@ -107,6 +115,7 @@ pub fn run<T: Conductor + Send + 'static>(
         update_timestamp: true,
         bpm_step: 0,
         step: 0,
+        running: true,
     };
     conductor.init(&mut context);
 
@@ -126,43 +135,13 @@ pub fn run<T: Conductor + Send + 'static>(
         let _ = spawn(move || input::input_loop(input, &conductor_arc_1));
     }
 
-    loop {
+    let mut running = true;
+    while running {
         context = cvar.wait(context).unwrap();
         conductor_arc.lock().unwrap().update(&mut context);
+        running = context.running;
     }
 
-    // Messages
-    /*
-        let channel_arc_1 = channel_arc.clone();
-        let _ = spawn(move || messages_gen(&channel_arc_1, &state_arc_1, channel_id - 1));
-
-        loop {
-            let lead0 = match info.lead0.1 {
-                Some(s) => format!("{}({})", info.lead0.0, s),
-                None => format!("{}", info.lead0.0),
-            };
-            let lead1 = match info.lead1.1 {
-                Some(s) => format!("{}({})", info.lead1.0, s),
-                None => format!("{}", info.lead1.0),
-            };
-
-            let s = format!(
-                "[{} {} | {} | {} | {}]",
-                info.root.get_str(),
-                info.bpm,
-                lead0,
-                lead1,
-                info.scale
-            );
-
-            let s: String = prompt(s)?;
-            if let Some(i) = handle(&s, &channel_arc, &state_arc) {
-                info = i;
-            } else {
-                break;
-            }
-        }
-    */
     Ok(())
 }
 

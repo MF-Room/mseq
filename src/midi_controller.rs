@@ -1,5 +1,5 @@
+use crate::{log_send, Track};
 use crate::note::Note;
-use crate::{log_send, note};
 use midir::MidiOutputConnection;
 use std::collections::HashMap;
 
@@ -16,37 +16,40 @@ impl MidiNote {
     }
 
     pub fn transpose(&self, transpose: i8) -> Self {
-        if transpose >= 0 {
-            Self {
-                note: self.note.add_semitone(transpose as u8),
-                octave: self.octave,
-                vel: self.vel,
-            }
+        let (note, octave) = if transpose >= 0 {
+            (self.note.add_semitone(transpose as u8), self.octave)
         } else {
-            Self {
-                note: self.note.add_semitone((12 - transpose) as u8),
-                octave: self.octave - 1,
-                vel: self.vel,
-            }
+            (
+                self.note.add_semitone((12 - transpose) as u8),
+                self.octave - 1,
+            )
+        };
+        Self {
+            note,
+            octave,
+            vel: self.vel,
         }
     }
 }
 
 #[derive(Default, Clone, Copy)]
 struct NotePlay {
-    note: MidiNote,
+    midi_note: MidiNote,
     channel_id: u8,
 }
 
 impl NotePlay {
-    fn new(note: MidiNote, channel_id: u8) -> Self {
-        Self { note, channel_id }
+    fn new(midi_note: MidiNote, channel_id: u8) -> Self {
+        Self {
+            midi_note,
+            channel_id,
+        }
     }
 }
 
 pub struct MidiController {
-    note_off: HashMap<u32, Vec<NotePlay>>,
-    note_on: Vec<NotePlay>,
+    notes_off: HashMap<u32, Vec<NotePlay>>,
+    notes_on: Vec<NotePlay>,
     pub conn: MidiOutputConnection,
     step: u32,
 }
@@ -54,56 +57,59 @@ pub struct MidiController {
 impl MidiController {
     pub fn new(conn: MidiOutputConnection) -> Self {
         Self {
-            note_off: HashMap::new(),
-            note_on: vec![],
+            notes_off: HashMap::new(),
+            notes_on: vec![],
             conn,
             step: 0,
         }
     }
 
-    pub fn play_note(&mut self, note: MidiNote, len: u32, channel_id: u8) {
-        let note_play = NotePlay::new(note, channel_id);
-        self.note_on.push(note_play);
+    pub fn play_note(&mut self, midi_note: MidiNote, len: u32, channel_id: u8) {
+        let note_play = NotePlay::new(midi_note, channel_id);
+        self.notes_on.push(note_play);
         let step = self.step + len;
-        let notes = self.note_off.get_mut(&(step));
+        let notes = self.notes_off.get_mut(&(step));
         match notes {
             Some(n) => n.push(note_play),
             _ => {
                 let n = vec![note_play];
-                self.note_off.insert(step, n);
+                self.notes_off.insert(step, n);
             }
         }
     }
 
     pub fn update(&mut self, step: u32) {
         self.step = step;
-        let notes = self.note_off.remove(&step);
-        for note in &self.note_on {
+
+        for note_on in &self.notes_on {
             log_send(
                 &mut self.conn,
                 &start_note(
-                    note.channel_id,
-                    note.note.note.get_midi() + 12 * note.note.octave,
-                    note.note.vel,
+                    note_on.channel_id,
+                    u8::from(note_on.midi_note.note) + 12 * note_on.midi_note.octave,
+                    note_on.midi_note.vel,
                 ),
             );
         }
-        self.note_on.clear();
-        match notes {
-            Some(notes) => {
-                for n in notes {
-                    log_send(
-                        &mut self.conn,
-                        &end_note(
-                            n.channel_id,
-                            n.note.note.get_midi() + 12 * n.note.octave,
-                            n.note.vel,
-                        ),
-                    );
-                }
+        self.notes_on.clear();
+
+        let notes = self.notes_off.remove(&step);
+        if let Some(notes_off) = notes {
+            for n in notes_off {
+                log_send(
+                    &mut self.conn,
+                    &end_note(
+                        n.channel_id,
+                        u8::from(n.midi_note.note) + 12 * n.midi_note.octave,
+                        n.midi_note.vel,
+                    ),
+                );
             }
-            _ => {}
-        }
+        };
+    }
+
+    pub fn play_track(&mut self, track: &mut impl Track) {
+        track.play_step(self.step, self);
     }
 }
 

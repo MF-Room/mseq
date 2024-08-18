@@ -10,7 +10,6 @@ authors = ["Julien Eudine <julien@eudine.fr>"]
 [dependencies]
 midir = "0.9.1"
 promptly = "0.3.1"
-rand = "0.8.5"
 spin_sleep = "1.2.1"
 thiserror = "1.0.57"
 
