@@ -75,6 +75,10 @@ impl MidiController {
     }
 
     pub fn play_note(&mut self, midi_note: MidiNote, len: u32, channel_id: u8) {
+        if len == 0 {
+            return;
+        }
+        
         let note_play = NotePlay::new(midi_note, channel_id);
         self.notes_on.push(note_play);
         let step = self.step + len;
@@ -93,14 +97,6 @@ impl MidiController {
     }
 
     pub(crate) fn update(&mut self, next_step: u32) {
-        for n in &self.notes_on {
-            log_send(
-                &mut self.conn,
-                &start_note(n.channel_id, n.midi_note.midi_value(), n.midi_note.vel),
-            );
-        }
-        self.notes_on.clear();
-
         let notes = self.notes_off.remove(&self.step);
         if let Some(notes_off) = notes {
             for n in notes_off {
@@ -110,6 +106,14 @@ impl MidiController {
                 );
             }
         };
+
+        for n in &self.notes_on {
+            log_send(
+                &mut self.conn,
+                &start_note(n.channel_id, n.midi_note.midi_value(), n.midi_note.vel),
+            );
+        }
+        self.notes_on.clear();
 
         self.step = next_step;
     }
