@@ -42,7 +42,7 @@ impl DeteTrack {
                         let length = if n.2 { 7 } else { 3 };
                         notes.push((n.0, n.1, length));
                     };
-                    prev_note = Some((trig.midi_note, step, trig.slide));
+                    prev_note = Some((trig.midi_note, 6 * step, trig.slide));
                 }
                 Rest => {
                     if let Some(n) = prev_note {
@@ -67,7 +67,7 @@ impl DeteTrack {
             }
         };
 
-        DeteTrack::new(pattern.len() as u32, notes, root, channel_id, name)
+        DeteTrack::new(6 * pattern.len() as u32, notes, root, channel_id, name)
     }
 
     pub fn load_acid_from_file<P: AsRef<Path>>(
