@@ -120,8 +120,7 @@ pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqE
 }
 
 pub fn log_send(conn: &mut MidiOutputConnection, message: &[u8]) {
-    match conn.send(message) {
-        Err(x) => eprintln!("[ERROR] {} (message: {:?})", x, message),
-        _ => {}
+    if let Err(x) = conn.send(message) {
+        eprintln!("[ERROR] {} (message: {:?})", x, message)
     }
 }
