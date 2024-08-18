@@ -45,14 +45,29 @@ pub struct Context {
     pub(crate) clock: Clock,
     step: u32,
     running: bool,
+    on_pause: bool,
 }
 
 impl Context {
     pub fn set_bpm(&mut self, bpm: u8) {
         self.clock.set_bpm(bpm);
     }
-    pub fn terminate(&mut self) {
+    pub fn quit(&mut self) {
         self.running = false
+    }
+    pub fn pause(&mut self) {
+        self.on_pause = true;
+        self.midi.stop();
+    }
+    pub fn resume(&mut self) {
+        self.on_pause = false;
+        self.midi.send_continue();
+    }
+    pub fn restart(&mut self) {
+        self.step = 0;
+        self.on_pause = false;
+        self.midi.stop();
+        self.midi.start();
     }
     pub fn get_step(&mut self) -> u32 {
         self.step
@@ -60,14 +75,16 @@ impl Context {
     pub fn run(&mut self, mut conductor: impl Conductor) {
         while self.running {
             conductor.update(self);
-
+            
             self.clock.tick();
             self.midi.send_clock();
-
-            self.step += 1;
-            self.midi.update(self.step);
+            
+            if !self.on_pause {
+                self.step += 1;
+                self.midi.update(self.step);
+            }
         }
-        self.midi.terminate();
+        self.midi.stop();
     }
 }
 
@@ -114,6 +131,7 @@ pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqE
         clock: Clock::new(DEFAULT_BPM),
         step: 0,
         running: true,
+        on_pause: true,
     };
 
     conductor.init(&mut ctx);

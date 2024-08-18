@@ -59,6 +59,9 @@ pub struct MidiController {
 }
 
 const CLOCK_MIDI: u8 = 0xf8;
+const START_MIDI: u8 = 0xfa;
+const CONTINUE_MIDI: u8 = 0xfb;
+const STOP_MIDI: u8 = 0xfc;
 
 impl MidiController {
     pub(crate) fn new(conn: MidiOutputConnection) -> Self {
@@ -78,7 +81,7 @@ impl MidiController {
         if len == 0 {
             return;
         }
-        
+
         let note_play = NotePlay::new(midi_note, channel_id);
         self.notes_on.push(note_play);
         let step = self.step + len;
@@ -94,6 +97,15 @@ impl MidiController {
 
     pub(crate) fn send_clock(&mut self) {
         log_send(&mut self.conn, &[CLOCK_MIDI]);
+    }
+
+    pub(crate) fn start(&mut self) {
+        self.step = 0;
+        log_send(&mut self.conn, &[START_MIDI]);
+    }
+
+    pub(crate) fn send_continue(&mut self) {
+        log_send(&mut self.conn, &[CONTINUE_MIDI]);
     }
 
     pub(crate) fn update(&mut self, next_step: u32) {
@@ -118,7 +130,7 @@ impl MidiController {
         self.step = next_step;
     }
 
-    pub(crate) fn terminate(&mut self) {
+    pub(crate) fn stop(&mut self) {
         self.notes_off.values().flatten().for_each(|n| {
             log_send(
                 &mut self.conn,
@@ -130,6 +142,8 @@ impl MidiController {
             );
         });
         self.notes_off.clear();
+
+        log_send(&mut self.conn, &[STOP_MIDI]);
     }
 }
 
