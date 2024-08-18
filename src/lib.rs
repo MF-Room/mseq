@@ -2,6 +2,7 @@ mod acid;
 mod arp;
 mod clock;
 mod conductor;
+mod input;
 mod message;
 use std::time::Instant;
 mod midi_controller;
@@ -9,6 +10,7 @@ pub mod note;
 mod track;
 
 pub use conductor::Conductor;
+pub use input::InputManager;
 //pub use acid::{Acid, AcidLead, Timing};
 //pub use arp::{Arp, ArpDiv, ArpLead};
 use clock::{clock_gen, compute_period_us};
@@ -56,7 +58,11 @@ impl Context {
     }
 }
 
-pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), TSeqError> {
+pub fn run<T: Conductor + Send + 'static>(
+    mut conductor: T,
+    input_handler: Option<impl InputManager<T> + Send + 'static>,
+    port: Option<u32>,
+) -> Result<(), TSeqError> {
     let midi_out = MidiOutput::new("out")?;
     let out_ports = midi_out.ports();
 
@@ -94,7 +100,6 @@ pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), TSeqE
 
     let midi = MidiController::new(conn);
 
-    // TODO: replace 156 by bpm
     let mut context = Context {
         midi,
         period_us: compute_period_us(120),
@@ -107,16 +112,6 @@ pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), TSeqE
 
     let context_arc = Arc::new((Mutex::new(context), Condvar::new()));
 
-    /*
-        let mut info = Info {
-            root: patterns[0].root,
-            bpm: patterns[0].bpm,
-            lead0: (Lead0State::None, None),
-            lead1: (Lead1State::None, None),
-            scale: Scale::default(),
-        };
-    */
-
     // Clock
     let context_arc_1 = context_arc.clone();
     let _ = spawn(move || clock_gen(&context_arc_1));
@@ -124,10 +119,16 @@ pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), TSeqE
     let (context, cvar) = &*context_arc;
     let mut context = context.lock().unwrap();
 
+    // Inputs
+    let conductor_arc = Arc::new(Mutex::new(conductor));
+    if let Some(input) = input_handler {
+        let conductor_arc_1 = conductor_arc.clone();
+        let _ = spawn(move || input::input_loop(input, &conductor_arc_1));
+    }
+
     loop {
         context = cvar.wait(context).unwrap();
-        conductor.update(&mut context);
-        // println!("timestamp elapsed in main: {}",context.timestamp.elapsed().as_micros());
+        conductor_arc.lock().unwrap().update(&mut context);
     }
 
     // Messages

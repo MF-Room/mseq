@@ -2,7 +2,6 @@ use crate::log_send;
 use crate::Context;
 use std::mem::drop;
 use std::sync::{Arc, Condvar, Mutex};
-use std::thread::sleep;
 use std::time::{Duration, Instant};
 
 pub const CLOCK: u8 = 0xf8;
