@@ -14,6 +14,22 @@ impl MidiNote {
     pub fn new(note: Note, octave: u8, vel: u8) -> Self {
         Self { note, octave, vel }
     }
+
+    pub fn transpose(&self, transpose: i8) -> Self {
+        if transpose >= 0 {
+            Self {
+                note: self.note.add_semitone(transpose as u8),
+                octave: self.octave,
+                vel: self.vel,
+            }
+        } else {
+            Self {
+                note: self.note.add_semitone((12 - transpose) as u8),
+                octave: self.octave - 1,
+                vel: self.vel,
+            }
+        }
+    }
 }
 
 #[derive(Default, Clone, Copy)]

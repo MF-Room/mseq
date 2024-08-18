@@ -16,22 +16,21 @@ pub enum Note {
 }
 
 impl Note {
-    pub fn transpose_from_c(&self) -> i8 {
-        match self {
-            Note::C => 0,
-            Note::CS => 1,
-            Note::D => 2,
-            Note::DS => 3,
-            Note::E => 4,
-            Note::F => 5,
-            Note::FS => -6,
-            Note::G => -5,
-            Note::GS => -4,
-            Note::A => -3,
-            Note::AS => -2,
-            Note::B => -1,
+    pub fn add_semitone(&self, semi: u8) -> Self {
+        Self::get_note(self.get_midi() + semi)
+    }
+
+    pub fn transpose(root: Note, note: Note) -> i8 {
+        let root_m = root.get_midi() as i8;
+        let note_m = note.get_midi() as i8;
+        let n = (note_m - root_m) % 12;
+        if n > 6 {
+            n - 12
+        } else {
+            n
         }
     }
+
     pub fn get_midi(&self) -> u8 {
         match self {
             Note::C => 12,
@@ -46,6 +45,24 @@ impl Note {
             Note::A => 21,
             Note::AS => 22,
             Note::B => 23,
+        }
+    }
+
+    pub fn get_note(note: u8) -> Self {
+        let n = note % 12;
+        match n {
+            0 => Note::C,
+            1 => Note::CS,
+            2 => Note::D,
+            3 => Note::DS,
+            4 => Note::E,
+            5 => Note::F,
+            6 => Note::FS,
+            7 => Note::G,
+            8 => Note::GS,
+            9 => Note::A,
+            10 => Note::AS,
+            _ => Note::B,
         }
     }
 
