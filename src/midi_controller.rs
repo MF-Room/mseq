@@ -30,6 +30,10 @@ impl MidiNote {
             vel: self.vel,
         }
     }
+
+    pub fn midi_value(&self) -> u8 {
+        u8::from(self.note) + 12 * self.octave
+    }
 }
 
 #[derive(Default, Clone, Copy)]
@@ -57,7 +61,7 @@ pub struct MidiController {
 const CLOCK_MIDI: u8 = 0xf8;
 
 impl MidiController {
-    pub fn new(conn: MidiOutputConnection) -> Self {
+    pub(crate) fn new(conn: MidiOutputConnection) -> Self {
         Self {
             notes_off: HashMap::new(),
             notes_on: vec![],
@@ -66,8 +70,8 @@ impl MidiController {
         }
     }
 
-    pub(crate) fn send_clock(&mut self) {
-        log_send(&mut self.conn, &[CLOCK_MIDI]);
+    pub fn play_track(&mut self, track: &mut impl Track) {
+        track.play_step(self.step, self);
     }
 
     pub fn play_note(&mut self, midi_note: MidiNote, len: u32, channel_id: u8) {
@@ -84,15 +88,15 @@ impl MidiController {
         }
     }
 
-    pub fn update(&mut self, next_step: u32) {
-        for note_on in &self.notes_on {
+    pub(crate) fn send_clock(&mut self) {
+        log_send(&mut self.conn, &[CLOCK_MIDI]);
+    }
+
+    pub(crate) fn update(&mut self, next_step: u32) {
+        for n in &self.notes_on {
             log_send(
                 &mut self.conn,
-                &start_note(
-                    note_on.channel_id,
-                    u8::from(note_on.midi_note.note) + 12 * note_on.midi_note.octave,
-                    note_on.midi_note.vel,
-                ),
+                &start_note(n.channel_id, n.midi_note.midi_value(), n.midi_note.vel),
             );
         }
         self.notes_on.clear();
@@ -102,11 +106,7 @@ impl MidiController {
             for n in notes_off {
                 log_send(
                     &mut self.conn,
-                    &end_note(
-                        n.channel_id,
-                        u8::from(n.midi_note.note) + 12 * n.midi_note.octave,
-                        n.midi_note.vel,
-                    ),
+                    &end_note(n.channel_id, n.midi_note.midi_value(), n.midi_note.vel),
                 );
             }
         };
@@ -114,8 +114,18 @@ impl MidiController {
         self.step = next_step;
     }
 
-    pub fn play_track(&mut self, track: &mut impl Track) {
-        track.play_step(self.step, self);
+    pub(crate) fn terminate(&mut self) {
+        self.notes_off.values().flatten().for_each(|n| {
+            log_send(
+                &mut self.conn,
+                &end_note(
+                    n.channel_id,
+                    u8::from(n.midi_note.note) + 12 * n.midi_note.octave,
+                    n.midi_note.vel,
+                ),
+            );
+        });
+        self.notes_off.clear();
     }
 }
 

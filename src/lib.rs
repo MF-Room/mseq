@@ -2,7 +2,6 @@ mod acid;
 mod arp;
 mod clock;
 mod conductor;
-mod message;
 mod midi_controller;
 mod note;
 mod track;
@@ -68,6 +67,7 @@ impl Context {
             self.step += 1;
             self.midi.update(self.step);
         }
+        self.midi.terminate();
     }
 }
 
