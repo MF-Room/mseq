@@ -37,6 +37,8 @@ pub enum MSeqError {
     PortNumber(),
     #[error("Midi output issue [{}: {}]", file!(), line!())]
     MidiOutput(#[from] ConnectError<MidiOutput>),
+    #[error("{0}")]
+    Acid(#[from] acid::AcidError),
 }
 
 pub struct Context {

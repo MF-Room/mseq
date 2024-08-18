@@ -3,7 +3,7 @@ use crate::Track;
 use midir::MidiOutputConnection;
 use std::collections::HashMap;
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, Debug, serde::Deserialize)]
 pub struct MidiNote {
     pub note: Note,
     pub octave: u8,
