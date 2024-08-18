@@ -14,7 +14,7 @@ pub use note::Note;
 pub use track::{DeteTrack, Track};
 
 use clock::Clock;
-use midir::{ConnectError, InitError, MidiOutput, MidiOutputConnection};
+use midir::{ConnectError, InitError, MidiOutput};
 use promptly::{prompt_default, ReadlineError};
 use thiserror::Error;
 
@@ -59,11 +59,12 @@ impl Context {
     pub fn run(&mut self, mut conductor: impl Conductor) {
         while self.running {
             conductor.update(self);
-            self.midi.update(self.step);
-            self.step += 1;
 
             self.clock.tick();
             self.midi.send_clock();
+
+            self.step += 1;
+            self.midi.update(self.step);
         }
     }
 }
@@ -117,10 +118,4 @@ pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqE
     ctx.run(conductor);
 
     Ok(())
-}
-
-pub fn log_send(conn: &mut MidiOutputConnection, message: &[u8]) {
-    if let Err(x) = conn.send(message) {
-        eprintln!("[ERROR] {} (message: {:?})", x, message)
-    }
 }

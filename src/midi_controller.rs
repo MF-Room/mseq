@@ -1,5 +1,5 @@
 use crate::note::Note;
-use crate::{log_send, Track};
+use crate::Track;
 use midir::MidiOutputConnection;
 use std::collections::HashMap;
 
@@ -84,9 +84,7 @@ impl MidiController {
         }
     }
 
-    pub fn update(&mut self, step: u32) {
-        self.step = step;
-
+    pub fn update(&mut self, next_step: u32) {
         for note_on in &self.notes_on {
             log_send(
                 &mut self.conn,
@@ -99,7 +97,7 @@ impl MidiController {
         }
         self.notes_on.clear();
 
-        let notes = self.notes_off.remove(&step);
+        let notes = self.notes_off.remove(&self.step);
         if let Some(notes_off) = notes {
             for n in notes_off {
                 log_send(
@@ -112,6 +110,8 @@ impl MidiController {
                 );
             }
         };
+
+        self.step = next_step;
     }
 
     pub fn play_track(&mut self, track: &mut impl Track) {
@@ -147,4 +147,10 @@ pub fn param_value(v: f32) -> u8 {
         return 127;
     }
     63 + (v * 63.0).round() as u8
+}
+
+fn log_send(conn: &mut MidiOutputConnection, message: &[u8]) {
+    if let Err(x) = conn.send(message) {
+        eprintln!("[ERROR] {} (message: {:?})", x, message)
+    }
 }
