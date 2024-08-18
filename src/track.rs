@@ -1,10 +1,7 @@
 use crate::MidiNote;
 use std::{path::Path, u32};
 
-use crate::{
-    midi_controller::MidiController,
-    note::Note,
-};
+use crate::{midi_controller::MidiController, note::Note};
 
 pub trait Track {
     fn play_step(&mut self, step: u32, midi_controller: &mut MidiController);

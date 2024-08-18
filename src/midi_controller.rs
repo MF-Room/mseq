@@ -1,5 +1,5 @@
-use crate::{log_send, Track};
 use crate::note::Note;
+use crate::{log_send, Track};
 use midir::MidiOutputConnection;
 use std::collections::HashMap;
 

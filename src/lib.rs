@@ -12,22 +12,23 @@ mod track;
 pub use conductor::Conductor;
 pub use input::InputManager;
 pub use midi_controller::{MidiController, MidiNote};
-pub use track::{Track, DeteTrack};
 pub use note::Note;
+pub use track::{DeteTrack, Track};
 
 use clock::{clock_gen, compute_period_us};
 use midir::{ConnectError, InitError, MidiOutput, MidiOutputConnection};
 use promptly::{prompt_default, ReadlineError};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::spawn;
-use thiserror::Error;
 use std::time::Instant;
+use thiserror::Error;
 
 pub const RAMPLE_CHANNEL: u8 = 0;
 pub const CH_CHANNEL: u8 = 1;
 pub const OH_CHANNEL: u8 = 2;
 pub const LEAD0_CHANNEL: u8 = 3;
 pub const LEAD1_CHANNEL: u8 = 4;
+const DEFAULT_BPM: u8 = 120;
 
 #[derive(Error, Debug)]
 pub enum TSeqError {
@@ -46,9 +47,7 @@ pub enum TSeqError {
 pub struct Context {
     pub midi: MidiController,
     period_us: u64,
-    timestamp: Instant,
-    update_timestamp: bool,
-    bpm_step: u32,
+    next_clock_timestamp: Instant,
     step: u32,
     running: bool,
 }
@@ -56,7 +55,6 @@ pub struct Context {
 impl Context {
     pub fn set_bpm(&mut self, bpm: u8) {
         self.period_us = compute_period_us(bpm);
-        self.update_timestamp = true;
     }
     pub fn terminate(&mut self) {
         self.running = false
@@ -110,13 +108,12 @@ pub fn run<T: Conductor + Send + 'static>(
 
     let mut context = Context {
         midi,
-        period_us: compute_period_us(120),
-        timestamp: Instant::now(),
-        update_timestamp: true,
-        bpm_step: 0,
+        period_us: compute_period_us(DEFAULT_BPM),
+        next_clock_timestamp: Instant::now(),
         step: 0,
         running: true,
     };
+
     conductor.init(&mut context);
 
     let context_arc = Arc::new((Mutex::new(context), Condvar::new()));
