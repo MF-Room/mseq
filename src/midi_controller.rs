@@ -5,9 +5,9 @@ use std::collections::HashMap;
 
 #[derive(Default, Clone, Copy)]
 pub struct MidiNote {
-    note: Note,
-    octave: u8,
-    vel: u8,
+    pub note: Note,
+    pub octave: u8,
+    pub vel: u8,
 }
 
 impl MidiNote {

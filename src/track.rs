@@ -14,8 +14,13 @@ pub trait Track {
     fn set_start_step(&mut self, _start_step: u32) {
         // Todo: add warning
     }
+
+    fn get_name(&self) -> String {
+        "Unamed".to_string()
+    }
 }
 
+#[derive(Default, Clone)]
 pub struct DeteTrack {
     len: u32,
     notes: Vec<(MidiNote, u32, u32)>, // (Note, start step, length)
@@ -23,6 +28,7 @@ pub struct DeteTrack {
     root: Note,
     transpose: Option<i8>,
     pub channel_id: u8,
+    name: String,
 }
 
 impl Track for DeteTrack {
@@ -43,10 +49,20 @@ impl Track for DeteTrack {
     fn get_root(&self) -> Note {
         self.root
     }
+
+    fn get_name(&self) -> String {
+        self.name.clone()
+    }
 }
 
 impl DeteTrack {
-    pub fn new(len: u32, notes: Vec<(MidiNote, u32, u32)>, root: Note, channel_id: u8) -> Self {
+    pub fn new(
+        len: u32,
+        notes: Vec<(MidiNote, u32, u32)>,
+        root: Note,
+        channel_id: u8,
+        name: &str,
+    ) -> Self {
         DeteTrack {
             len,
             notes,
@@ -54,6 +70,7 @@ impl DeteTrack {
             root,
             transpose: None,
             channel_id,
+            name: name.to_string(),
         }
     }
 
@@ -61,7 +78,7 @@ impl DeteTrack {
         self.root = note;
     }
 
-    pub fn load_from_file<P: AsRef<Path>>(filename: P) -> Self {
+    pub fn load_from_file<P: AsRef<Path>>(_filename: P) -> Self {
         todo!()
     }
 }
