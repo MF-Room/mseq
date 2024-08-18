@@ -1,36 +1,35 @@
-use crate::log_send;
-use crate::Context;
-use std::mem::drop;
-use std::process::exit;
-use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
 use std::time::Instant;
 
-pub const CLOCK: u8 = 0xf8;
-
-pub fn clock_gen(context_arc: &Arc<(Mutex<Context>, Condvar)>) {
-    loop {
-        let (context, cvar) = &**context_arc;
-        let mut context = context.lock().unwrap();
-        log_send(&mut context.midi.conn, &[CLOCK]);
-
-        let step = context.step;
-        context.midi.update(step);
-
-        context.next_clock_timestamp =
-            context.next_clock_timestamp + Duration::from_micros(context.period_us);
-        context.step += 1;
-        let next_clock_timestamp = context.next_clock_timestamp;
-
-        // Unlock the mutex
-        drop(context);
-        cvar.notify_one();
-        let sleep_time = next_clock_timestamp - Instant::now();
-
-        spin_sleep::sleep(sleep_time);
-    }
+pub(crate) struct Clock {
+    period_us: u64,
+    next_clock_timestamp: Instant,
+    bpm: u8,
 }
 
-pub fn compute_period_us(bpm: u8) -> u64 {
-    60 * 1000000 / 24 / bpm as u64
+impl Clock {
+    pub(crate) fn new(bpm: u8) -> Self {
+        Self {
+            period_us: Self::compute_period_us(bpm),
+            next_clock_timestamp: Instant::now(),
+            bpm,
+        }
+    }
+
+    pub fn tick(&mut self) {
+        self.next_clock_timestamp += Duration::from_micros(self.period_us);
+        let next_clock_timestamp = self.next_clock_timestamp;
+
+        let sleep_time = next_clock_timestamp - Instant::now();
+        spin_sleep::sleep(sleep_time);
+    }
+
+    pub(crate) fn set_bpm(&mut self, bpm: u8) {
+        self.bpm = bpm;
+        self.period_us = Self::compute_period_us(self.bpm);
+    }
+
+    fn compute_period_us(bpm: u8) -> u64 {
+        60 * 1000000 / 24 / bpm as u64
+    }
 }

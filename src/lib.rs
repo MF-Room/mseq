@@ -2,7 +2,6 @@ mod acid;
 mod arp;
 mod clock;
 mod conductor;
-mod input;
 mod message;
 mod midi_controller;
 mod note;
@@ -10,17 +9,13 @@ mod track;
 
 // Interface
 pub use conductor::Conductor;
-pub use input::InputManager;
 pub use midi_controller::{MidiController, MidiNote};
 pub use note::Note;
 pub use track::{DeteTrack, Track};
 
-use clock::{clock_gen, compute_period_us};
+use clock::Clock;
 use midir::{ConnectError, InitError, MidiOutput, MidiOutputConnection};
 use promptly::{prompt_default, ReadlineError};
-use std::sync::{Arc, Condvar, Mutex};
-use std::thread::spawn;
-use std::time::Instant;
 use thiserror::Error;
 
 pub const RAMPLE_CHANNEL: u8 = 0;
@@ -31,7 +26,7 @@ pub const LEAD1_CHANNEL: u8 = 4;
 const DEFAULT_BPM: u8 = 120;
 
 #[derive(Error, Debug)]
-pub enum TSeqError {
+pub enum MSeqError {
     #[error("Failed to create a midi output [{}: {}]\n\t{0}", file!(), line!())]
     MidiInit(#[from] InitError),
     #[error("No output found [{}: {}]", file!(), line!())]
@@ -46,15 +41,14 @@ pub enum TSeqError {
 
 pub struct Context {
     pub midi: MidiController,
-    period_us: u64,
-    next_clock_timestamp: Instant,
+    pub(crate) clock: Clock,
     step: u32,
     running: bool,
 }
 
 impl Context {
     pub fn set_bpm(&mut self, bpm: u8) {
-        self.period_us = compute_period_us(bpm);
+        self.clock.set_bpm(bpm);
     }
     pub fn terminate(&mut self) {
         self.running = false
@@ -62,24 +56,30 @@ impl Context {
     pub fn get_step(&mut self) -> u32 {
         self.step
     }
+    pub fn run(&mut self, mut conductor: impl Conductor) {
+        while self.running {
+            conductor.update(self);
+            self.midi.update(self.step);
+            self.step += 1;
+
+            self.clock.tick();
+            self.midi.send_clock();
+        }
+    }
 }
 
-pub fn run<T: Conductor + Send + 'static>(
-    mut conductor: T,
-    input_handler: Option<impl InputManager<T> + Send + 'static>,
-    port: Option<u32>,
-) -> Result<(), TSeqError> {
+pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqError> {
     let midi_out = MidiOutput::new("out")?;
     let out_ports = midi_out.ports();
 
     let out_port = if let Some(p) = port {
         match out_ports.get(p as usize) {
-            None => return Err(TSeqError::PortNumber()),
+            None => return Err(MSeqError::PortNumber()),
             Some(x) => x,
         }
     } else {
         match out_ports.len() {
-            0 => return Err(TSeqError::NoOutput()),
+            0 => return Err(MSeqError::NoOutput()),
             1 => {
                 println!(
                     "Choosing the only available output port: {}",
@@ -95,7 +95,7 @@ pub fn run<T: Conductor + Send + 'static>(
 
                 let port_number: usize = prompt_default("Select output port", 0)?;
                 match out_ports.get(port_number) {
-                    None => return Err(TSeqError::PortNumber()),
+                    None => return Err(MSeqError::PortNumber()),
                     Some(x) => x,
                 }
             }
@@ -106,38 +106,15 @@ pub fn run<T: Conductor + Send + 'static>(
 
     let midi = MidiController::new(conn);
 
-    let mut context = Context {
+    let mut ctx = Context {
         midi,
-        period_us: compute_period_us(DEFAULT_BPM),
-        next_clock_timestamp: Instant::now(),
+        clock: Clock::new(DEFAULT_BPM),
         step: 0,
         running: true,
     };
 
-    conductor.init(&mut context);
-
-    let context_arc = Arc::new((Mutex::new(context), Condvar::new()));
-
-    // Clock
-    let context_arc_1 = context_arc.clone();
-    let _ = spawn(move || clock_gen(&context_arc_1));
-
-    let (context, cvar) = &*context_arc;
-    let mut context = context.lock().unwrap();
-
-    // Inputs
-    let conductor_arc = Arc::new(Mutex::new(conductor));
-    if let Some(input) = input_handler {
-        let conductor_arc_1 = conductor_arc.clone();
-        let _ = spawn(move || input::input_loop(input, &conductor_arc_1));
-    }
-
-    let mut running = true;
-    while running {
-        context = cvar.wait(context).unwrap();
-        conductor_arc.lock().unwrap().update(&mut context);
-        running = context.running;
-    }
+    conductor.init(&mut ctx);
+    ctx.run(conductor);
 
     Ok(())
 }

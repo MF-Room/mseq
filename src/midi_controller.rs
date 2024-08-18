@@ -54,6 +54,8 @@ pub struct MidiController {
     step: u32,
 }
 
+const CLOCK_MIDI: u8 = 0xf8;
+
 impl MidiController {
     pub fn new(conn: MidiOutputConnection) -> Self {
         Self {
@@ -62,6 +64,10 @@ impl MidiController {
             conn,
             step: 0,
         }
+    }
+
+    pub(crate) fn send_clock(&mut self) {
+        log_send(&mut self.conn, &[CLOCK_MIDI]);
     }
 
     pub fn play_note(&mut self, midi_note: MidiNote, len: u32, channel_id: u8) {
