@@ -1,8 +1,5 @@
-# GBSeq
+# MSeq
 
-The MIDI Sequencer used by Grand Bleu for his live performances.
+API, written in Rust for developing MIDI Sequencers.
 
-## TO DO
-* Add some effects on the percs
-* Test change pattern when all tracks on
-* Maybe add some reverse kick in the break-beat
+*WIP*

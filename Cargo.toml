@@ -4,8 +4,9 @@ version = "0.1.0"
 edition = "2021"
 license = "GPL-3.0"
 readme = "README.md"
-repository = "https://github.com/jeudine/gbseq"
-authors = ["Julien Eudine <julien@eudine.fr>"]
+repository = "https://github.com/MF-Room/mseq"
+authors = ["Julien Eudine <julien@eudine.fr>", "Marius Debussche <marius.debussche@gmail.com>"]
+description = "API, written in Rust for developing MIDI Sequencers."
 
 [dependencies]
 csv = "1.3.0"
