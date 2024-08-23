@@ -75,10 +75,10 @@ impl Context {
     pub fn run(&mut self, mut conductor: impl Conductor) {
         while self.running {
             conductor.update(self);
-            
+
             self.clock.tick();
             self.midi.send_clock();
-            
+
             if !self.on_pause {
                 self.step += 1;
                 self.midi.update(self.step);

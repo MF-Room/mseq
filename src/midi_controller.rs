@@ -54,6 +54,8 @@ impl NotePlay {
 pub struct MidiController {
     notes_off: HashMap<u32, Vec<NotePlay>>,
     notes_on: Vec<NotePlay>,
+    endless_notes: HashMap<u32, NotePlay>,
+    endless_id: u32,
     pub conn: MidiOutputConnection,
     step: u32,
 }
@@ -68,6 +70,8 @@ impl MidiController {
         Self {
             notes_off: HashMap::new(),
             notes_on: vec![],
+            endless_notes: HashMap::new(),
+            endless_id: 0,
             conn,
             step: 0,
         }
@@ -91,6 +95,30 @@ impl MidiController {
             _ => {
                 let n = vec![note_play];
                 self.notes_off.insert(step, n);
+            }
+        }
+    }
+
+    pub fn play_endless_note(&mut self, midi_note: MidiNote, channel_id: u8) -> u32 {
+        let note_play = NotePlay::new(midi_note, channel_id);
+        self.notes_on.push(note_play);
+        let id = self.endless_id;
+        self.endless_notes.insert(id, note_play);
+        self.endless_id += 1;
+        return id;
+    }
+
+    pub fn stop_endless_note(&mut self, id: u32) {
+        let note_play = self.endless_notes.remove(&id);
+        if let Some(note_play) = note_play {
+            let step = self.step + 1;
+            let notes = self.notes_off.get_mut(&(step));
+            match notes {
+                Some(n) => n.push(note_play),
+                _ => {
+                    let n = vec![note_play];
+                    self.notes_off.insert(step, n);
+                }
             }
         }
     }
@@ -141,6 +169,18 @@ impl MidiController {
                 ),
             );
         });
+
+        self.endless_notes.values().for_each(|n| {
+            log_send(
+                &mut self.conn,
+                &end_note(
+                    n.channel_id,
+                    u8::from(n.midi_note.note) + 12 * n.midi_note.octave,
+                    n.midi_note.vel,
+                ),
+            );
+        });
+
         self.notes_off.clear();
 
         log_send(&mut self.conn, &[STOP_MIDI]);
