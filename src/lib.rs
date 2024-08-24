@@ -17,11 +17,6 @@ use midir::{ConnectError, InitError, MidiOutput};
 use promptly::{prompt_default, ReadlineError};
 use thiserror::Error;
 
-pub const RAMPLE_CHANNEL: u8 = 0;
-pub const CH_CHANNEL: u8 = 1;
-pub const OH_CHANNEL: u8 = 2;
-pub const LEAD0_CHANNEL: u8 = 3;
-pub const LEAD1_CHANNEL: u8 = 4;
 const DEFAULT_BPM: u8 = 120;
 
 #[derive(Error, Debug)]
