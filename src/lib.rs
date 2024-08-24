@@ -41,6 +41,7 @@ pub struct Context {
     step: u32,
     running: bool,
     on_pause: bool,
+    pause: bool,
 }
 
 impl Context {
@@ -52,6 +53,7 @@ impl Context {
     }
     pub fn pause(&mut self) {
         self.on_pause = true;
+        self.pause = true;
         self.midi.stop();
     }
     pub fn resume(&mut self) {
@@ -77,6 +79,9 @@ impl Context {
             if !self.on_pause {
                 self.step += 1;
                 self.midi.update(self.step);
+            } else if self.pause {
+                self.midi.pause();
+                self.pause = false;
             }
         }
         self.midi.stop();
@@ -127,6 +132,7 @@ pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqE
         step: 0,
         running: true,
         on_pause: true,
+        pause: false,
     };
 
     conductor.init(&mut ctx);

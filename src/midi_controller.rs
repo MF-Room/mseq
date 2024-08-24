@@ -182,7 +182,9 @@ impl MidiController {
         });
 
         self.notes_off.clear();
+    }
 
+    pub(crate) fn pause(&mut self) {
         log_send(&mut self.conn, &[STOP_MIDI]);
     }
 }
