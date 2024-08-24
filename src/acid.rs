@@ -32,21 +32,34 @@ impl DeteTrack {
         if pattern.len() == 0 {
             return DeteTrack::new(0, vec![], root, channel_id, name);
         }
-        let mut prev_note: Option<(MidiNote, u32, bool)> = None;
+        //(note, start, glide, tie_counter)
+        let mut prev_note: Option<(MidiNote, u32, bool, u32)> = None;
         let mut notes = vec![];
         for (step, trig) in pattern.iter().enumerate() {
             let step = step as u32;
             match trig.timing {
                 Note => {
-                    if let Some(n) = prev_note {
-                        let length = if n.2 { 7 } else { 3 };
-                        notes.push((n.0, n.1, length));
-                    };
-                    prev_note = Some((trig.midi_note, 6 * step, trig.slide));
+                    prev_note = Some(if let Some(n) = prev_note {
+                        if n.2 {
+                            if n.0.note == trig.midi_note.note
+                                && n.0.octave == trig.midi_note.octave
+                            {
+                                (n.0, n.1, trig.slide, n.3 + 1)
+                            } else {
+                                notes.push((n.0, n.1, 7 + 6 * n.3));
+                                (trig.midi_note, 6 * step, trig.slide, 0)
+                            }
+                        } else {
+                            notes.push((n.0, n.1, 3 + 6 * n.3));
+                            (trig.midi_note, 6 * step, trig.slide, 0)
+                        }
+                    } else {
+                        (trig.midi_note, 6 * step, trig.slide, 0)
+                    });
                 }
                 Rest => {
                     if let Some(n) = prev_note {
-                        notes.push((n.0, n.1, 3));
+                        notes.push((n.0, n.1, 3 + 6 * n.3));
                     }
                     prev_note = None;
                 }
@@ -56,13 +69,22 @@ impl DeteTrack {
         match pattern[0].timing {
             Note => {
                 if let Some(n) = prev_note {
-                    let length = if n.2 { 7 } else { 3 };
-                    notes.push((n.0, n.1, length));
+                    if n.2 {
+                        if n.0.note == pattern[0].midi_note.note
+                            && n.0.octave == pattern[0].midi_note.octave
+                        {
+                            notes.push((n.0, n.1, 3 + 6 * n.3));
+                        } else {
+                            notes.push((n.0, n.1, 7 + 6 * n.3));
+                        }
+                    } else {
+                        notes.push((n.0, n.1, 3 + 6 * n.3));
+                    }
                 }
             }
             Rest => {
                 if let Some(n) = prev_note {
-                    notes.push((n.0, n.1, 3));
+                    notes.push((n.0, n.1, 3 + 6 * n.3));
                 }
             }
         };
