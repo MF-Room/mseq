@@ -194,10 +194,6 @@ impl MidiController {
     }
 }
 
-pub fn cc_parameter(parameter: u8, sp: u8) -> u8 {
-    parameter + 10 * (sp + 1)
-}
-
 const NOTE_ON: u8 = 0x90;
 const NOTE_OFF: u8 = 0x80;
 const CC: u8 = 0xB0;
