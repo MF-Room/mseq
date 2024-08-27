@@ -84,6 +84,8 @@ impl Context {
             }
         }
         self.midi.stop();
+        self.clock.tick();
+        self.midi.pause();
     }
 }
 
