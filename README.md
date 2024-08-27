@@ -1,5 +1,5 @@
 # MSeq
 
-API, written in Rust for developing MIDI Sequencers.
+Library for developing MIDI Sequencers.
 
 *WIP*
