@@ -8,7 +8,7 @@ mod track;
 
 // Interface
 pub use conductor::Conductor;
-pub use midi_controller::{MidiController, MidiNote};
+pub use midi_controller::{param_value, MidiController, MidiNote};
 pub use note::Note;
 pub use track::{DeteTrack, Track};
 
@@ -60,10 +60,9 @@ impl Context {
         self.on_pause = false;
         self.midi.send_continue();
     }
-    pub fn restart(&mut self) {
+    pub fn start(&mut self) {
         self.step = 0;
         self.on_pause = false;
-        self.midi.stop();
         self.midi.start();
     }
     pub fn get_step(&mut self) -> u32 {

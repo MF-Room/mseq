@@ -123,6 +123,11 @@ impl MidiController {
         }
     }
 
+    pub fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) {
+        let message = vec![CC | channel_id, parameter, value];
+        log_send(&mut self.conn, &message);
+    }
+
     pub(crate) fn send_clock(&mut self) {
         log_send(&mut self.conn, &[CLOCK_MIDI]);
     }
@@ -193,9 +198,9 @@ pub fn cc_parameter(parameter: u8, sp: u8) -> u8 {
     parameter + 10 * (sp + 1)
 }
 
-pub const NOTE_ON: u8 = 0x90;
-pub const NOTE_OFF: u8 = 0x80;
-pub const CC: u8 = 0xB0;
+const NOTE_ON: u8 = 0x90;
+const NOTE_OFF: u8 = 0x80;
+const CC: u8 = 0xB0;
 
 fn start_note(channel_id: u8, note: u8, velocity: u8) -> Vec<u8> {
     vec![NOTE_ON | channel_id, note, velocity]
@@ -203,10 +208,6 @@ fn start_note(channel_id: u8, note: u8, velocity: u8) -> Vec<u8> {
 
 fn end_note(channel_id: u8, note: u8, velocity: u8) -> Vec<u8> {
     vec![NOTE_OFF | channel_id, note, velocity]
-}
-
-pub fn control_change(channel_id: u8, parameter: u8, value: u8) -> Vec<u8> {
-    vec![CC | channel_id, parameter, value]
 }
 
 pub fn param_value(v: f32) -> u8 {
