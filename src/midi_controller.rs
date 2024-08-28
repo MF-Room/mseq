@@ -61,19 +61,29 @@ impl Hash for NotePlay {
 }
 
 pub struct MidiController {
-    notes_off: HashMap<u32, Vec<NotePlay>>,
-    notes_on: HashSet<NotePlay>,
-    pub conn: MidiOutputConnection,
+    /// Current midi step
     step: u32,
+
+    /// Every note triggered by play_note. The key is the step at which to stop the note.
+    notes_off: HashMap<u32, Vec<NotePlay>>,
+
+    /// Every note currently being played, either triggered by play_note or start_note.
+    notes_on: HashSet<NotePlay>,
+
+    /// Notes to play at the next update call
+    notes_to_play: Vec<NotePlay>,
+
+    pub conn: MidiOutputConnection,
 }
 
 impl MidiController {
     pub(crate) fn new(conn: MidiOutputConnection) -> Self {
         Self {
+            step: 0,
             notes_off: HashMap::new(),
             notes_on: HashSet::new(),
+            notes_to_play: vec![],
             conn,
-            step: 0,
         }
     }
 
@@ -101,6 +111,7 @@ impl MidiController {
             midi_note,
             channel_id,
         };
+        self.notes_to_play.push(note_play);
         self.notes_on.insert(note_play);
     }
 
@@ -137,6 +148,7 @@ impl MidiController {
     }
 
     pub(crate) fn update(&mut self, next_step: u32) {
+        // First send the off signal to every note that end this step.
         let notes = self.notes_off.remove(&self.step);
         if let Some(notes_off) = notes {
             for n in notes_off {
@@ -147,25 +159,21 @@ impl MidiController {
             }
         };
 
-        for n in &self.notes_on {
+        // Then play all the notes that were triggered this step...
+        for n in &self.notes_to_play {
             log_send(
                 &mut self.conn,
                 &start_note(n.channel_id, n.midi_note.midi_value(), n.midi_note.vel),
             );
         }
+        // ...and clear them.
         self.notes_on.clear();
 
+        // Finally update the step.
         self.step = next_step;
     }
 
     pub(crate) fn stop(&mut self) {
-        self.notes_off.values().flatten().for_each(|n| {
-            log_send(
-                &mut self.conn,
-                &end_note(n.channel_id, n.midi_note.midi_value(), n.midi_note.vel),
-            );
-        });
-
         self.notes_on.iter().for_each(|n| {
             log_send(
                 &mut self.conn,
