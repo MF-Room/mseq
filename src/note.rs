@@ -1,6 +1,6 @@
 use std::{convert::From, fmt::Display};
 
-#[derive(Debug, Default, Clone, PartialEq, Copy, serde::Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Copy, serde::Deserialize, Eq)]
 pub enum Note {
     #[default]
     C,
