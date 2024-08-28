@@ -120,7 +120,7 @@ impl MidiController {
             midi_note,
             channel_id,
         };
-        self.stop_note_at_step(note_play, self.step + 1);
+        self.stop_note_at_step(note_play, self.step);
     }
 
     fn stop_note_at_step(&mut self, note_play: NotePlay, step: u32) {
