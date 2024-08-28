@@ -114,7 +114,7 @@ impl MidiController {
 
     fn stop_note_at_step(&mut self, note_play: NotePlay, step: u32) {
         if self.notes_on.remove(&note_play) {
-            self.notes_off.entry(step).or_insert(vec![]).push(note_play);
+            self.notes_off.entry(step).or_default().push(note_play);
         }
     }
 
