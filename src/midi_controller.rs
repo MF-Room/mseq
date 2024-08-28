@@ -105,7 +105,7 @@ impl MidiController {
         let id = self.endless_id;
         self.endless_notes.insert(id, note_play);
         self.endless_id += 1;
-        return id;
+        id
     }
 
     pub fn stop_endless_note(&mut self, id: u32) {

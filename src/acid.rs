@@ -29,7 +29,7 @@ use Timing::*;
 
 impl DeteTrack {
     pub fn new_acid(pattern: Vec<AcidTrig>, root: Note, channel_id: u8, name: &str) -> Self {
-        if pattern.len() == 0 {
+        if pattern.is_empty() {
             return DeteTrack::new(0, vec![], root, channel_id, name);
         }
         //(note, start, glide, tie_counter)
@@ -101,7 +101,6 @@ impl DeteTrack {
         let mut rdr = csv::Reader::from_path(filename)?;
         let pattern = rdr
             .deserialize::<AcidTrig>()
-            .into_iter()
             .collect::<Result<Vec<_>, _>>()?;
         Ok(Self::new_acid(pattern, root, channel_id, name))
     }

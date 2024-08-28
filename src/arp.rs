@@ -50,7 +50,6 @@ impl DeteTrack {
         let mut rdr = csv::Reader::from_path(filename)?;
         let pattern = rdr
             .deserialize::<MidiNote>()
-            .into_iter()
             .collect::<Result<Vec<_>, _>>()?;
         Ok(Self::new_arp(pattern, div, root, channel_id, name))
     }

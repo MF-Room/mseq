@@ -1,5 +1,5 @@
 use crate::MidiNote;
-use std::{path::Path, u32};
+use std::path::Path;
 
 use crate::{midi_controller::MidiController, note::Note};
 
