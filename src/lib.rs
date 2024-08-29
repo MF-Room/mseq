@@ -5,6 +5,7 @@ mod conductor;
 mod midi_connection;
 mod midi_controller;
 mod note;
+mod tests;
 mod track;
 
 // Interface

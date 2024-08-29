@@ -151,9 +151,9 @@ impl MidiController {
         let notes = self.notes_off.remove(&self.step);
         if let Some(notes_off) = notes {
             for n in notes_off {
-                if let Err(_e) =
-                    self.conn
-                        .send_note_off(n.channel_id, n.midi_note.midi_value(), n.midi_note.vel)
+                if let Err(_e) = self
+                    .conn
+                    .send_note_off(n.channel_id, n.midi_note.midi_value())
                 {
                     crate::log_error!("Midi Error: {:?}", _e);
                 }
@@ -170,7 +170,7 @@ impl MidiController {
             }
         }
         // ...and clear them.
-        self.notes_on.clear();
+        self.notes_to_play.clear();
 
         // Finally update the step.
         self.step = next_step;
@@ -178,9 +178,9 @@ impl MidiController {
 
     pub(crate) fn stop(&mut self) {
         self.notes_on.iter().for_each(|n| {
-            if let Err(_e) =
-                self.conn
-                    .send_note_off(n.channel_id, n.midi_note.midi_value(), n.midi_note.vel)
+            if let Err(_e) = self
+                .conn
+                .send_note_off(n.channel_id, n.midi_note.midi_value())
             {
                 crate::log_error!("Midi Error: {:?}", _e);
             }

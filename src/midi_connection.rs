@@ -32,7 +32,7 @@ pub trait MidiConnection {
     fn send_stop(&mut self) -> Result<(), MidiError>;
     fn send_clock(&mut self) -> Result<(), MidiError>;
     fn send_note_on(&mut self, channel_id: u8, note: u8, velocity: u8) -> Result<(), MidiError>;
-    fn send_note_off(&mut self, channel_id: u8, note: u8, velocity: u8) -> Result<(), MidiError>;
+    fn send_note_off(&mut self, channel_id: u8, note: u8) -> Result<(), MidiError>;
     fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) -> Result<(), MidiError>;
 }
 
@@ -104,8 +104,8 @@ impl MidiConnection for MidirConnection {
         Ok(())
     }
 
-    fn send_note_off(&mut self, channel_id: u8, note: u8, velocity: u8) -> Result<(), MidiError> {
-        self.0.send(&[NOTE_OFF | channel_id, note, velocity])?;
+    fn send_note_off(&mut self, channel_id: u8, note: u8) -> Result<(), MidiError> {
+        self.0.send(&[NOTE_OFF | channel_id, note, 0])?;
         Ok(())
     }
 
