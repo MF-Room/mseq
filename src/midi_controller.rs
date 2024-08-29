@@ -1,18 +1,10 @@
+use crate::midi_connection::MidiConnection;
 use crate::note::Note;
 use crate::Track;
-use midir::MidiOutputConnection;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
 const MAX_MIDI_CHANNEL: u8 = 16;
-
-const CLOCK_MIDI: u8 = 0xf8;
-const START_MIDI: u8 = 0xfa;
-const CONTINUE_MIDI: u8 = 0xfb;
-const STOP_MIDI: u8 = 0xfc;
-const NOTE_ON: u8 = 0x90;
-const NOTE_OFF: u8 = 0x80;
-const CC: u8 = 0xB0;
 
 #[derive(Default, Clone, Copy, Debug, serde::Deserialize, PartialEq, Eq)]
 pub struct MidiNote {
@@ -73,11 +65,11 @@ pub struct MidiController {
     /// Notes to play at the next update call
     notes_to_play: Vec<NotePlay>,
 
-    pub conn: MidiOutputConnection,
+    conn: Box<dyn MidiConnection>,
 }
 
 impl MidiController {
-    pub(crate) fn new(conn: MidiOutputConnection) -> Self {
+    pub(crate) fn new(conn: Box<dyn MidiConnection>) -> Self {
         Self {
             step: 0,
             notes_off: HashMap::new(),
@@ -130,21 +122,28 @@ impl MidiController {
     }
 
     pub fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) {
-        let message = vec![CC | channel_id, parameter, value];
-        log_send(&mut self.conn, &message);
+        if let Err(_e) = self.conn.send_cc(channel_id, parameter, value) {
+            crate::log_error!("Midi Error: {:?}", _e);
+        }
     }
 
     pub(crate) fn send_clock(&mut self) {
-        log_send(&mut self.conn, &[CLOCK_MIDI]);
+        if let Err(_e) = self.conn.send_clock() {
+            crate::log_error!("Midi Error: {:?}", _e);
+        }
     }
 
     pub(crate) fn start(&mut self) {
         self.step = 0;
-        log_send(&mut self.conn, &[START_MIDI]);
+        if let Err(_e) = self.conn.send_start() {
+            crate::log_error!("Midi Error: {:?}", _e);
+        }
     }
 
     pub(crate) fn send_continue(&mut self) {
-        log_send(&mut self.conn, &[CONTINUE_MIDI]);
+        if let Err(_e) = self.conn.send_continue() {
+            crate::log_error!("Midi Error: {:?}", _e);
+        }
     }
 
     pub(crate) fn update(&mut self, next_step: u32) {
@@ -152,19 +151,23 @@ impl MidiController {
         let notes = self.notes_off.remove(&self.step);
         if let Some(notes_off) = notes {
             for n in notes_off {
-                log_send(
-                    &mut self.conn,
-                    &end_note(n.channel_id, n.midi_note.midi_value(), n.midi_note.vel),
-                );
+                if let Err(_e) =
+                    self.conn
+                        .send_note_off(n.channel_id, n.midi_note.midi_value(), n.midi_note.vel)
+                {
+                    crate::log_error!("Midi Error: {:?}", _e);
+                }
             }
         };
 
         // Then play all the notes that were triggered this step...
         for n in &self.notes_to_play {
-            log_send(
-                &mut self.conn,
-                &start_note(n.channel_id, n.midi_note.midi_value(), n.midi_note.vel),
-            );
+            if let Err(_e) =
+                self.conn
+                    .send_note_on(n.channel_id, n.midi_note.midi_value(), n.midi_note.vel)
+            {
+                crate::log_error!("Midi Error: {:?}", _e);
+            }
         }
         // ...and clear them.
         self.notes_on.clear();
@@ -175,40 +178,19 @@ impl MidiController {
 
     pub(crate) fn stop(&mut self) {
         self.notes_on.iter().for_each(|n| {
-            log_send(
-                &mut self.conn,
-                &end_note(n.channel_id, n.midi_note.midi_value(), n.midi_note.vel),
-            );
+            if let Err(_e) =
+                self.conn
+                    .send_note_off(n.channel_id, n.midi_note.midi_value(), n.midi_note.vel)
+            {
+                crate::log_error!("Midi Error: {:?}", _e);
+            }
         });
+        if let Err(_e) = self.conn.send_stop() {
+            crate::log_error!("Midi Error: {:?}", _e);
+        }
 
         self.notes_off.clear();
     }
 
-    pub(crate) fn pause(&mut self) {
-        log_send(&mut self.conn, &[STOP_MIDI]);
-    }
-}
-
-fn start_note(channel_id: u8, note: u8, velocity: u8) -> Vec<u8> {
-    vec![NOTE_ON | channel_id, note, velocity]
-}
-
-fn end_note(channel_id: u8, note: u8, velocity: u8) -> Vec<u8> {
-    vec![NOTE_OFF | channel_id, note, velocity]
-}
-
-pub fn param_value(v: f32) -> u8 {
-    if v < -1.0 {
-        return 0;
-    }
-    if v > 1.0 {
-        return 127;
-    }
-    63 + (v * 63.0).round() as u8
-}
-
-fn log_send(conn: &mut MidiOutputConnection, message: &[u8]) {
-    if let Err(x) = conn.send(message) {
-        eprintln!("[ERROR] {} (message: {:?})", x, message)
-    }
+    pub(crate) fn pause(&mut self) {}
 }

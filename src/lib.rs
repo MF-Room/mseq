@@ -2,35 +2,28 @@ mod acid;
 mod arp;
 mod clock;
 mod conductor;
+mod midi_connection;
 mod midi_controller;
 mod note;
 mod track;
 
 // Interface
 pub use conductor::Conductor;
-pub use midi_controller::{param_value, MidiController, MidiNote};
+pub use midi_connection::MidiConnection;
+use midi_connection::{MidiError, MidirConnection};
+pub use midi_controller::{MidiController, MidiNote};
 pub use note::Note;
 pub use track::{DeteTrack, Track};
 
 use clock::Clock;
-use midir::{ConnectError, InitError, MidiOutput};
-use promptly::{prompt_default, ReadlineError};
 use thiserror::Error;
 
 const DEFAULT_BPM: u8 = 120;
 
 #[derive(Error, Debug)]
 pub enum MSeqError {
-    #[error("Failed to create a midi output [{}: {}]\n\t{0}", file!(), line!())]
-    MidiInit(#[from] InitError),
-    #[error("No output found [{}: {}]", file!(), line!())]
-    NoOutput(),
-    #[error("Read line [{}: {}]", file!(), line!())]
-    ReadLine(#[from] ReadlineError),
-    #[error("Invalid port number selected [{}: {}]", file!(), line!())]
-    PortNumber(),
-    #[error("Midi output issue [{}: {}]", file!(), line!())]
-    MidiOutput(#[from] ConnectError<MidiOutput>),
+    #[error("Midi error [{}: {}]", file!(), line!())]
+    Midi(#[from] MidiError),
     #[error("{0}")]
     Acid(#[from] acid::AcidError),
 }
@@ -90,42 +83,8 @@ impl Context {
 }
 
 pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqError> {
-    let midi_out = MidiOutput::new("out")?;
-    let out_ports = midi_out.ports();
-
-    let out_port = if let Some(p) = port {
-        match out_ports.get(p as usize) {
-            None => return Err(MSeqError::PortNumber()),
-            Some(x) => x,
-        }
-    } else {
-        match out_ports.len() {
-            0 => return Err(MSeqError::NoOutput()),
-            1 => {
-                println!(
-                    "Choosing the only available output port: {}",
-                    midi_out.port_name(&out_ports[0]).unwrap()
-                );
-                &out_ports[0]
-            }
-            _ => {
-                println!("\nAvailable output ports:");
-                for (i, p) in out_ports.iter().enumerate() {
-                    println!("{}: {}", i, midi_out.port_name(p).unwrap());
-                }
-
-                let port_number: usize = prompt_default("Select output port", 0)?;
-                match out_ports.get(port_number) {
-                    None => return Err(MSeqError::PortNumber()),
-                    Some(x) => x,
-                }
-            }
-        }
-    };
-
-    let conn = midi_out.connect(out_port, "output connection")?;
-
-    let midi = MidiController::new(conn);
+    let conn = MidirConnection::new(port)?;
+    let midi = MidiController::new(Box::new(conn));
 
     let mut ctx = Context {
         midi,
@@ -141,3 +100,46 @@ pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqE
 
     Ok(())
 }
+
+pub fn param_value(v: f32) -> u8 {
+    if v < -1.0 {
+        return 0;
+    }
+    if v > 1.0 {
+        return 127;
+    }
+    63 + (v * 63.0).round() as u8
+}
+
+#[allow(unused)]
+macro_rules! log_trace { ($($x:tt)*) => (
+    #[cfg(feature = "log")] {
+        log::trace!($($x)*)
+    }
+) }
+#[allow(unused)]
+macro_rules! log_debug { ($($x:tt)*) => (
+    #[cfg(feature = "log")] {
+        log::debug!($($x)*)
+    }
+) }
+#[allow(unused)]
+macro_rules! log_info { ($($x:tt)*) => (
+    #[cfg(feature = "log")] {
+        log::info!($($x)*)
+    }
+) }
+#[allow(unused)]
+macro_rules! log_warn { ($($x:tt)*) => (
+    #[cfg(feature = "log")] {
+        log::warn!($($x)*)
+    }
+) }
+#[allow(unused)]
+macro_rules! log_error { ($($x:tt)*) => (
+    #[cfg(feature = "log")] {
+        log::error!($($x)*)
+    }
+) }
+#[allow(unused)]
+pub(crate) use {log_debug, log_error, log_info, log_trace, log_warn};
