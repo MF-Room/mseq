@@ -25,8 +25,8 @@ const DEFAULT_BPM: u8 = 120;
 pub enum MSeqError {
     #[error("Midi error [{}: {}]", file!(), line!())]
     Midi(#[from] MidiError),
-    #[error("{0}")]
-    Acid(#[from] acid::AcidError),
+    #[error("Failed to read file [{}: {}]\n\t{0}", file!(), line!())]
+    Reading(#[from] csv::Error),
 }
 
 pub struct Context {
