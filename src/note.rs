@@ -20,18 +20,18 @@ pub enum Note {
 impl From<Note> for u8 {
     fn from(note: Note) -> Self {
         match note {
-            Note::C => 12,
-            Note::CS => 13,
-            Note::D => 14,
-            Note::DS => 15,
-            Note::E => 16,
-            Note::F => 17,
-            Note::FS => 18,
-            Note::G => 19,
-            Note::GS => 20,
-            Note::A => 21,
-            Note::AS => 22,
-            Note::B => 23,
+            Note::C => 0,
+            Note::CS => 1,
+            Note::D => 2,
+            Note::DS => 3,
+            Note::E => 4,
+            Note::F => 5,
+            Note::FS => 6,
+            Note::G => 7,
+            Note::GS => 8,
+            Note::A => 9,
+            Note::AS => 10,
+            Note::B => 11,
         }
     }
 }
