@@ -6,7 +6,7 @@ use std::hash::Hash;
 
 const MAX_MIDI_CHANNEL: u8 = 16;
 
-#[derive(Default, Clone, Copy, serde::Deserialize, PartialEq, Eq)]
+#[derive(Default, Clone, Copy, serde::Deserialize, PartialEq, Eq, Debug)]
 pub struct MidiNote {
     pub note: Note,
     pub octave: u8,
