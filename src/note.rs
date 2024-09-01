@@ -85,7 +85,7 @@ impl Note {
     pub fn transpose(root: Note, note: Note) -> i8 {
         let root_m: u8 = root.into();
         let note_m: u8 = note.into();
-        let n = (note_m as i8 - root_m as i8) % 12;
+        let n = (root_m as i8 - note_m as i8) % 12;
         if n > 6 {
             n - 12
         } else {
