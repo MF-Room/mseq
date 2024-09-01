@@ -48,7 +48,7 @@ impl Context {
     pub fn pause(&mut self) {
         self.on_pause = true;
         self.pause = true;
-        self.midi.stop();
+        self.midi.stop_all_notes();
     }
     pub fn resume(&mut self) {
         self.on_pause = false;
@@ -73,13 +73,13 @@ impl Context {
                 self.step += 1;
                 self.midi.update(self.step);
             } else if self.pause {
-                self.midi.pause();
+                self.midi.stop();
                 self.pause = false;
             }
         }
-        self.midi.stop();
+        self.midi.stop_all_notes();
         self.clock.tick();
-        self.midi.pause();
+        self.midi.stop();
     }
 }
 

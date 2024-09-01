@@ -6,7 +6,7 @@ use std::hash::Hash;
 
 const MAX_MIDI_CHANNEL: u8 = 16;
 
-#[derive(Default, Clone, Copy, Debug, serde::Deserialize, PartialEq, Eq)]
+#[derive(Default, Clone, Copy, serde::Deserialize, PartialEq, Eq)]
 pub struct MidiNote {
     pub note: Note,
     pub octave: u8,
@@ -39,7 +39,7 @@ impl MidiNote {
     }
 }
 
-#[derive(Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Default, Clone, Copy, PartialEq, Eq, Debug)]
 struct NotePlay {
     midi_note: MidiNote,
     channel_id: u8,
@@ -56,10 +56,10 @@ pub struct MidiController {
     /// Current midi step
     step: u32,
 
-    /// Every note triggered by play_note. The key is the step at which to stop the note.
+    /// Every note currently being played triggered by play_note. The key is the step at which to stop the note.
     notes_off: HashMap<u32, Vec<NotePlay>>,
 
-    /// Every note currently being played, either triggered by play_note or start_note.
+    /// Every note currently being played triggered by start_note.
     notes_on: HashSet<NotePlay>,
 
     /// Notes to play at the next update call
@@ -176,7 +176,7 @@ impl MidiController {
         self.step = next_step;
     }
 
-    pub(crate) fn stop(&mut self) {
+    pub(crate) fn stop_all_notes(&mut self) {
         self.notes_on.iter().for_each(|n| {
             if let Err(_e) = self
                 .conn
@@ -185,12 +185,24 @@ impl MidiController {
                 crate::log_error!("Midi Error: {:?}", _e);
             }
         });
-        if let Err(_e) = self.conn.send_stop() {
-            crate::log_error!("Midi Error: {:?}", _e);
-        }
+        self.notes_on.clear();
 
+        self.notes_off.iter().for_each(|(_, notes)| {
+            for n in notes {
+                if let Err(_e) = self
+                    .conn
+                    .send_note_off(n.channel_id, n.midi_note.midi_value())
+                {
+                    crate::log_error!("Midi Error: {:?}", _e);
+                }
+            }
+        });
         self.notes_off.clear();
     }
 
-    pub(crate) fn pause(&mut self) {}
+    pub(crate) fn stop(&mut self) {
+        if let Err(_e) = self.conn.send_stop() {
+            crate::log_error!("Midi Error: {:?}", _e);
+        }
+    }
 }
