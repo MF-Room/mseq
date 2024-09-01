@@ -62,7 +62,7 @@ impl<T: MidiConnection> Context<T> {
     pub fn get_step(&mut self) -> u32 {
         self.step
     }
-    pub fn run(&mut self, mut conductor: impl Conductor<T>) {
+    pub fn run(&mut self, mut conductor: impl Conductor) {
         while self.running {
             conductor.update(self);
 
@@ -83,10 +83,7 @@ impl<T: MidiConnection> Context<T> {
     }
 }
 
-pub fn run(
-    mut conductor: impl Conductor<MidirConnection>,
-    port: Option<u32>,
-) -> Result<(), MSeqError> {
+pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqError> {
     let conn = MidirConnection::new(port)?;
     let midi = MidiController::new(conn);
 

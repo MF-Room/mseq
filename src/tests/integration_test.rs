@@ -8,6 +8,7 @@ use super::common::DebugMidiConnection;
 use super::common::DebugMidiConnectionInner;
 use crate::Conductor;
 use crate::Context;
+use crate::MidiConnection;
 use crate::MidiController;
 use crate::MidiNote;
 
@@ -45,10 +46,10 @@ fn test_play_note() {
 
 struct DebugConductor1(Rc<RefCell<DebugMidiConnectionInner>>);
 
-impl Conductor<DebugMidiConnection> for DebugConductor1 {
-    fn init(&mut self, _context: &mut Context<DebugMidiConnection>) {}
+impl Conductor for DebugConductor1 {
+    fn init(&mut self, _context: &mut Context<impl MidiConnection>) {}
 
-    fn update(&mut self, context: &mut Context<DebugMidiConnection>) {
+    fn update(&mut self, context: &mut Context<impl MidiConnection>) {
         if context.step == 0 {
             let note = MidiNote::new(crate::Note::B, 3, 21);
             context.midi.play_note(note, 5, 1);
@@ -76,10 +77,10 @@ fn test_play_note_conductor() {
 
 struct DebugConductor2(Rc<RefCell<DebugMidiConnectionInner>>);
 
-impl Conductor<DebugMidiConnection> for DebugConductor2 {
-    fn init(&mut self, _context: &mut Context<DebugMidiConnection>) {}
+impl Conductor for DebugConductor2 {
+    fn init(&mut self, _context: &mut Context<impl MidiConnection>) {}
 
-    fn update(&mut self, context: &mut Context<DebugMidiConnection>) {
+    fn update(&mut self, context: &mut Context<impl MidiConnection>) {
         if context.step == 0 {
             let note = MidiNote::new(crate::Note::B, 10, 21);
             context.midi.play_note(note, 10, 1);

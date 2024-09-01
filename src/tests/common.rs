@@ -72,7 +72,7 @@ impl MidiConnection for DebugMidiConnection {
 }
 
 pub(super) fn test_conductor<T: MidiConnection>(
-    mut conductor: impl Conductor<T>,
+    mut conductor: impl Conductor,
     midi: MidiController<T>,
 ) {
     let mut ctx = Context {
