@@ -6,7 +6,7 @@ use std::hash::Hash;
 
 const MAX_MIDI_CHANNEL: u8 = 16;
 
-#[derive(Default, Clone, Copy, Debug, serde::Deserialize, PartialEq, Eq)]
+#[derive(Default, Clone, Copy, serde::Deserialize, PartialEq, Eq, Debug)]
 pub struct MidiNote {
     pub note: Note,
     pub octave: u8,
@@ -39,7 +39,7 @@ impl MidiNote {
     }
 }
 
-#[derive(Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Default, Clone, Copy, PartialEq, Eq, Debug)]
 struct NotePlay {
     midi_note: MidiNote,
     channel_id: u8,
@@ -56,11 +56,11 @@ pub struct MidiController<T: MidiConnection> {
     /// Current midi step
     step: u32,
 
-    /// Every note triggered by play_note. The key is the step at which to stop the note.
-    notes_off: HashMap<u32, Vec<NotePlay>>,
+    /// Every note currently being played triggered by play_note. The key is the step at which to stop the note.
+    play_note_set: HashMap<u32, Vec<NotePlay>>,
 
-    /// Every note currently being played, either triggered by play_note or start_note.
-    notes_on: HashSet<NotePlay>,
+    /// Every note currently being played triggered by start_note.
+    start_note_set: HashSet<NotePlay>,
 
     /// Notes to play at the next update call
     notes_to_play: Vec<NotePlay>,
@@ -72,8 +72,8 @@ impl<T: MidiConnection> MidiController<T> {
     pub(crate) fn new(conn: T) -> Self {
         Self {
             step: 0,
-            notes_off: HashMap::new(),
-            notes_on: HashSet::new(),
+            play_note_set: HashMap::new(),
+            start_note_set: HashSet::new(),
             notes_to_play: vec![],
             conn,
         }
@@ -88,14 +88,12 @@ impl<T: MidiConnection> MidiController<T> {
             return;
         }
 
-        self.start_note(midi_note, channel_id);
         let note_play = NotePlay {
             midi_note,
             channel_id,
         };
-
-        let stop_step = self.step + len;
-        self.stop_note_at_step(note_play, stop_step);
+        self.notes_to_play.push(note_play);
+        self.stop_note_at_step(note_play, self.step + len);
     }
 
     pub fn start_note(&mut self, midi_note: MidiNote, channel_id: u8) {
@@ -104,7 +102,7 @@ impl<T: MidiConnection> MidiController<T> {
             channel_id,
         };
         self.notes_to_play.push(note_play);
-        self.notes_on.insert(note_play);
+        self.start_note_set.insert(note_play);
     }
 
     pub fn stop_note(&mut self, midi_note: MidiNote, channel_id: u8) {
@@ -116,9 +114,7 @@ impl<T: MidiConnection> MidiController<T> {
     }
 
     fn stop_note_at_step(&mut self, note_play: NotePlay, step: u32) {
-        if self.notes_on.remove(&note_play) {
-            self.notes_off.entry(step).or_default().push(note_play);
-        }
+        self.play_note_set.entry(step).or_default().push(note_play);
     }
 
     pub fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) {
@@ -148,7 +144,7 @@ impl<T: MidiConnection> MidiController<T> {
 
     pub(crate) fn update(&mut self, next_step: u32) {
         // First send the off signal to every note that end this step.
-        let notes = self.notes_off.remove(&self.step);
+        let notes = self.play_note_set.remove(&self.step);
         if let Some(notes_off) = notes {
             for n in notes_off {
                 if let Err(_e) = self
@@ -176,8 +172,8 @@ impl<T: MidiConnection> MidiController<T> {
         self.step = next_step;
     }
 
-    pub(crate) fn stop(&mut self) {
-        self.notes_on.iter().for_each(|n| {
+    pub(crate) fn stop_all_notes(&mut self) {
+        self.start_note_set.iter().for_each(|n| {
             if let Err(_e) = self
                 .conn
                 .send_note_off(n.channel_id, n.midi_note.midi_value())
@@ -185,12 +181,24 @@ impl<T: MidiConnection> MidiController<T> {
                 crate::log_error!("Midi Error: {:?}", _e);
             }
         });
+        self.start_note_set.clear();
+
+        self.play_note_set.values().for_each(|notes| {
+            for n in notes {
+                if let Err(_e) = self
+                    .conn
+                    .send_note_off(n.channel_id, n.midi_note.midi_value())
+                {
+                    crate::log_error!("Midi Error: {:?}", _e);
+                }
+            }
+        });
+        self.play_note_set.clear();
+    }
+
+    pub(crate) fn stop(&mut self) {
         if let Err(_e) = self.conn.send_stop() {
             crate::log_error!("Midi Error: {:?}", _e);
         }
-
-        self.notes_off.clear();
     }
-
-    pub(crate) fn pause(&mut self) {}
 }

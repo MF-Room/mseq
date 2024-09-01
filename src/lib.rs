@@ -25,8 +25,8 @@ const DEFAULT_BPM: u8 = 120;
 pub enum MSeqError {
     #[error("Midi error [{}: {}]", file!(), line!())]
     Midi(#[from] MidiError),
-    #[error("{0}")]
-    Acid(#[from] acid::AcidError),
+    #[error("Failed to read file [{}: {}]\n\t{0}", file!(), line!())]
+    Reading(#[from] csv::Error),
 }
 
 pub struct Context<T: MidiConnection> {
@@ -48,7 +48,7 @@ impl<T: MidiConnection> Context<T> {
     pub fn pause(&mut self) {
         self.on_pause = true;
         self.pause = true;
-        self.midi.stop();
+        self.midi.stop_all_notes();
     }
     pub fn resume(&mut self) {
         self.on_pause = false;
@@ -73,13 +73,13 @@ impl<T: MidiConnection> Context<T> {
                 self.step += 1;
                 self.midi.update(self.step);
             } else if self.pause {
-                self.midi.pause();
+                self.midi.stop();
                 self.pause = false;
             }
         }
-        self.midi.stop();
+        self.midi.stop_all_notes();
         self.clock.tick();
-        self.midi.pause();
+        self.midi.stop();
     }
 }
 
