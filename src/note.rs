@@ -78,14 +78,17 @@ impl Display for Note {
 }
 
 impl Note {
-    pub fn add_semitone(self, semi: u8) -> Self {
-        (u8::from(self) + semi).into()
+    pub fn add_semitone(self, octave: u8, semi: i8) -> (Self, u8) {
+        let new_note = u8::from(self) as i8 + semi;
+        let q = new_note.div_euclid(12);
+        let r = new_note.rem_euclid(12);
+        ((r as u8).into(), (octave as i8 + q) as u8)
     }
 
     pub fn transpose(root: Note, note: Note) -> i8 {
         let root_m: u8 = root.into();
         let note_m: u8 = note.into();
-        let n = (root_m as i8 - note_m as i8) % 12;
+        let n = (note_m as i8 - root_m as i8).rem_euclid(12);
         if n > 6 {
             n - 12
         } else {
