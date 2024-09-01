@@ -52,7 +52,7 @@ impl Hash for NotePlay {
     }
 }
 
-pub struct MidiController {
+pub struct MidiController<T: MidiConnection> {
     /// Current midi step
     step: u32,
 
@@ -65,11 +65,11 @@ pub struct MidiController {
     /// Notes to play at the next update call
     notes_to_play: Vec<NotePlay>,
 
-    conn: Box<dyn MidiConnection>,
+    conn: T,
 }
 
-impl MidiController {
-    pub(crate) fn new(conn: Box<dyn MidiConnection>) -> Self {
+impl<T: MidiConnection> MidiController<T> {
+    pub(crate) fn new(conn: T) -> Self {
         Self {
             step: 0,
             notes_off: HashMap::new(),

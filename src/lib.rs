@@ -29,8 +29,8 @@ pub enum MSeqError {
     Acid(#[from] acid::AcidError),
 }
 
-pub struct Context {
-    pub midi: MidiController,
+pub struct Context<T: MidiConnection> {
+    pub midi: MidiController<T>,
     pub(crate) clock: Clock,
     step: u32,
     running: bool,
@@ -38,7 +38,7 @@ pub struct Context {
     pause: bool,
 }
 
-impl Context {
+impl<T: MidiConnection> Context<T> {
     pub fn set_bpm(&mut self, bpm: u8) {
         self.clock.set_bpm(bpm);
     }
@@ -62,7 +62,7 @@ impl Context {
     pub fn get_step(&mut self) -> u32 {
         self.step
     }
-    pub fn run(&mut self, mut conductor: impl Conductor) {
+    pub fn run(&mut self, mut conductor: impl Conductor<T>) {
         while self.running {
             conductor.update(self);
 
@@ -83,9 +83,12 @@ impl Context {
     }
 }
 
-pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqError> {
+pub fn run(
+    mut conductor: impl Conductor<MidirConnection>,
+    port: Option<u32>,
+) -> Result<(), MSeqError> {
     let conn = MidirConnection::new(port)?;
-    let midi = MidiController::new(Box::new(conn));
+    let midi = MidiController::new(conn);
 
     let mut ctx = Context {
         midi,

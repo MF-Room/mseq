@@ -16,7 +16,7 @@ fn test_play_note() {
         notes_on: HashMap::new(),
     }));
 
-    let mut controller = MidiController::new(Box::new(DebugMidiConnection(debug_conn.clone())));
+    let mut controller = MidiController::new(DebugMidiConnection(debug_conn.clone()));
     controller.start();
 
     let note = MidiNote::new(crate::Note::B, 3, 21);
@@ -43,10 +43,10 @@ fn test_play_note() {
 
 struct DebugConductor1(Rc<RefCell<DebugMidiConnectionInner>>);
 
-impl Conductor for DebugConductor1 {
-    fn init(&mut self, _context: &mut Context) {}
+impl Conductor<DebugMidiConnection> for DebugConductor1 {
+    fn init(&mut self, _context: &mut Context<DebugMidiConnection>) {}
 
-    fn update(&mut self, context: &mut Context) {
+    fn update(&mut self, context: &mut Context<DebugMidiConnection>) {
         if context.step == 0 {
             let note = MidiNote::new(crate::Note::B, 3, 21);
             context.midi.play_note(note, 5, 1);
@@ -66,7 +66,7 @@ fn test1() {
     let debug_conn = Rc::new(RefCell::new(DebugMidiConnectionInner {
         notes_on: HashMap::new(),
     }));
-    let midi = MidiController::new(Box::new(DebugMidiConnection(debug_conn.clone())));
+    let midi = MidiController::new(DebugMidiConnection(debug_conn.clone()));
     let conductor = DebugConductor1(debug_conn);
     super::common::test_conductor(conductor, midi);
 }

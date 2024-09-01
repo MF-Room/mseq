@@ -61,7 +61,10 @@ impl MidiConnection for DebugMidiConnection {
     }
 }
 
-pub(super) fn test_conductor(mut conductor: impl Conductor, midi: MidiController) {
+pub(super) fn test_conductor<T: MidiConnection>(
+    mut conductor: impl Conductor<T>,
+    midi: MidiController<T>,
+) {
     let mut ctx = Context {
         midi,
         clock: Clock::new(120),

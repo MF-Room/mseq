@@ -1,6 +1,6 @@
-use crate::Context;
+use crate::{Context, MidiConnection};
 
-pub trait Conductor {
-    fn init(&mut self, context: &mut Context);
-    fn update(&mut self, context: &mut Context);
+pub trait Conductor<T: MidiConnection> {
+    fn init(&mut self, context: &mut Context<T>);
+    fn update(&mut self, context: &mut Context<T>);
 }
