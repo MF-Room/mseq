@@ -4,7 +4,7 @@ use std::path::Path;
 use crate::{midi_controller::MidiController, note::Note};
 
 pub trait Track {
-    fn play_step<T: MidiConnection>(&mut self, step: u32, midi_controller: &mut MidiController<T>);
+    fn play_step(&mut self, step: u32, midi_controller: &mut MidiController<impl MidiConnection>);
     fn transpose(&mut self, _note: Option<Note>) {
         // Todo: add warning
     }
@@ -32,7 +32,7 @@ pub struct DeteTrack {
 }
 
 impl Track for DeteTrack {
-    fn play_step<T: MidiConnection>(&mut self, step: u32, midi_controller: &mut MidiController<T>) {
+    fn play_step(&mut self, step: u32, midi_controller: &mut MidiController<impl MidiConnection>) {
         let cur_step = step % self.len;
         for n in &self.notes {
             if (n.1 + self.start_step) % self.len == cur_step {
