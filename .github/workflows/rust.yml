@@ -9,13 +9,16 @@ env:
 
 jobs:
   build_and_test:
-    name: Rust project
+    name: mseq
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
       - uses: Swatinem/rust-cache@v2
 
+      - name: Install alsa
+        run: sudo apt-get install -y alsa
+  
       - name: setup toolchain
         uses: hecrj/setup-rust-action@v1
         with:
