@@ -62,7 +62,7 @@ impl<T: MidiConnection> Context<T> {
     pub fn get_step(&mut self) -> u32 {
         self.step
     }
-    pub fn run(&mut self, mut conductor: impl Conductor) {
+    fn run(&mut self, mut conductor: impl Conductor) {
         while self.running {
             conductor.update(self);
 
