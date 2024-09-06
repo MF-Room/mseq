@@ -58,13 +58,14 @@ impl Conductor for ExampleConductor {
     }
 }
 
-fn main() -> anyhow::Result<()> {
-    mseq::run(
+fn main() {
+    if let Err(e) = mseq::run(
         ExampleConductor {
             track: ExampleTrack {},
         },
         // The midi port will be selected at runtime by the user
         None,
-    )?;
-    Ok(())
+    ) {
+        println!("An error occured: {:?}", e);
+    }
 }
