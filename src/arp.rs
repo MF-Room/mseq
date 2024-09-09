@@ -1,14 +1,6 @@
-use crate::DeteTrack;
-use crate::MidiNote;
-use crate::Note;
+use crate::{DeteTrack, MSeqError, MidiNote, Note};
 use std::path::Path;
-use thiserror::Error;
 
-#[derive(Error, Debug)]
-pub enum ArpError {
-    #[error("Failed to read arp file [{}: {}]\n\t{0}", file!(), line!())]
-    Reading(#[from] csv::Error),
-}
 #[derive(Default, Clone, Copy)]
 pub enum ArpDiv {
     #[default]
@@ -46,7 +38,7 @@ impl DeteTrack {
         root: Note,
         channel_id: u8,
         name: &str,
-    ) -> Result<Self, ArpError> {
+    ) -> Result<Self, MSeqError> {
         let mut rdr = csv::Reader::from_path(filename)?;
         let pattern = rdr
             .deserialize::<MidiNote>()

@@ -9,6 +9,7 @@ mod tests;
 mod track;
 
 // Interface
+pub use arp::ArpDiv;
 pub use conductor::Conductor;
 pub use midi_connection::MidiConnection;
 use midi_connection::{MidiError, MidirConnection};
