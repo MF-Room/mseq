@@ -19,6 +19,9 @@ serde = {version ="1.0.208", features = ["derive"] }
 spin_sleep = "1.2.1"
 thiserror = "1.0.57"
 log = { version = "0.4.4", optional = true }
+midly = "0.5.3"
+fs-err = "2.11.0"
+env_logger = "0.11.5"
 
 [profile.release]
 lto = true

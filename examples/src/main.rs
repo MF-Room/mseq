@@ -1,4 +1,5 @@
 use mseq::Conductor;
+use mseq::DeteTrack;
 use mseq::MidiNote;
 use mseq::Track;
 
@@ -30,7 +31,8 @@ impl Track for ExampleTrack {
 }
 
 struct ExampleConductor {
-    track: ExampleTrack,
+    track1: DeteTrack,
+    _track2: ExampleTrack,
 }
 
 impl Conductor for ExampleConductor {
@@ -41,7 +43,8 @@ impl Conductor for ExampleConductor {
 
     fn update(&mut self, context: &mut mseq::Context<impl mseq::MidiConnection>) {
         // The conductor can play tracks...
-        context.midi.play_track(&mut self.track);
+        context.midi.play_track(&mut self.track1);
+        // context.midi.play_track(&mut self.track2);
 
         // ...or play notes directly
         if context.get_step() % 24 == 0 {
@@ -49,7 +52,7 @@ impl Conductor for ExampleConductor {
                 MidiNote {
                     note: mseq::Note::D,
                     octave: 3,
-                    vel: 127,
+                    vel: 50,
                 },
                 12,
                 1,
@@ -59,9 +62,14 @@ impl Conductor for ExampleConductor {
 }
 
 fn main() {
+    env_logger::init();
+
+    let track = DeteTrack::load_from_file("example.mid", mseq::Note::A, 1, "test").unwrap();
+
     if let Err(e) = mseq::run(
         ExampleConductor {
-            track: ExampleTrack {},
+            track1: track,
+            _track2: ExampleTrack {},
         },
         // The midi port will be selected at runtime by the user
         None,

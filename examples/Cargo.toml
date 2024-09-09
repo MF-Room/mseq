@@ -4,4 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-mseq = { path = "../" }
+env_logger = "0.11.5"
+mseq = { path = "../", features = ["log"]}

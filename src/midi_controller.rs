@@ -18,6 +18,12 @@ impl MidiNote {
         Self { note, octave, vel }
     }
 
+    pub fn from_midi_value(midi_value: u8, vel: u8) -> Self {
+        let octave = midi_value / 12;
+        let note = Note::from(midi_value % 12);
+        Self::new(note, octave, vel)
+    }
+
     pub fn transpose(&self, transpose: i8) -> Self {
         let (note, octave) = self.note.add_semitone(self.octave, transpose);
         Self {
