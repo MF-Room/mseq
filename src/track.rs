@@ -18,6 +18,8 @@ pub enum TrackError {
     WrongNoteOff,
     #[error("Midi file doesn't contain a single track")]
     BadFormat,
+    #[error("Unsupported timing specification")]
+    BadTiming,
 }
 
 pub trait Track {
@@ -112,8 +114,14 @@ impl DeteTrack {
         let mut notes_map: HashMap<u8, (u8, u32, u32)> = HashMap::new();
         let mut notes: Vec<(MidiNote, u32, u32)> = vec![];
         let mut step = 0;
-        let step_size = 64;
+        let step_size = u16::from(if let midly::Timing::Metrical(s) = smf.header.timing {
+            s
+        } else {
+            return Err(TrackError::BadTiming);
+        }) as u32
+            / 6;
 
+        crate::log_debug!("{:?}", smf.header.timing);
         let track = smf.tracks.first().ok_or(TrackError::BadFormat)?;
 
         for event in track {
