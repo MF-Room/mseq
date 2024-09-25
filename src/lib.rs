@@ -112,36 +112,3 @@ pub fn param_value(v: f32) -> u8 {
     }
     63 + (v * 63.0).round() as u8
 }
-
-#[allow(unused)]
-macro_rules! log_trace { ($($x:tt)*) => (
-    {#[cfg(feature = "log")] {
-        log::trace!($($x)*)
-    }}
-) }
-#[allow(unused)]
-macro_rules! log_debug { ($($x:tt)*) => (
-    {#[cfg(feature = "log")] {
-        log::debug!($($x)*)
-    }}
-) }
-#[allow(unused)]
-macro_rules! log_info { ($($x:tt)*) => (
-    {#[cfg(feature = "log")] {
-        log::info!($($x)*)
-    }}
-) }
-#[allow(unused)]
-macro_rules! log_warn { ($($x:tt)*) => (
-    {#[cfg(feature = "log")] {
-        log::warn!($($x)*)
-    }}
-) }
-#[allow(unused)]
-macro_rules! log_error { ($($x:tt)*) => (
-    {#[cfg(feature = "log")] {
-        log::error!($($x)*)
-    }}
-) }
-#[allow(unused)]
-pub(crate) use {log_debug, log_error, log_info, log_trace, log_warn};

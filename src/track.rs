@@ -1,10 +1,11 @@
+use log::{debug, warn};
 use std::collections::HashMap;
 use std::path::Path;
 
 use thiserror::Error;
 
-use crate::{log_warn, MidiConnection, MidiNote};
 use crate::{midi_controller::MidiController, note::Note};
+use crate::{MidiConnection, MidiNote};
 
 #[derive(Error, Debug)]
 pub enum TrackError {
@@ -25,13 +26,13 @@ pub enum TrackError {
 pub trait Track {
     fn play_step(&mut self, step: u32, midi_controller: &mut MidiController<impl MidiConnection>);
     fn transpose(&mut self, _note: Option<Note>) {
-        log_warn!("Default transpose implementation was called, which does nothing.")
+        warn!("Track::transpose() not implemented")
     }
     fn get_root(&self) -> Note {
         Note::C
     }
     fn set_start_step(&mut self, _start_step: u32) {
-        log_warn!("Default set_start_step implementation was called, which does nothing.")
+        warn!("Track::set_start_step() not implemented")
     }
 
     fn get_name(&self) -> String {
@@ -121,11 +122,11 @@ impl DeteTrack {
         }) as u32
             / 6;
 
-        crate::log_debug!("{:?}", smf.header.timing);
+        debug!("{:?}", smf.header.timing);
         let track = smf.tracks.first().ok_or(TrackError::BadFormat)?;
 
         for event in track {
-            crate::log_debug!("step: {}, event: {:?}", step, event);
+            debug!("step: {}, event: {:?}", step, event);
 
             // Increase duration of all the current notes
             notes_map
@@ -152,16 +153,16 @@ impl DeteTrack {
                             return Err(TrackError::DuplicateNote);
                         }
                     }
-                    _ => log_warn!("Unsupported midi event: {:?}", event),
+                    _ => warn!("Unsupported midi event: {:?}", event),
                 },
                 midly::TrackEventKind::Meta(m) => {
                     if m == midly::MetaMessage::EndOfTrack {
                         break;
                     } else {
-                        log_warn!("Unsupported midi event: {:?}", event);
+                        warn!("Unsupported midi event: {:?}", event);
                     }
                 }
-                _ => log_warn!("unsupported midi event: {:?}", event),
+                _ => warn!("Unsupported midi event: {:?}", event),
             }
         }
         Ok(DeteTrack::new(step, notes, root, channel_id, name))

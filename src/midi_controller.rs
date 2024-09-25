@@ -1,6 +1,7 @@
 use crate::midi_connection::MidiConnection;
 use crate::note::Note;
 use crate::Track;
+use log::error;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
@@ -117,27 +118,27 @@ impl<T: MidiConnection> MidiController<T> {
     }
 
     pub fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) {
-        if let Err(_e) = self.conn.send_cc(channel_id, parameter, value) {
-            crate::log_error!("Midi Error: {:?}", _e);
+        if let Err(e) = self.conn.send_cc(channel_id, parameter, value) {
+            error!("MIDI: {e}");
         }
     }
 
     pub(crate) fn send_clock(&mut self) {
-        if let Err(_e) = self.conn.send_clock() {
-            crate::log_error!("Midi Error: {:?}", _e);
+        if let Err(e) = self.conn.send_clock() {
+            error!("MIDI: {e}");
         }
     }
 
     pub(crate) fn start(&mut self) {
         self.step = 0;
-        if let Err(_e) = self.conn.send_start() {
-            crate::log_error!("Midi Error: {:?}", _e);
+        if let Err(e) = self.conn.send_start() {
+            error!("MIDI: {e}");
         }
     }
 
     pub(crate) fn send_continue(&mut self) {
-        if let Err(_e) = self.conn.send_continue() {
-            crate::log_error!("Midi Error: {:?}", _e);
+        if let Err(e) = self.conn.send_continue() {
+            error!("MIDI: {e}");
         }
     }
 
@@ -146,22 +147,22 @@ impl<T: MidiConnection> MidiController<T> {
         let notes = self.play_note_set.remove(&self.step);
         if let Some(notes_off) = notes {
             for n in notes_off {
-                if let Err(_e) = self
+                if let Err(e) = self
                     .conn
                     .send_note_off(n.channel_id, n.midi_note.midi_value())
                 {
-                    crate::log_error!("Midi Error: {:?}", _e);
+                    error!("MIDI: {e}");
                 }
             }
         };
 
         // Then play all the notes that were triggered this step...
         for n in &self.notes_to_play {
-            if let Err(_e) =
+            if let Err(e) =
                 self.conn
                     .send_note_on(n.channel_id, n.midi_note.midi_value(), n.midi_note.vel)
             {
-                crate::log_error!("Midi Error: {:?}", _e);
+                error!("MIDI: {e}");
             }
         }
         // ...and clear them.
@@ -173,22 +174,22 @@ impl<T: MidiConnection> MidiController<T> {
 
     pub(crate) fn stop_all_notes(&mut self) {
         self.start_note_set.iter().for_each(|n| {
-            if let Err(_e) = self
+            if let Err(e) = self
                 .conn
                 .send_note_off(n.channel_id, n.midi_note.midi_value())
             {
-                crate::log_error!("Midi Error: {:?}", _e);
+                error!("MIDI: {e}");
             }
         });
         self.start_note_set.clear();
 
         self.play_note_set.values().for_each(|notes| {
             for n in notes {
-                if let Err(_e) = self
+                if let Err(e) = self
                     .conn
                     .send_note_off(n.channel_id, n.midi_note.midi_value())
                 {
-                    crate::log_error!("Midi Error: {:?}", _e);
+                    error!("MIDI: {e}");
                 }
             }
         });
@@ -196,8 +197,8 @@ impl<T: MidiConnection> MidiController<T> {
     }
 
     pub(crate) fn stop(&mut self) {
-        if let Err(_e) = self.conn.send_stop() {
-            crate::log_error!("Midi Error: {:?}", _e);
+        if let Err(e) = self.conn.send_stop() {
+            error!("MIDI: {e}");
         }
     }
 }
