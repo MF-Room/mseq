@@ -64,7 +64,8 @@ impl Conductor for ExampleConductor {
 fn main() {
     env_logger::init();
 
-    let track = DeteTrack::load_from_file("example.mid", mseq::Note::A, 1, "test").unwrap();
+    let track =
+        DeteTrack::load_from_file("examples/res/track_0.mid", mseq::Note::A, 1, "test").unwrap();
 
     if let Err(e) = mseq::run(
         ExampleConductor {
