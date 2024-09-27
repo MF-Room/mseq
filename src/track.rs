@@ -115,24 +115,27 @@ impl DeteTrack {
         let mut notes_map: HashMap<u8, (u8, u32, u32)> = HashMap::new();
         let mut notes: Vec<(MidiNote, u32, u32)> = vec![];
         let mut step = 0;
+
+        // 24 comes from the TimeSignature (number of clocks per beat)
         let step_size = u16::from(if let midly::Timing::Metrical(s) = smf.header.timing {
             s
         } else {
             return Err(TrackError::BadTiming);
         }) as u32
-            / 6;
+            / 24;
 
         debug!("{:?}", smf.header.timing);
         let track = smf.tracks.first().ok_or(TrackError::BadFormat)?;
 
         for event in track {
             debug!("step: {}, event: {:?}", step, event);
+            let nb_clocks = u32::from(event.delta) / step_size;
 
             // Increase duration of all the current notes
             notes_map
                 .values_mut()
-                .for_each(|(_vel, _start, dur)| *dur += u32::from(event.delta));
-            step += u32::from(event.delta) / step_size;
+                .for_each(|(_vel, _start, dur)| *dur += nb_clocks);
+            step += nb_clocks;
 
             match event.kind {
                 midly::TrackEventKind::Midi {
