@@ -1,3 +1,9 @@
+//! Library for developing MIDI Sequencers.
+//!
+//! To start using `mseq`, create a struct that implements the [`Conductor`] trait.
+//!
+//! You can then
+
 mod acid;
 mod arp;
 mod clock;

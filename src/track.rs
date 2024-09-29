@@ -44,10 +44,10 @@ pub trait Track {
 pub struct DeteTrack {
     len: u32,
     notes: Vec<(MidiNote, u32, u32)>, // (Note, start step, length)
-    pub start_step: u32,
+    start_step: u32,
     root: Note,
     transpose: Option<i8>,
-    pub channel_id: u8,
+    channel_id: u8,
     name: String,
 }
 
@@ -72,6 +72,10 @@ impl Track for DeteTrack {
 
     fn get_name(&self) -> String {
         self.name.clone()
+    }
+
+    fn set_start_step(&mut self, start_step: u32) {
+        self.start_step = start_step;
     }
 }
 

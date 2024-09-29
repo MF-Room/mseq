@@ -26,6 +26,7 @@ const NOTE_ON: u8 = 0x90;
 const NOTE_OFF: u8 = 0x80;
 const CC: u8 = 0xB0;
 
+#[doc(hidden)]
 pub trait MidiConnection {
     fn send_start(&mut self) -> Result<(), MidiError>;
     fn send_continue(&mut self) -> Result<(), MidiError>;
