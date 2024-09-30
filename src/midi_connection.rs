@@ -26,14 +26,22 @@ const NOTE_ON: u8 = 0x90;
 const NOTE_OFF: u8 = 0x80;
 const CC: u8 = 0xB0;
 
-#[doc(hidden)]
+/// This trait should not be implemented in the user code. The purpose of this trait is be able to reuse
+/// the same code with different midi API, using static dispatch.
 pub trait MidiConnection {
+    #[doc(hidden)]
     fn send_start(&mut self) -> Result<(), MidiError>;
+    #[doc(hidden)]
     fn send_continue(&mut self) -> Result<(), MidiError>;
+    #[doc(hidden)]
     fn send_stop(&mut self) -> Result<(), MidiError>;
+    #[doc(hidden)]
     fn send_clock(&mut self) -> Result<(), MidiError>;
+    #[doc(hidden)]
     fn send_note_on(&mut self, channel_id: u8, note: u8, velocity: u8) -> Result<(), MidiError>;
+    #[doc(hidden)]
     fn send_note_off(&mut self, channel_id: u8, note: u8) -> Result<(), MidiError>;
+    #[doc(hidden)]
     fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) -> Result<(), MidiError>;
 }
 
