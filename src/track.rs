@@ -5,7 +5,7 @@ use std::path::Path;
 use thiserror::Error;
 
 use crate::{midi_controller::MidiController, note::Note};
-use crate::{MidiConnection, MidiNote};
+use crate::{MSeqError, MidiConnection, MidiNote};
 
 #[derive(Error, Debug)]
 pub enum TrackError {
@@ -107,13 +107,20 @@ impl DeteTrack {
         root: Note,
         channel_id: u8,
         name: &str,
-    ) -> Result<Self, TrackError> {
-        let bytes = fs_err::read(filename)?;
-        let smf = midly::Smf::parse(&bytes)?;
+    ) -> Result<Self, MSeqError> {
+        let bytes = match fs_err::read(filename) {
+            Ok(b) => b,
+            Err(e) => return Err(MSeqError::Track(TrackError::Io(e))),
+        };
+
+        let smf = match midly::Smf::parse(&bytes) {
+            Ok(s) => s,
+            Err(e) => return Err(MSeqError::Track(TrackError::Midly(e))),
+        };
 
         match smf.header.format {
             midly::Format::SingleTrack => (),
-            _ => return Err(TrackError::BadFormat),
+            _ => return Err(MSeqError::Track(TrackError::BadFormat)),
         }
 
         let mut notes_map: HashMap<u8, (u8, u32, u32)> = HashMap::new();
@@ -124,7 +131,7 @@ impl DeteTrack {
         let step_size = u16::from(if let midly::Timing::Metrical(s) = smf.header.timing {
             s
         } else {
-            return Err(TrackError::BadTiming);
+            return Err(MSeqError::Track(TrackError::BadTiming));
         }) as u32
             / 24;
 
@@ -157,7 +164,7 @@ impl DeteTrack {
                             .insert(key.into(), (vel.into(), step, 0))
                             .is_some()
                         {
-                            return Err(TrackError::DuplicateNote);
+                            return Err(MSeqError::Track(TrackError::DuplicateNote));
                         }
                     }
                     _ => warn!("Unsupported midi event: {:?}", event),

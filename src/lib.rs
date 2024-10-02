@@ -12,7 +12,7 @@
 //! You can find some examples in the [`examples`] directory.
 //!
 //! [`examples`]: https://github.com/MF-Room/mseq/tree/main/examples
-
+#![warn(missing_docs)]
 mod acid;
 mod arp;
 mod clock;
@@ -37,12 +37,18 @@ use thiserror::Error;
 
 const DEFAULT_BPM: u8 = 120;
 
+/// Error type of mseq
 #[derive(Error, Debug)]
 pub enum MSeqError {
+    /// Error type related to midi messages
     #[error("Midi error [{}: {}]", file!(), line!())]
     Midi(#[from] MidiError),
-    #[error("Failed to read file [{}: {}]\n\t{0}", file!(), line!())]
+    /// Error type related to csv file parsing
+    #[error("Failed to parse csv file [{}: {}]\n\t{0}", file!(), line!())]
     Reading(#[from] csv::Error),
+    /// Error type related to midi file parsing
+    #[error("Failed to parse midi file [{}: {}]\n\t{0}", file!(), line!())]
+    Track(#[from] track::TrackError),
 }
 
 pub struct Context<T: MidiConnection> {
