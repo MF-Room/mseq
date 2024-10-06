@@ -5,14 +5,16 @@
 //! You can then add tracks to your sequencer by adding fields (to your struct that implements the
 //! [`Conductor`] trait) of type [`DeteTrack`] or more generally fields that implement the trait [`Track`].
 //!
-//! Once this is done you can play your track in the the [`Conductor::update`] function of your struct that
-//! implements the [`Conductor`] trait. To do so call the method [`MidiController::play_track`] (of
-//! the [`Context::midi`]) with the track you want to play as parameter.
+//! Once this is done, you can play your track in the [`Conductor::update`] function of your struct that
+//! implements the [`Conductor`] trait. To do so, call the method [`MidiController::play_track`] (of
+//! the [`Context::midi`]) with the track you want to play as a parameter.
 //!
 //! You can find some examples in the [`examples`] directory.
 //!
 //! [`examples`]: https://github.com/MF-Room/mseq/tree/main/examples
+
 #![warn(missing_docs)]
+
 mod acid;
 mod arp;
 mod clock;
@@ -40,18 +42,24 @@ const DEFAULT_BPM: u8 = 120;
 /// Error type of mseq
 #[derive(Error, Debug)]
 pub enum MSeqError {
-    /// Error type related to midi messages
+    /// Error type related to MIDI messages
     #[error("Midi error [{}: {}]", file!(), line!())]
     Midi(#[from] MidiError),
-    /// Error type related to csv file parsing
+    /// Error type related to CSV file parsing
     #[error("Failed to parse csv file [{}: {}]\n\t{0}", file!(), line!())]
     Reading(#[from] csv::Error),
-    /// Error type related to midi file parsing
+    /// Error type related to MIDI file parsing
     #[error("Failed to parse midi file [{}: {}]\n\t{0}", file!(), line!())]
     Track(#[from] track::TrackError),
 }
 
+/// An object of type [`Context`] is passed to the user [`Conductor`] at each clock tick through the method
+/// [`Conductor::update`]. This structure provides the user with a friendly MIDI interface. The user
+/// can set some MIDI System Parameters (e.g., [`Context::set_bpm`]) or send some MIDI System
+/// Messages (e.g., [`Context::start`]) using directly the [`Context`] methods. The user can also send MIDI Channel
+/// Messages (e.g., [`MidiController::play_note`] or [`MidiController::play_track`]) using the field [`Context::midi`].
 pub struct Context<T: MidiConnection> {
+    /// Field used to send MIDI Channel Messages.
     pub midi: MidiController<T>,
     pub(crate) clock: Clock,
     step: u32,

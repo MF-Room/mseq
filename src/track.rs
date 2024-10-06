@@ -108,15 +108,8 @@ impl DeteTrack {
         channel_id: u8,
         name: &str,
     ) -> Result<Self, MSeqError> {
-        let bytes = match fs_err::read(filename) {
-            Ok(b) => b,
-            Err(e) => return Err(MSeqError::Track(TrackError::Io(e))),
-        };
-
-        let smf = match midly::Smf::parse(&bytes) {
-            Ok(s) => s,
-            Err(e) => return Err(MSeqError::Track(TrackError::Midly(e))),
-        };
+        let bytes = fs_err::read(filename).map_err(|e| MSeqError::Track(TrackError::Io(e)))?;
+        let smf = midly::Smf::parse(&bytes).map_err(|e| MSeqError::Track(TrackError::Midly(e)))?;
 
         match smf.header.format {
             midly::Format::SingleTrack => (),
