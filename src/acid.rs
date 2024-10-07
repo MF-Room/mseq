@@ -19,6 +19,7 @@ pub struct AcidTrig {
 use Timing::*;
 
 impl DeteTrack {
+    /// Create a new acid track from a pattern, its root note, the midi channel, and a name.
     pub fn new_acid(pattern: Vec<AcidTrig>, root: Note, channel_id: u8, name: &str) -> Self {
         if pattern.is_empty() {
             return DeteTrack::new(0, vec![], root, channel_id, name);
@@ -83,6 +84,9 @@ impl DeteTrack {
         DeteTrack::new(6 * pattern.len() as u32, notes, root, channel_id, name)
     }
 
+    /// Load an acid track from a csv file. Refer to `examples/res/acid_0.csv` for an example file.
+    /// Provide the root note of the track to allow for transposition. channel_id is the midi
+    /// channel where this track will be played when passed to the MidiController.
     pub fn load_acid_from_file<P: AsRef<Path>>(
         filename: P,
         root: Note,

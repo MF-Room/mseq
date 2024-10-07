@@ -1,19 +1,32 @@
 use std::{convert::From, fmt::Display};
 
+/// Represents a musical note, from A to G.
 #[derive(Debug, Default, Clone, PartialEq, Copy, serde::Deserialize, Eq)]
 pub enum Note {
     #[default]
+    /// C
     C,
+    /// C# or Db
     CS,
+    /// D
     D,
+    /// D# or Eb
     DS,
+    /// E
     E,
+    /// F
     F,
+    /// F# or Gb
     FS,
+    /// G
     G,
+    /// G# or Ab
     GS,
+    /// A
     A,
+    /// A# or Bb
     AS,
+    /// B
     B,
 }
 
@@ -78,6 +91,19 @@ impl Display for Note {
 }
 
 impl Note {
+    /// Add semitones to a Note and an octave. Returns the new note and octave.
+    /// Works with negative semitones.
+    ///
+    /// # Example
+    /// ```
+    /// use mseq::Note;
+    /// 
+    /// let note = Note::G;
+    /// let octave = 4;
+    /// let (new_note, new_octave) = note.add_semitone(octave, 5);
+    /// assert!(new_note == Note::C);
+    /// assert!(new_octave == 5);
+    /// ```
     pub fn add_semitone(self, octave: u8, semi: i8) -> (Self, u8) {
         let new_note = u8::from(self) as i8 + semi;
         let q = new_note.div_euclid(12);
@@ -85,6 +111,8 @@ impl Note {
         ((r as u8).into(), (octave as i8 + q) as u8)
     }
 
+    /// Number of semitones required to transpose from root to note. The results range from -6 to 5
+    /// to minimize pitch difference with the original note.
     pub fn transpose(root: Note, note: Note) -> i8 {
         let root_m: u8 = root.into();
         let note_m: u8 = note.into();

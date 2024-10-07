@@ -69,29 +69,45 @@ pub struct Context<T: MidiConnection> {
 }
 
 impl<T: MidiConnection> Context<T> {
+    /// Set the global BPM of the sequencer.
     pub fn set_bpm(&mut self, bpm: u8) {
         self.clock.set_bpm(bpm);
     }
+
+    /// Stop and exit the sequencer.
     pub fn quit(&mut self) {
         self.running = false
     }
+
+    /// Pause the sequencer.
     pub fn pause(&mut self) {
         self.on_pause = true;
         self.pause = true;
         self.midi.stop_all_notes();
     }
+
+    /// Resume the sequencer after calling pause().
     pub fn resume(&mut self) {
         self.on_pause = false;
         self.midi.send_continue();
     }
+
+    /// Start the sequencer.
     pub fn start(&mut self) {
         self.step = 0;
         self.on_pause = false;
         self.midi.start();
     }
+
+    /// Retrieve the current midi step.
+    /// - 96 steps make a bar
+    /// - 24 steps make a whole note
+    /// - 12 steps make a half note
+    /// - 6 steps make a quarter note
     pub fn get_step(&mut self) -> u32 {
         self.step
     }
+
     fn run(&mut self, mut conductor: impl Conductor) {
         while self.running {
             conductor.update(self);
@@ -113,6 +129,9 @@ impl<T: MidiConnection> Context<T> {
     }
 }
 
+/// mseq entry point. Run the sequencer by providing a conductor implementation. port is the midi
+/// port on which to send midi signals. If set to None, the port will be asked to the client through
+/// the console.
 pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqError> {
     let conn = MidirConnection::new(port)?;
     let midi = MidiController::new(conn);
@@ -132,6 +151,7 @@ pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqE
     Ok(())
 }
 
+/// Convert a float to a number between 0 and 127 to use for Control Change.
 pub fn param_value(v: f32) -> u8 {
     if v < -1.0 {
         return 0;

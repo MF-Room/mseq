@@ -23,23 +23,34 @@ pub enum TrackError {
     BadTiming,
 }
 
+/// The Track trait can be implemented by the client. A struct with the Track trait can be passed to
+/// the MidiController to play it through a midi connection. This allows to reduce the amount of
+/// code in the Conductor by writing each track independently.
 pub trait Track {
+    /// Implement what the track should play at that step. See `examples/impl_track.rs` for an
+    /// example usage. Implementation required.
     fn play_step(&mut self, step: u32, midi_controller: &mut MidiController<impl MidiConnection>);
+    /// Transpose the track. The default implementation returns a warning. Optional implementation.
     fn transpose(&mut self, _note: Option<Note>) {
         warn!("Track::transpose() not implemented")
     }
+    /// Returns the root of the track. Optional implementation.
     fn get_root(&self) -> Note {
         Note::C
     }
+    /// Set the start step of the track. Optional implementation.
     fn set_start_step(&mut self, _start_step: u32) {
         warn!("Track::set_start_step() not implemented")
     }
-
+    /// Returns the name of the track. Optional implementation.
     fn get_name(&self) -> String {
         "Unamed".to_string()
     }
 }
 
+/// DeteTrack implements the Track trait, so it can be passed to the MidiController to play it. It
+/// is defined by a list of notes that will always play at the same time in the track, hence the
+/// name (Deterministic Track).
 #[derive(Default, Clone)]
 pub struct DeteTrack {
     len: u32,
@@ -80,6 +91,8 @@ impl Track for DeteTrack {
 }
 
 impl DeteTrack {
+    /// Create a new DeteTrack from a list of notes, its length, the midi channel and a name.
+    /// Specify the root note to allow transposition.
     pub fn new(
         len: u32,
         notes: Vec<(MidiNote, u32, u32)>,
@@ -98,10 +111,15 @@ impl DeteTrack {
         }
     }
 
+    /// Set the root of the DeteTrack. This function does not transpose the track, it only changes
+    /// the root note.
     pub fn set_root(&mut self, note: Note) {
         self.root = note;
     }
 
+    /// Load an acid track from a midi file. Refer to `examples/midi_track.rs` for an example usage.
+    /// Provide the root note of the track to allow for transposition. channel_id is the midi
+    /// channel where this track will be played when passed to the MidiController.
     pub fn load_from_file<P: AsRef<Path>>(
         filename: P,
         root: Note,
