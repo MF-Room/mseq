@@ -97,7 +97,7 @@ impl Note {
     /// # Example
     /// ```
     /// use mseq::Note;
-    /// 
+    ///
     /// let note = Note::G;
     /// let octave = 4;
     /// let (new_note, new_octave) = note.add_semitone(octave, 5);

@@ -8,7 +8,7 @@ pub trait Conductor {
     fn init(&mut self, context: &mut Context<impl MidiConnection>);
     /// This function will be called at every midi clock. All the notes sent to the MidiController
     /// (`context.midi_controller`) will be played at the next midi clock.
-    /// 
+    ///
     /// __Warning: if this function takes too long, the midi clock might be late. Be careful not to
     /// do any intensive computation, call sleep(), or wait for a lock inside this function.__
     fn update(&mut self, context: &mut Context<impl MidiConnection>);
