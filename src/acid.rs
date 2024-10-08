@@ -2,18 +2,30 @@ use crate::{DeteTrack, MSeqError, MidiNote, Note};
 use std::path::Path;
 
 #[derive(Default, Clone, Copy, Debug, serde::Deserialize)]
+
+/// Timing mostly used in [`AcidTrig`] to generate acid tracks.
 pub enum Timing {
+    /// Play a note.
     Note,
     #[default]
+    /// Rest.
     Rest,
 }
 
+/// Trig used to create acid tracks with [`DeteTrack::new_acid`]. Each Trig represents one
+/// sixteenth step. `AcidTrig` provides a similar interface to the original [`Roland TB-303`] with
+/// some slight modification.
+///
+/// [`Roland TB-303`]: https://en.wikipedia.org/wiki/Roland_TB-303
 #[derive(Debug, serde::Deserialize)]
 pub struct AcidTrig {
     #[serde(flatten)]
-    midi_note: MidiNote,
-    slide: bool,
-    timing: Timing,
+    /// Pitch and Velocity
+    pub midi_note: MidiNote,
+    /// Slide enable
+    pub slide: bool,
+    /// Timing
+    pub timing: Timing,
 }
 
 use Timing::*;

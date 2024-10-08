@@ -26,6 +26,7 @@ mod tests;
 mod track;
 
 // Interface
+pub use acid::{AcidTrig, Timing};
 pub use arp::ArpDiv;
 pub use conductor::Conductor;
 pub use midi_connection::MidiConnection;
@@ -69,7 +70,7 @@ pub struct Context<T: MidiConnection> {
 }
 
 impl<T: MidiConnection> Context<T> {
-    /// Set the global BPM of the sequencer.
+    /// Set the BPM (Beats per minute) of the sequencer.
     pub fn set_bpm(&mut self, bpm: u8) {
         self.clock.set_bpm(bpm);
     }
@@ -79,20 +80,20 @@ impl<T: MidiConnection> Context<T> {
         self.running = false
     }
 
-    /// Pause the sequencer.
+    /// Pause the sequencer and send a MIDI stop message.
     pub fn pause(&mut self) {
         self.on_pause = true;
         self.pause = true;
         self.midi.stop_all_notes();
     }
 
-    /// Resume the sequencer after calling pause().
+    /// Resume the sequencer and send a MIDI continue message.
     pub fn resume(&mut self) {
         self.on_pause = false;
         self.midi.send_continue();
     }
 
-    /// Start the sequencer.
+    /// Start the sequencer and send a MIDI start message. The current step is set to 0.
     pub fn start(&mut self) {
         self.step = 0;
         self.on_pause = false;
@@ -129,9 +130,9 @@ impl<T: MidiConnection> Context<T> {
     }
 }
 
-/// mseq entry point. Run the sequencer by providing a conductor implementation. port is the midi
-/// port on which to send midi signals. If set to None, the port will be asked to the client through
-/// the console.
+/// `mseq` entry point. Run the sequencer by providing a conductor implementation. `port` is the MIDI
+/// port id used to send the midi messages. If set to `None`, information about the MIDI ports will
+/// be displayed and the output port will be asked to the user with a prompt.
 pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqError> {
     let conn = MidirConnection::new(port)?;
     let midi = MidiController::new(conn);
@@ -151,7 +152,9 @@ pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqE
     Ok(())
 }
 
-/// Convert a float to a number between 0 and 127 to use for Control Change.
+/// Perform a linear conversion from `[0.0, 1.0]` to [0, 127]. If `v` is smaller than `0.0` return
+/// 0. If `v` is greater than `1.0` return 127. The main purpose of this function is to be used
+/// with MIDI control changes (CC).
 pub fn param_value(v: f32) -> u8 {
     if v < -1.0 {
         return 0;

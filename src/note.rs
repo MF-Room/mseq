@@ -1,6 +1,6 @@
 use std::{convert::From, fmt::Display};
 
-/// Represents a musical note, from A to G.
+/// Represents 1 note of the chromatic scale.
 #[derive(Debug, Default, Clone, PartialEq, Copy, serde::Deserialize, Eq)]
 pub enum Note {
     #[default]
@@ -111,7 +111,7 @@ impl Note {
         ((r as u8).into(), (octave as i8 + q) as u8)
     }
 
-    /// Number of semitones required to transpose from root to note. The results range from -6 to 5
+    /// Number of semitones required to transpose from root to note. The results range from 6 to -5
     /// to minimize pitch difference with the original note.
     pub fn transpose(root: Note, note: Note) -> i8 {
         let root_m: u8 = root.into();
