@@ -25,7 +25,7 @@ impl MidiNote {
     }
 
     /// Convert a MIDI note value into a [`MidiNote`].
-    pub fn from_midi_value(midi_value: u8, vel: u8) -> Self {
+    pub(crate) fn from_midi_value(midi_value: u8, vel: u8) -> Self {
         let octave = midi_value / 12;
         let note = Note::from(midi_value % 12);
         Self::new(note, octave, vel)
@@ -43,7 +43,7 @@ impl MidiNote {
     }
 
     // Retrieve the MIDI value of the MidiNote, which can be sent through a MIDI message.
-    fn midi_value(&self) -> u8 {
+    pub(crate) fn midi_value(&self) -> u8 {
         u8::from(self.note) + 12 * self.octave
     }
 }
