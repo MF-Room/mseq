@@ -7,31 +7,32 @@ use std::hash::Hash;
 
 const MAX_MIDI_CHANNEL: u8 = 16;
 
-/// MidiNote describes a note that can be sent through midi.
+/// Note that can be sent through a MIDI message.
 #[derive(Default, Clone, Copy, serde::Deserialize, PartialEq, Eq, Debug)]
 pub struct MidiNote {
-    /// The musical note (A to G)
+    /// The chromatic note (A to G)
     pub note: Note,
     /// The octave of the note
     pub octave: u8,
-    /// The note velocity (0 to 127)
+    /// The velocity of the note (0 to 127)
     pub vel: u8,
 }
 
 impl MidiNote {
-    /// Construct a new MidiNote
+    /// Construct a new [`MidiNote`]
     pub fn new(note: Note, octave: u8, vel: u8) -> Self {
         Self { note, octave, vel }
     }
 
-    /// Convert a midi note value to a MidiNote.
+    /// Convert a MIDI note value into a [`MidiNote`].
     pub fn from_midi_value(midi_value: u8, vel: u8) -> Self {
         let octave = midi_value / 12;
         let note = Note::from(midi_value % 12);
         Self::new(note, octave, vel)
     }
 
-    /// Transpose the MidiNote. transpose corresponds to the number of semitones to add to the note.
+    /// Transpose the [`MidiNote`].
+    /// The `transpose` parameter corresponds to the number of semitones to add to the note.
     pub fn transpose(&self, transpose: i8) -> Self {
         let (note, octave) = self.note.add_semitone(self.octave, transpose);
         Self {
@@ -41,8 +42,8 @@ impl MidiNote {
         }
     }
 
-    /// Retrieve the midi value of the MidiNote, which can be sent through a midi connection.
-    pub fn midi_value(&self) -> u8 {
+    // Retrieve the MIDI value of the MidiNote, which can be sent through a MIDI message.
+    fn midi_value(&self) -> u8 {
         u8::from(self.note) + 12 * self.octave
     }
 }
@@ -60,18 +61,17 @@ impl Hash for NotePlay {
     }
 }
 
-/// The midi controller is responsible for handling the interface between the client and the midi connection.
+/// The [`MidiController`] provides a MIDI interface to the user.
 pub struct MidiController<T: MidiConnection> {
-    /// Current midi step
     step: u32,
 
-    /// Every note currently being played triggered by play_note. The key is the step at which to stop the note.
+    // Every note currently being played triggered by play_note. The key is the step at which to stop the note.
     play_note_set: HashMap<u32, Vec<NotePlay>>,
 
-    /// Every note currently being played triggered by start_note.
+    // Every note currently being played triggered by start_note.
     start_note_set: HashSet<NotePlay>,
 
-    /// Notes to play at the next update call
+    // Notes to play at the next update call
     notes_to_play: Vec<NotePlay>,
 
     conn: T,
@@ -88,14 +88,14 @@ impl<T: MidiConnection> MidiController<T> {
         }
     }
 
-    /// Request the midi controller to play a track. This has to be called at every step when the
-    /// client wants the track to be played.
+    /// Request the [`MidiController`] to play `track`. This method has to be called at every MIDI step
+    /// the user wants the track to be played.
     pub fn play_track(&mut self, track: &mut impl Track) {
         track.play_step(self.step, self);
     }
 
-    /// Request the midi controller to play a note at the next midi clock. Specify the length of the
-    /// note and the midi channel on which to send the note.
+    /// Request the MIDI controller to play a note at the current MIDI step. Specify the length (`len`) of the
+    /// note and the MIDI channel id (`channel_id`) on which to send the note.
     pub fn play_note(&mut self, midi_note: MidiNote, len: u32, channel_id: u8) {
         if len == 0 {
             return;
@@ -109,8 +109,8 @@ impl<T: MidiConnection> MidiController<T> {
         self.stop_note_at_step(note_play, self.step + len);
     }
 
-    /// Request the midi controller to start playing a note. Specify the midi channel. The note will
-    /// not stop until stop_note is called with the same note and midi channel.
+    /// Request the MIDI controller to start playing a note. Specify the MIDI channel id (`channel_id`). The note will
+    /// not stop until [`MidiController::stop_note`] is called with the same note, ocatve and MIDI channel id.
     pub fn start_note(&mut self, midi_note: MidiNote, channel_id: u8) {
         let note_play = NotePlay {
             midi_note,
@@ -120,9 +120,8 @@ impl<T: MidiConnection> MidiController<T> {
         self.start_note_set.insert(note_play);
     }
 
-    /// Request the midi controller to stop playing a note that was started by start_note. The note
-    /// will stop only if the midi note and midi channel are identical to what was used in
-    /// start_note
+    /// Request the MIDI controller to stop playing a note that was started by [`MidiController::start_note`]. The note
+    /// will stop only if the note, ocatave and MIDI channel are identical to what was used in [`MidiController::start_note`].
     pub fn stop_note(&mut self, midi_note: MidiNote, channel_id: u8) {
         let note_play = NotePlay {
             midi_note,
@@ -135,7 +134,8 @@ impl<T: MidiConnection> MidiController<T> {
         self.play_note_set.entry(step).or_default().push(note_play);
     }
 
-    /// Send midi Control Change (CC) signal.
+    /// Send MIDI Control Change (CC) message. You can use [`crate::param_value`] to convert a
+    /// float into a integer.
     pub fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) {
         if let Err(e) = self.conn.send_cc(channel_id, parameter, value) {
             error!("MIDI: {e}");

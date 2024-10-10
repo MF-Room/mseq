@@ -100,7 +100,7 @@ impl<T: MidiConnection> Context<T> {
         self.midi.start();
     }
 
-    /// Retrieve the current midi step.
+    /// Retrieve the current MIDI step.
     /// - 96 steps make a bar
     /// - 24 steps make a whole note
     /// - 12 steps make a half note

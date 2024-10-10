@@ -14,7 +14,7 @@ pub enum Timing {
 
 /// Trig used to create acid tracks with [`DeteTrack::new_acid`]. Each Trig represents one
 /// sixteenth step. `AcidTrig` provides a similar interface to the original [`Roland TB-303`] with
-/// some slight modification.
+/// some slight modifications.
 ///
 /// [`Roland TB-303`]: https://en.wikipedia.org/wiki/Roland_TB-303
 #[derive(Debug, serde::Deserialize)]
@@ -31,7 +31,9 @@ pub struct AcidTrig {
 use Timing::*;
 
 impl DeteTrack {
-    /// Create a new acid track from a pattern, its root note, the midi channel, and a name.
+    /// Create a new acid track following the trigs in `pattern`.
+    /// The `root` note is used for transposition. The track  will be played on the MIDI channel
+    /// with `channel_id`.
     pub fn new_acid(pattern: Vec<AcidTrig>, root: Note, channel_id: u8, name: &str) -> Self {
         if pattern.is_empty() {
             return DeteTrack::new(0, vec![], root, channel_id, name);
@@ -96,9 +98,11 @@ impl DeteTrack {
         DeteTrack::new(6 * pattern.len() as u32, notes, root, channel_id, name)
     }
 
-    /// Load an acid track from a csv file. Refer to `examples/res/acid_0.csv` for an example file.
-    /// Provide the root note of the track to allow for transposition. channel_id is the midi
-    /// channel where this track will be played when passed to the MidiController.
+    /// Load an acid track from a csv file (`filename`). Refer to this
+    /// [`example`] for an example file. The `root` note is used for transposition. The track
+    /// will be played on the MIDI channel with `channel_id`.
+    ///
+    /// [`example`]: https://github.com/MF-Room/mseq/tree/main/examples/res/acid_0.csv
     pub fn load_acid_from_file<P: AsRef<Path>>(
         filename: P,
         root: Note,
