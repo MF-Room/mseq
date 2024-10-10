@@ -65,7 +65,8 @@ impl Hash for NotePlay {
 pub struct MidiController<T: MidiConnection> {
     step: u32,
 
-    // Every note currently being played triggered by play_note. The key is the step at which to stop the note.
+    // Every note currently being played triggered by play_note. The key is the step at which to
+    // stop the note.
     play_note_set: HashMap<u32, Vec<NotePlay>>,
 
     // Every note currently being played triggered by start_note.
@@ -88,14 +89,14 @@ impl<T: MidiConnection> MidiController<T> {
         }
     }
 
-    /// Request the [`MidiController`] to play `track`. This method has to be called at every MIDI step
-    /// the user wants the track to be played.
+    /// Request the [`MidiController`] to play `track`. This method has to be called at every MIDI
+    /// step the user wants the track to be played.
     pub fn play_track(&mut self, track: &mut impl Track) {
         track.play_step(self.step, self);
     }
 
-    /// Request the MIDI controller to play a note at the current MIDI step. Specify the length (`len`) of the
-    /// note and the MIDI channel id (`channel_id`) on which to send the note.
+    /// Request the MIDI controller to play a note at the current MIDI step. Specify the length
+    /// (`len`) of the note and the MIDI channel id (`channel_id`) on which to send the note.
     pub fn play_note(&mut self, midi_note: MidiNote, len: u32, channel_id: u8) {
         if len == 0 {
             return;
@@ -109,8 +110,9 @@ impl<T: MidiConnection> MidiController<T> {
         self.stop_note_at_step(note_play, self.step + len);
     }
 
-    /// Request the MIDI controller to start playing a note. Specify the MIDI channel id (`channel_id`). The note will
-    /// not stop until [`MidiController::stop_note`] is called with the same note, ocatve and MIDI channel id.
+    /// Request the MIDI controller to start playing a note. Specify the MIDI channel id
+    /// (`channel_id`). The note will not stop until [`MidiController::stop_note`] is called with
+    /// the same note, ocatve and MIDI channel id.
     pub fn start_note(&mut self, midi_note: MidiNote, channel_id: u8) {
         let note_play = NotePlay {
             midi_note,
@@ -120,8 +122,9 @@ impl<T: MidiConnection> MidiController<T> {
         self.start_note_set.insert(note_play);
     }
 
-    /// Request the MIDI controller to stop playing a note that was started by [`MidiController::start_note`]. The note
-    /// will stop only if the note, ocatave and MIDI channel are identical to what was used in [`MidiController::start_note`].
+    /// Request the MIDI controller to stop playing a note that was started by
+    /// [`MidiController::start_note`]. The note will stop only if the note, ocatave and MIDI
+    /// channel are identical to what was used in [`MidiController::start_note`].
     pub fn stop_note(&mut self, midi_note: MidiNote, channel_id: u8) {
         let note_play = NotePlay {
             midi_note,

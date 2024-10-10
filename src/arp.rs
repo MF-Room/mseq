@@ -14,9 +14,9 @@ pub enum ArpDiv {
 }
 
 impl DeteTrack {
-    /// Create a new arpeggiator track following the notes in `pattern` with the `div` time division.
-    /// The `root` note is used for transposition. The track  will be played on the MIDI channel
-    /// with `channel_id`.
+    /// Create a new arpeggiator track following the notes in `pattern` with the `div` time
+    /// division. The `root` note is used for transposition. The track  will be played on the MIDI
+    /// channel with `channel_id`.
     pub fn new_arp(
         pattern: Vec<MidiNote>,
         div: ArpDiv,
@@ -39,8 +39,8 @@ impl DeteTrack {
         DeteTrack::new(len, notes, root, channel_id, name)
     }
 
-    /// Load an arpeggiator track from a csv file (`filename`) and a time division (`div`). Refer to this
-    /// [`example`] for an example file. The `root` note is used for transposition. The track
+    /// Load an arpeggiator track from a csv file (`filename`) and a time division (`div`). Refer to
+    /// this [`example`] for an example file. The `root` note is used for transposition. The track
     /// will be played on the MIDI channel with `channel_id`.
     ///
     /// [`example`]: https://github.com/MF-Room/mseq/tree/main/examples/res/arp_0.csv

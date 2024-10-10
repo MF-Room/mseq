@@ -3,11 +3,13 @@
 //! To start using `mseq`, create a struct that implements the [`Conductor`] trait.
 //!
 //! You can then add tracks to your sequencer by adding fields (to your struct that implements the
-//! [`Conductor`] trait) of type [`DeteTrack`] or more generally fields that implement the trait [`Track`].
+//! [`Conductor`] trait) of type [`DeteTrack`] or more generally fields that implement the trait
+//! [`Track`].
 //!
-//! Once this is done, you can play your track in the [`Conductor::update`] function of your struct that
-//! implements the [`Conductor`] trait. To do so, call the method [`MidiController::play_track`] (of
-//! the [`Context::midi`]) with the track you want to play as a parameter.
+//! Once this is done, you can play your track in the [`Conductor::update`] function of your struct
+//! that implements the [`Conductor`] trait. To do so, call the method
+//! [`MidiController::play_track`] (of the [`Context::midi`]) with the track you want to play as a
+//! parameter.
 //!
 //! You can find some examples in the [`examples`] directory.
 //!
@@ -54,11 +56,12 @@ pub enum MSeqError {
     Track(#[from] track::TrackError),
 }
 
-/// An object of type [`Context`] is passed to the user [`Conductor`] at each clock tick through the method
-/// [`Conductor::update`]. This structure provides the user with a friendly MIDI interface. The user
-/// can set some MIDI System Parameters (e.g., [`Context::set_bpm`]) or send some MIDI System
-/// Messages (e.g., [`Context::start`]) using directly the [`Context`] methods. The user can also send MIDI Channel
-/// Messages (e.g., [`MidiController::play_note`] or [`MidiController::play_track`]) using the field [`Context::midi`].
+/// An object of type [`Context`] is passed to the user [`Conductor`] at each clock tick through the
+/// method [`Conductor::update`]. This structure provides the user with a friendly MIDI interface.
+/// The user can set some MIDI System Parameters (e.g., [`Context::set_bpm`]) or send some MIDI
+/// System Messages (e.g., [`Context::start`]) using directly the [`Context`] methods. The user can
+/// also send MIDI Channel Messages (e.g., [`MidiController::play_note`] or
+/// [`MidiController::play_track`]) using the field [`Context::midi`].
 pub struct Context<T: MidiConnection> {
     /// Field used to send MIDI Channel Messages.
     pub midi: MidiController<T>,
@@ -130,9 +133,9 @@ impl<T: MidiConnection> Context<T> {
     }
 }
 
-/// `mseq` entry point. Run the sequencer by providing a conductor implementation. `port` is the MIDI
-/// port id used to send the midi messages. If set to `None`, information about the MIDI ports will
-/// be displayed and the output port will be asked to the user with a prompt.
+/// `mseq` entry point. Run the sequencer by providing a conductor implementation. `port` is the
+/// MIDI port id used to send the midi messages. If set to `None`, information about the MIDI ports
+/// will be displayed and the output port will be asked to the user with a prompt.
 pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqError> {
     let conn = MidirConnection::new(port)?;
     let midi = MidiController::new(conn);
@@ -153,8 +156,8 @@ pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqE
 }
 
 /// Perform a linear conversion from `[0.0, 1.0]` to [0, 127]. If `v` is smaller than `0.0` return
-/// 0. If `v` is greater than `1.0` return 127. The main purpose of this function is to be used
-/// with MIDI control changes (CC).
+/// 0. If `v` is greater than `1.0` return 127. The main purpose of this function is to be used with
+/// MIDI control changes (CC).
 pub fn param_value(v: f32) -> u8 {
     if v < -1.0 {
         return 0;
