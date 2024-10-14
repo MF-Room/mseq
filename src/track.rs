@@ -192,4 +192,18 @@ impl DeteTrack {
         }
         Ok(DeteTrack::new(step, notes, root, channel_id, name))
     }
+
+    /// Return the all `(note, length)`, that start at `step`. Transposition and start step are
+    /// taken into account.
+    pub fn get_notes_start_at_step(&self, step: u32) -> Vec<(MidiNote, u32)> {
+        let mut notes = vec![];
+        let cur_step = step % self.len;
+        for n in &self.notes {
+            if (n.1 + self.start_step) % self.len == cur_step {
+                let note = self.transpose.map_or(n.0, |t| n.0.transpose(t));
+                notes.push((note, n.2));
+            }
+        }
+        notes
+    }
 }
