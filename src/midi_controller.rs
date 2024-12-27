@@ -7,6 +7,9 @@ use std::hash::Hash;
 
 const MAX_MIDI_CHANNEL: u8 = 16;
 
+#[cfg(feature = "embedded")]
+use crate::embedded_mod::*;
+
 /// Note that can be sent through a MIDI message.
 #[derive(Default, Clone, Copy, serde::Deserialize, PartialEq, Eq, Debug)]
 pub struct MidiNote {

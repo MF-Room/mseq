@@ -1,6 +1,9 @@
 use crate::{DeteTrack, MSeqError, MidiNote, Note};
 use std::path::Path;
 
+#[cfg(feature = "embedded")]
+use crate::embedded_mod::*;
+
 #[derive(Default, Clone, Copy, Debug, serde::Deserialize)]
 
 /// Timing mostly used in [`AcidTrig`] to generate acid tracks.

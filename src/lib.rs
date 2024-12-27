@@ -29,6 +29,14 @@ mod note;
 mod tests;
 mod track;
 
+#[cfg(feature = "embedded")]
+mod embedded_mod {
+    extern crate alloc;
+    pub use alloc::vec;
+    pub use alloc::vec::*;
+    pub use thiserror_no_std::Error;
+}
+
 // Interface
 pub use acid::{AcidTrig, Timing};
 pub use arp::ArpDiv;
@@ -44,8 +52,9 @@ use clock::Clock;
 
 #[cfg(not(feature = "embedded"))]
 use thiserror::Error;
+
 #[cfg(feature = "embedded")]
-use thiserror_no_std::Error;
+use crate::embedded_mod::*;
 
 const DEFAULT_BPM: u8 = 120;
 

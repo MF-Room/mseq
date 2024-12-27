@@ -2,6 +2,9 @@ use log::{debug, warn};
 use std::collections::HashMap;
 use std::path::Path;
 
+#[cfg(feature = "embedded")]
+use crate::embedded_mod::*;
+#[cfg(not(feature = "embedded"))]
 use thiserror::Error;
 
 use crate::{midi_controller::MidiController, note::Note};

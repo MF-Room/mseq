@@ -1,6 +1,9 @@
 use crate::{DeteTrack, MSeqError, MidiNote, Note};
 use std::path::Path;
 
+#[cfg(feature = "embedded")]
+use crate::embedded_mod::*;
+
 /// Time division of the arpeggiator
 #[derive(Default, Clone, Copy)]
 pub enum ArpDiv {

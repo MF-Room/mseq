@@ -1,6 +1,9 @@
 use crate::{DeteTrack, MSeqError, MidiNote};
 use std::path::Path;
 
+#[cfg(feature = "embedded")]
+use crate::embedded_mod::*;
+
 #[derive(Debug, serde::Deserialize)]
 /// Struct used in [`DeteTrack::new_clock_div`] to generate a track with a pattern based on
 /// clock divisions.
