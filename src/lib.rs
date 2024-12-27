@@ -41,10 +41,6 @@ pub use note::Note;
 pub use track::{DeteTrack, Track};
 
 use clock::Clock;
-use midir::{ConnectError, InitError, MidiOutput};
-
-#[cfg(not(feature = "embedded"))]
-use promptly::{prompt_default, ReadlineError};
 use thiserror::Error;
 
 const DEFAULT_BPM: u8 = 120;
