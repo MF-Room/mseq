@@ -16,6 +16,7 @@
 //! [`examples`]: https://github.com/MF-Room/mseq/tree/main/examples
 
 #![warn(missing_docs)]
+#![cfg_attr(feature = "embedded", no_std)]
 
 mod acid;
 mod arp;
@@ -40,6 +41,10 @@ pub use note::Note;
 pub use track::{DeteTrack, Track};
 
 use clock::Clock;
+use midir::{ConnectError, InitError, MidiOutput};
+
+#[cfg(not(feature = "embedded"))]
+use promptly::{prompt_default, ReadlineError};
 use thiserror::Error;
 
 const DEFAULT_BPM: u8 = 120;
@@ -138,10 +143,10 @@ impl<T: MidiConnection> Context<T> {
 /// `mseq` entry point. Run the sequencer by providing a conductor implementation. `port` is the
 /// MIDI port id used to send the midi messages. If set to `None`, information about the MIDI ports
 /// will be displayed and the output port will be asked to the user with a prompt.
+#[cfg(not(feature = "embedded"))]
 pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqError> {
     let conn = MidirConnection::new(port)?;
     let midi = MidiController::new(conn);
-
     let mut ctx = Context {
         midi,
         clock: Clock::new(DEFAULT_BPM),
