@@ -41,7 +41,11 @@ pub use note::Note;
 pub use track::{DeteTrack, Track};
 
 use clock::Clock;
+
+#[cfg(not(feature = "embedded"))]
 use thiserror::Error;
+#[cfg(feature = "embedded")]
+use thiserror_no_std::Error;
 
 const DEFAULT_BPM: u8 = 120;
 
