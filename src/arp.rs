@@ -1,4 +1,5 @@
 use crate::{DeteTrack, MSeqError, MidiNote, Note};
+#[cfg(not(feature = "embedded"))]
 use std::path::Path;
 
 #[cfg(feature = "embedded")]
@@ -47,6 +48,7 @@ impl DeteTrack {
     /// will be played on the MIDI channel with `channel_id`.
     ///
     /// [`example`]: https://github.com/MF-Room/mseq/tree/main/examples/res/arp_0.csv
+    #[cfg(not(feature = "embedded"))]
     pub fn load_arp_from_file<P: AsRef<Path>>(
         filename: P,
         div: ArpDiv,

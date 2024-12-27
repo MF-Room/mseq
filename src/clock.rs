@@ -1,11 +1,14 @@
+#[cfg(not(feature = "embedded"))]
 use std::time::{Duration, Instant};
 
 pub(crate) struct Clock {
     period_us: u64,
+    #[cfg(not(feature = "embedded"))]
     next_clock_timestamp: Instant,
     bpm: u8,
 }
 
+#[cfg(not(feature = "embedded"))]
 impl Clock {
     pub(crate) fn new(bpm: u8) -> Self {
         Self {
@@ -21,6 +24,29 @@ impl Clock {
 
         let sleep_time = next_clock_timestamp - Instant::now();
         spin_sleep::sleep(sleep_time);
+    }
+
+    pub(crate) fn set_bpm(&mut self, bpm: u8) {
+        self.bpm = bpm;
+        self.period_us = Self::compute_period_us(self.bpm);
+    }
+
+    fn compute_period_us(bpm: u8) -> u64 {
+        60 * 1000000 / 24 / bpm as u64
+    }
+}
+
+#[cfg(feature = "embedded")]
+impl Clock {
+    pub(crate) fn new(bpm: u8) -> Self {
+        Self {
+            period_us: Self::compute_period_us(bpm),
+            bpm,
+        }
+    }
+
+    pub fn tick(&mut self) {
+        todo!();
     }
 
     pub(crate) fn set_bpm(&mut self, bpm: u8) {

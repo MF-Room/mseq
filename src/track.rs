@@ -1,5 +1,7 @@
 use log::{debug, warn};
 use std::collections::HashMap;
+
+#[cfg(not(feature = "embedded"))]
 use std::path::Path;
 
 #[cfg(feature = "embedded")]
@@ -123,6 +125,7 @@ impl DeteTrack {
     /// Load an acid track from a midi file. Refer to `examples/midi_track.rs` for an example usage.
     /// Provide the root note of the track to allow for transposition. channel_id is the midi
     /// channel where this track will be played when passed to the MidiController.
+    #[cfg(not(feature = "embedded"))]
     pub fn load_from_file<P: AsRef<Path>>(
         filename: P,
         root: Note,

@@ -1,5 +1,9 @@
 use midir::MidiOutput;
 use promptly::{prompt_default, ReadlineError};
+
+#[cfg(feature = "embedded")]
+use crate::embedded_mod::*;
+#[cfg(not(feature = "embedded"))]
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -45,8 +49,10 @@ pub trait MidiConnection {
     fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) -> Result<(), MidiError>;
 }
 
+#[cfg(not(feature = "embedded"))]
 pub struct MidirConnection(midir::MidiOutputConnection);
 
+#[cfg(not(feature = "embedded"))]
 impl MidirConnection {
     pub(crate) fn new(port: Option<u32>) -> Result<Self, MidiError> {
         let midi_out = MidiOutput::new("out")?;
@@ -87,6 +93,7 @@ impl MidirConnection {
     }
 }
 
+#[cfg(not(feature = "embedded"))]
 impl MidiConnection for MidirConnection {
     fn send_start(&mut self) -> Result<(), MidiError> {
         self.0.send(&[START])?;

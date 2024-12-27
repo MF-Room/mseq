@@ -32,6 +32,7 @@ mod track;
 #[cfg(feature = "embedded")]
 mod embedded_mod {
     extern crate alloc;
+    pub use alloc::string::*;
     pub use alloc::vec;
     pub use alloc::vec::*;
     pub use thiserror_no_std::Error;
@@ -43,18 +44,22 @@ pub use arp::ArpDiv;
 pub use conductor::Conductor;
 pub use div::ClockDiv;
 pub use midi_connection::MidiConnection;
-use midi_connection::{MidiError, MidirConnection};
+
+use midi_connection::MidiError;
+
+#[cfg(not(feature = "embedded"))]
+use midi_connection::MidirConnection;
+
 pub use midi_controller::{MidiController, MidiNote};
 pub use note::Note;
 pub use track::{DeteTrack, Track};
 
 use clock::Clock;
 
-#[cfg(not(feature = "embedded"))]
-use thiserror::Error;
-
 #[cfg(feature = "embedded")]
 use crate::embedded_mod::*;
+#[cfg(not(feature = "embedded"))]
+use thiserror::Error;
 
 const DEFAULT_BPM: u8 = 120;
 

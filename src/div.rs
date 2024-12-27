@@ -1,4 +1,5 @@
 use crate::{DeteTrack, MSeqError, MidiNote};
+#[cfg(not(feature = "embedded"))]
 use std::path::Path;
 
 #[cfg(feature = "embedded")]
@@ -40,6 +41,7 @@ impl DeteTrack {
     /// example file.
     ///
     /// [`example`]: https://github.com/MF-Room/mseq/tree/main/examples/res/clk_div_0.csv
+    #[cfg(not(feature = "embedded"))]
     pub fn load_clock_div_from_file<P: AsRef<Path>>(
         filename: P,
         note: MidiNote,
