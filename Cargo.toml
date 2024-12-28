@@ -24,10 +24,12 @@ log = "0.4.4"
 midly = "0.5.3"
 fs-err = "2.11.0"
 thiserror-no-std = {version = "2.0.2", optional = true}
+hashbrown = { version = "0.15.2", optional = true }
 
 [dev-dependencies]
 env_logger = "0.11.5"
 rand = "0.8.5"
 
 [features]
-embedded = ["thiserror-no-std"]
+embedded = ["thiserror-no-std", "hashbrown"]
+hashbrown = ["dep:hashbrown"]

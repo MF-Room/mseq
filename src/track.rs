@@ -1,11 +1,12 @@
 use log::{debug, warn};
-use std::collections::HashMap;
 
 #[cfg(not(feature = "embedded"))]
 use std::path::Path;
 
 #[cfg(feature = "embedded")]
 use crate::embedded_mod::*;
+#[cfg(not(feature = "embedded"))]
+use std::collections::HashMap;
 #[cfg(not(feature = "embedded"))]
 use thiserror::Error;
 
@@ -14,6 +15,7 @@ use crate::{MSeqError, MidiConnection, MidiNote};
 
 #[derive(Error, Debug)]
 pub enum TrackError {
+    #[cfg(not(feature = "embedded"))]
     #[error("Failed to read midi file: {0}")]
     Io(#[from] std::io::Error),
     #[error("Midly error: {0}")]

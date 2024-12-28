@@ -2,8 +2,11 @@ use crate::midi_connection::MidiConnection;
 use crate::note::Note;
 use crate::Track;
 use log::error;
-use std::collections::{HashMap, HashSet};
-use std::hash::Hash;
+#[cfg(not(feature = "embedded"))]
+use std::{
+    collections::{HashMap, HashSet},
+    hash,
+};
 
 const MAX_MIDI_CHANNEL: u8 = 16;
 
@@ -57,8 +60,8 @@ struct NotePlay {
     channel_id: u8,
 }
 
-impl Hash for NotePlay {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+impl hash::Hash for NotePlay {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
         (self.midi_note.midi_value() as u32 + MAX_MIDI_CHANNEL as u32 * self.channel_id as u32)
             .hash(state);
     }

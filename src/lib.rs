@@ -32,9 +32,10 @@ mod track;
 #[cfg(feature = "embedded")]
 mod embedded_mod {
     extern crate alloc;
-    pub use alloc::string::*;
-    pub use alloc::vec;
-    pub use alloc::vec::*;
+    pub use alloc::{string::*, vec, vec::*};
+    pub use core::hash;
+    pub use core::{convert, fmt};
+    pub use hashbrown::{HashMap, HashSet};
     pub use thiserror_no_std::Error;
 }
 

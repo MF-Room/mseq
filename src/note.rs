@@ -1,4 +1,7 @@
-use std::{convert::From, fmt::Display};
+#[cfg(feature = "embedded")]
+use crate::embedded_mod::*;
+#[cfg(not(feature = "embedded"))]
+use std::{convert, fmt};
 
 /// Represents 1 note of the chromatic scale.
 #[derive(Debug, Default, Clone, PartialEq, Copy, serde::Deserialize, Eq)]
@@ -30,7 +33,7 @@ pub enum Note {
     B,
 }
 
-impl From<Note> for u8 {
+impl convert::From<Note> for u8 {
     fn from(note: Note) -> Self {
         match note {
             Note::C => 0,
@@ -70,8 +73,8 @@ impl From<u8> for Note {
     }
 }
 
-impl Display for Note {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for Note {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let str = match self {
             Note::C => "C",
             Note::CS => "C#",
