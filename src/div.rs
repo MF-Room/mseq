@@ -1,6 +1,7 @@
-use crate::{DeteTrack, MSeqError, MidiNote};
+use crate::{DeteTrack, MidiNote};
+
 #[cfg(not(feature = "embedded"))]
-use std::path::Path;
+use {crate::MSeqError, std::path::Path};
 
 #[cfg(feature = "embedded")]
 use crate::embedded_mod::*;
