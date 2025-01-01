@@ -177,6 +177,29 @@ pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqE
     Ok(())
 }
 
+/// `mseq` entry point. Run the sequencer by providing a conductor implementation. `port` is the
+/// MIDI port id used to send the midi messages. If set to `None`, information about the MIDI ports
+/// will be displayed and the output port will be asked to the user with a prompt.
+#[cfg(feature = "embedded")]
+pub fn run(mut conductor: impl Conductor) -> Result<(), MSeqError> {
+    /*
+    let midi = MidiController::new(conn);
+    let mut ctx = Context {
+        midi,
+        clock: Clock::new(DEFAULT_BPM),
+        step: 0,
+        running: true,
+        on_pause: true,
+        pause: false,
+    };
+
+    conductor.init(&mut ctx);
+    ctx.run(conductor);
+    */
+
+    Ok(())
+}
+
 /// Perform a linear conversion from `[0.0, 1.0]` to [0, 127]. If `v` is smaller than `0.0` return
 /// 0. If `v` is greater than `1.0` return 127. The main purpose of this function is to be used with
 /// MIDI control changes (CC).

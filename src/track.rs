@@ -1,4 +1,4 @@
-use log::{debug, warn};
+use log::warn;
 
 #[cfg(not(feature = "embedded"))]
 use std::path::Path;
@@ -6,12 +6,10 @@ use std::path::Path;
 #[cfg(feature = "embedded")]
 use crate::embedded_mod::*;
 #[cfg(not(feature = "embedded"))]
-use std::collections::HashMap;
-#[cfg(not(feature = "embedded"))]
-use thiserror::Error;
+use {crate::MSeqError, log::debug, std::collections::HashMap, thiserror::Error};
 
 use crate::{midi_controller::MidiController, note::Note};
-use crate::{MSeqError, MidiConnection, MidiNote};
+use crate::{MidiConnection, MidiNote};
 
 #[derive(Error, Debug)]
 pub enum TrackError {

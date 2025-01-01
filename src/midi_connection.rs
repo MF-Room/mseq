@@ -1,10 +1,10 @@
 use midir::MidiOutput;
-use promptly::{prompt_default, ReadlineError};
+use promptly::ReadlineError;
 
 #[cfg(feature = "embedded")]
 use crate::embedded_mod::*;
 #[cfg(not(feature = "embedded"))]
-use thiserror::Error;
+use {promptly::prompt_default, thiserror::Error};
 
 #[derive(Error, Debug)]
 pub enum MidiError {
