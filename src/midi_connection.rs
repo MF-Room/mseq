@@ -22,12 +22,19 @@ pub enum MidiError {
     NoOutput(),
 }
 
+#[cfg(not(feature = "embedded"))]
 const CLOCK: u8 = 0xf8;
+#[cfg(not(feature = "embedded"))]
 const START: u8 = 0xfa;
+#[cfg(not(feature = "embedded"))]
 const CONTINUE: u8 = 0xfb;
+#[cfg(not(feature = "embedded"))]
 const STOP: u8 = 0xfc;
+#[cfg(not(feature = "embedded"))]
 const NOTE_ON: u8 = 0x90;
+#[cfg(not(feature = "embedded"))]
 const NOTE_OFF: u8 = 0x80;
+#[cfg(not(feature = "embedded"))]
 const CC: u8 = 0xB0;
 
 /// This trait should not be implemented in the user code. The purpose of this trait is be able to reuse
