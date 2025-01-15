@@ -1,4 +1,4 @@
-use crate::midi_connection::MidiConnection;
+use crate::midi_connection::MidiOut;
 use crate::note::Note;
 use crate::Track;
 use log::error;
@@ -68,7 +68,7 @@ impl hash::Hash for NotePlay {
 }
 
 /// The [`MidiController`] provides a MIDI interface to the user.
-pub struct MidiController<T: MidiConnection> {
+pub struct MidiController<T: MidiOut> {
     step: u32,
 
     // Every note currently being played triggered by play_note. The key is the step at which to
@@ -84,7 +84,7 @@ pub struct MidiController<T: MidiConnection> {
     conn: T,
 }
 
-impl<T: MidiConnection> MidiController<T> {
+impl<T: MidiOut> MidiController<T> {
     pub(crate) fn new(conn: T) -> Self {
         Self {
             step: 0,

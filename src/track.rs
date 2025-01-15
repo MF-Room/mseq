@@ -9,7 +9,7 @@ use crate::embedded_mod::*;
 use {crate::MSeqError, log::debug, std::collections::HashMap, thiserror::Error};
 
 use crate::{midi_controller::MidiController, note::Note};
-use crate::{MidiConnection, MidiNote};
+use crate::{MidiNote, MidiOut};
 
 #[derive(Error, Debug)]
 pub enum TrackError {
@@ -34,7 +34,7 @@ pub enum TrackError {
 pub trait Track {
     /// Implement what the track should play at that step. See `examples/impl_track.rs` for an
     /// example usage. Implementation required.
-    fn play_step(&mut self, step: u32, midi_controller: &mut MidiController<impl MidiConnection>);
+    fn play_step(&mut self, step: u32, midi_controller: &mut MidiController<impl MidiOut>);
     /// Transpose the track. The default implementation returns a warning. Optional implementation.
     fn transpose(&mut self, _note: Option<Note>) {
         warn!("Track::transpose() not implemented")
@@ -68,7 +68,7 @@ pub struct DeteTrack {
 }
 
 impl Track for DeteTrack {
-    fn play_step(&mut self, step: u32, midi_controller: &mut MidiController<impl MidiConnection>) {
+    fn play_step(&mut self, step: u32, midi_controller: &mut MidiController<impl MidiOut>) {
         let cur_step = step % self.len;
         for n in &self.notes {
             if (n.1 + self.start_step) % self.len == cur_step {

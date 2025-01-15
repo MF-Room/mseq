@@ -39,7 +39,7 @@ const CC: u8 = 0xB0;
 
 /// This trait should not be implemented in the user code. The purpose of this trait is be able to reuse
 /// the same code with different midi API, using static dispatch.
-pub trait MidiConnection {
+pub trait MidiOut {
     #[doc(hidden)]
     fn send_start(&mut self) -> Result<(), MidiError>;
     #[doc(hidden)]
@@ -101,7 +101,7 @@ impl MidirConnection {
 }
 
 #[cfg(not(feature = "embedded"))]
-impl MidiConnection for MidirConnection {
+impl MidiOut for MidirConnection {
     fn send_start(&mut self) -> Result<(), MidiError> {
         self.0.send(&[START])?;
         Ok(())

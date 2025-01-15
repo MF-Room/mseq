@@ -10,7 +10,7 @@ impl Track for MyTrack {
     fn play_step(
         &mut self,
         step: u32,
-        midi_controller: &mut mseq::MidiController<impl mseq::MidiConnection>,
+        midi_controller: &mut mseq::MidiController<impl mseq::MidiOut>,
     ) {
         // Midi channel id to send the note to
         if step % 8 == 0 {
@@ -35,12 +35,12 @@ struct MyConductor {
 }
 
 impl Conductor for MyConductor {
-    fn init(&mut self, context: &mut mseq::Context<impl mseq::MidiConnection>) {
+    fn init(&mut self, context: &mut mseq::Context<impl mseq::MidiOut>) {
         // The sequencer is on pause by default
         context.start();
     }
 
-    fn update(&mut self, context: &mut mseq::Context<impl mseq::MidiConnection>) {
+    fn update(&mut self, context: &mut mseq::Context<impl mseq::MidiOut>) {
         // The conductor plays the track
         context.midi.play_track(&mut self.track);
 

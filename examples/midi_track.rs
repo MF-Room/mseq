@@ -5,12 +5,12 @@ struct MyConductor {
 }
 
 impl Conductor for MyConductor {
-    fn init(&mut self, context: &mut mseq::Context<impl mseq::MidiConnection>) {
+    fn init(&mut self, context: &mut mseq::Context<impl mseq::MidiOut>) {
         // The sequencer is on pause by default
         context.start();
     }
 
-    fn update(&mut self, context: &mut mseq::Context<impl mseq::MidiConnection>) {
+    fn update(&mut self, context: &mut mseq::Context<impl mseq::MidiOut>) {
         // The conductor plays the track
         context.midi.play_track(&mut self.track);
 

@@ -1,22 +1,22 @@
 use crate::clock::Clock;
 use crate::Conductor;
 use crate::Context;
-use crate::MidiConnection;
 use crate::MidiController;
 use crate::MidiError;
+use crate::MidiOut;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::Instant;
 
-pub(super) struct DebugMidiConnectionInner {
+pub(super) struct DebugMidiOutInner {
     pub notes_on: HashMap<(u8, u8), u8>,
     pub start_timestamp: Instant,
 }
 
-pub(super) struct DebugMidiConnection(pub Rc<RefCell<DebugMidiConnectionInner>>);
+pub(super) struct DebugMidiOut(pub Rc<RefCell<DebugMidiOutInner>>);
 
-impl DebugMidiConnection {
+impl DebugMidiOut {
     fn print_elapsed(&self, message: &str) {
         println!(
             "[{}]\t{message}",
@@ -24,7 +24,7 @@ impl DebugMidiConnection {
         )
     }
 }
-impl MidiConnection for DebugMidiConnection {
+impl MidiOut for DebugMidiOut {
     fn send_start(&mut self) -> Result<(), MidiError> {
         self.print_elapsed("Start");
         Ok(())
@@ -71,10 +71,7 @@ impl MidiConnection for DebugMidiConnection {
     }
 }
 
-pub(super) fn test_conductor<T: MidiConnection>(
-    mut conductor: impl Conductor,
-    midi: MidiController<T>,
-) {
+pub(super) fn test_conductor<T: MidiOut>(mut conductor: impl Conductor, midi: MidiController<T>) {
     let mut ctx = Context {
         midi,
         clock: Clock::new(120),

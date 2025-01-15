@@ -44,7 +44,7 @@ pub use acid::{AcidTrig, Timing};
 pub use arp::ArpDiv;
 pub use conductor::Conductor;
 pub use div::ClockDiv;
-pub use midi_connection::MidiConnection;
+pub use midi_connection::MidiOut;
 
 use midi_connection::MidiError;
 
@@ -84,7 +84,7 @@ pub enum MSeqError {
 /// System Messages (e.g., [`Context::start`]) using directly the [`Context`] methods. The user can
 /// also send MIDI Channel Messages (e.g., [`MidiController::play_note`] or
 /// [`MidiController::play_track`]) using the field [`Context::midi`].
-pub struct Context<T: MidiConnection> {
+pub struct Context<T: MidiOut> {
     /// Field used to send MIDI Channel Messages.
     pub midi: MidiController<T>,
     pub(crate) clock: Clock,
@@ -94,7 +94,7 @@ pub struct Context<T: MidiConnection> {
     pause: bool,
 }
 
-impl<T: MidiConnection> Context<T> {
+impl<T: MidiOut> Context<T> {
     /// Set the BPM (Beats per minute) of the sequencer.
     pub fn set_bpm(&mut self, bpm: u8) {
         self.clock.set_bpm(bpm);
