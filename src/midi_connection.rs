@@ -40,27 +40,27 @@ const CC: u8 = 0xB0;
 /// This trait should not be implemented in the user code. The purpose of this trait is be able to reuse
 /// the same code with different midi API, using static dispatch.
 pub trait MidiOut {
-    #[doc(hidden)]
     fn send_start(&mut self) -> Result<(), MidiError>;
-    #[doc(hidden)]
     fn send_continue(&mut self) -> Result<(), MidiError>;
-    #[doc(hidden)]
     fn send_stop(&mut self) -> Result<(), MidiError>;
-    #[doc(hidden)]
     fn send_clock(&mut self) -> Result<(), MidiError>;
-    #[doc(hidden)]
     fn send_note_on(&mut self, channel_id: u8, note: u8, velocity: u8) -> Result<(), MidiError>;
-    #[doc(hidden)]
     fn send_note_off(&mut self, channel_id: u8, note: u8) -> Result<(), MidiError>;
-    #[doc(hidden)]
     fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) -> Result<(), MidiError>;
 }
 
-#[cfg(not(feature = "embedded"))]
-pub struct MidirConnection(midir::MidiOutputConnection);
+pub trait MidiIn<T: Send, U> {
+    fn connect<F>(callback: F, data: T, params: U) -> Result<Self, MidiError>
+    where
+        F: FnMut(&[u8], &mut T) + Send + 'static,
+        Self: Sized;
+}
 
 #[cfg(not(feature = "embedded"))]
-impl MidirConnection {
+pub struct MidirOut(midir::MidiOutputConnection);
+
+#[cfg(not(feature = "embedded"))]
+impl MidirOut {
     pub(crate) fn new(port: Option<u32>) -> Result<Self, MidiError> {
         let midi_out = MidiOutput::new("out")?;
         let out_ports = midi_out.ports();
@@ -101,7 +101,7 @@ impl MidirConnection {
 }
 
 #[cfg(not(feature = "embedded"))]
-impl MidiOut for MidirConnection {
+impl MidiOut for MidirOut {
     fn send_start(&mut self) -> Result<(), MidiError> {
         self.0.send(&[START])?;
         Ok(())
@@ -135,5 +135,34 @@ impl MidiOut for MidirConnection {
     fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) -> Result<(), MidiError> {
         self.0.send(&[CC | channel_id, parameter, value])?;
         Ok(())
+    }
+}
+
+#[cfg(not(feature = "embedded"))]
+pub struct MidirIn<V: 'static>(midir::MidiInputConnection<V>);
+
+#[cfg(not(feature = "embedded"))]
+impl<T: 'static + Send> MidiIn<T, midir::MidiInputPort> for MidirIn<T> {
+    fn connect<F>(mut callback: F, data: T, params: midir::MidiInputPort) -> Result<Self, MidiError>
+    where
+        F: FnMut(&[u8], &mut T) + Send + 'static,
+        Self: Sized,
+    {
+        //TODO: remove the unwrap and maybe add ignore as parameter
+        let mut midi_in = midir::MidiInput::new("in")?;
+        midi_in.ignore(midir::Ignore::None);
+
+        let conn_in = midi_in
+            .connect(
+                &params,
+                "midir-read-input",
+                move |_, message, data| {
+                    callback(message, data);
+                },
+                data,
+            )
+            .unwrap();
+
+        Ok(MidirIn(conn_in))
     }
 }

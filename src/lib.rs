@@ -49,7 +49,7 @@ pub use midi_connection::MidiOut;
 use midi_connection::MidiError;
 
 #[cfg(not(feature = "embedded"))]
-use midi_connection::MidirConnection;
+use midi_connection::MidirOut;
 
 pub use midi_controller::{MidiController, MidiNote};
 pub use note::Note;
@@ -160,7 +160,7 @@ impl<T: MidiOut> Context<T> {
 /// will be displayed and the output port will be asked to the user with a prompt.
 #[cfg(not(feature = "embedded"))]
 pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqError> {
-    let conn = MidirConnection::new(port)?;
+    let conn = MidirOut::new(port)?;
     let midi = MidiController::new(conn);
     let mut ctx = Context {
         midi,
