@@ -40,19 +40,46 @@ const CC: u8 = 0xB0;
 /// This trait should not be implemented in the user code. The purpose of this trait is be able to reuse
 /// the same code with different midi API, using static dispatch.
 pub trait MidiOut {
+    #[cfg(not(feature = "embedded"))]
+    #[doc(hidden)]
     fn send_start(&mut self) -> Result<(), MidiError>;
+    #[cfg(feature = "embedded")]
+    fn send_start(&mut self) -> Result<(), MidiError>;
+    #[cfg(not(feature = "embedded"))]
+    #[doc(hidden)]
     fn send_continue(&mut self) -> Result<(), MidiError>;
+    #[cfg(feature = "embedded")]
+    fn send_continue(&mut self) -> Result<(), MidiError>;
+    #[cfg(not(feature = "embedded"))]
+    #[doc(hidden)]
     fn send_stop(&mut self) -> Result<(), MidiError>;
+    #[cfg(feature = "embedded")]
+    fn send_stop(&mut self) -> Result<(), MidiError>;
+    #[cfg(not(feature = "embedded"))]
+    #[doc(hidden)]
     fn send_clock(&mut self) -> Result<(), MidiError>;
+    #[cfg(feature = "embedded")]
+    fn send_clock(&mut self) -> Result<(), MidiError>;
+    #[cfg(not(feature = "embedded"))]
+    #[doc(hidden)]
     fn send_note_on(&mut self, channel_id: u8, note: u8, velocity: u8) -> Result<(), MidiError>;
+    #[cfg(feature = "embedded")]
+    fn send_note_on(&mut self, channel_id: u8, note: u8, velocity: u8) -> Result<(), MidiError>;
+    #[cfg(not(feature = "embedded"))]
+    #[doc(hidden)]
     fn send_note_off(&mut self, channel_id: u8, note: u8) -> Result<(), MidiError>;
+    #[cfg(feature = "embedded")]
+    fn send_note_off(&mut self, channel_id: u8, note: u8) -> Result<(), MidiError>;
+    #[cfg(not(feature = "embedded"))]
+    #[doc(hidden)]
+    fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) -> Result<(), MidiError>;
+    #[cfg(feature = "embedded")]
     fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) -> Result<(), MidiError>;
 }
 
-pub trait MidiIn<T: Send, U> {
-    fn connect<F>(callback: F, data: T, params: U) -> Result<Self, MidiError>
+pub trait MidiIn<T: 'static, U, F: FnMut(&[u8], &mut T) + 'static> {
+    fn connect(callback: F, data: T, params: U) -> Result<Self, MidiError>
     where
-        F: FnMut(&[u8], &mut T) + Send + 'static,
         Self: Sized;
 }
 
@@ -142,10 +169,11 @@ impl MidiOut for MidirOut {
 pub struct MidirIn<V: 'static>(midir::MidiInputConnection<V>);
 
 #[cfg(not(feature = "embedded"))]
-impl<T: 'static + Send> MidiIn<T, midir::MidiInputPort> for MidirIn<T> {
-    fn connect<F>(mut callback: F, data: T, params: midir::MidiInputPort) -> Result<Self, MidiError>
+impl<T: 'static + Send, F: FnMut(&[u8], &mut T) + 'static + Send> MidiIn<T, midir::MidiInputPort, F>
+    for MidirIn<T>
+{
+    fn connect(mut callback: F, data: T, params: midir::MidiInputPort) -> Result<Self, MidiError>
     where
-        F: FnMut(&[u8], &mut T) + Send + 'static,
         Self: Sized,
     {
         //TODO: remove the unwrap and maybe add ignore as parameter
