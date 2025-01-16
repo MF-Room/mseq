@@ -1,4 +1,5 @@
-use midir::MidiOutput;
+use crate::Ignore;
+use midir::{MidiInput, MidiOutput};
 use promptly::ReadlineError;
 
 #[cfg(feature = "embedded")]
@@ -11,7 +12,9 @@ pub enum MidiError {
     #[error("Init error: {0}")]
     Init(#[from] midir::InitError),
     #[error("Connect error: {0}")]
-    Connect(#[from] midir::ConnectError<MidiOutput>),
+    OutConnect(#[from] midir::ConnectError<MidiOutput>),
+    #[error("Connect error: {0}")]
+    InConnect(#[from] midir::ConnectError<MidiInput>),
     #[error("Send error: {0}")]
     Send(#[from] midir::SendError),
     #[error("Read line [{}: {}]", file!(), line!())]
@@ -20,6 +23,8 @@ pub enum MidiError {
     PortNumber(),
     #[error("No midi output found")]
     NoOutput(),
+    #[error("No midi input found")]
+    NoInput(),
 }
 
 #[cfg(not(feature = "embedded"))]
@@ -166,31 +171,65 @@ impl MidiOut for MidirOut {
 }
 
 #[cfg(not(feature = "embedded"))]
-pub struct MidirIn<V: 'static>(midir::MidiInputConnection<V>);
+pub struct MidiReceiver<V: 'static + Send>(midir::MidiInputConnection<V>);
 
 #[cfg(not(feature = "embedded"))]
-impl<T: 'static + Send, F: FnMut(&[u8], &mut T) + 'static + Send> MidiIn<T, midir::MidiInputPort, F>
-    for MidirIn<T>
+pub struct MidiReceiverParam {
+    ignore: Ignore,
+    port: Option<u32>,
+}
+
+#[cfg(not(feature = "embedded"))]
+impl<T: 'static + Send, F: FnMut(&[u8], &mut T) + 'static + Send> MidiIn<T, MidiReceiverParam, F>
+    for MidiReceiver<T>
 {
-    fn connect(mut callback: F, data: T, params: midir::MidiInputPort) -> Result<Self, MidiError>
+    fn connect(mut callback: F, data: T, params: MidiReceiverParam) -> Result<Self, MidiError>
     where
         Self: Sized,
     {
-        //TODO: remove the unwrap and maybe add ignore as parameter
-        let mut midi_in = midir::MidiInput::new("in")?;
-        midi_in.ignore(midir::Ignore::None);
+        let mut midi_in = MidiInput::new("in")?;
+        midi_in.ignore(params.ignore);
+        let in_ports = midi_in.ports();
 
-        let conn_in = midi_in
-            .connect(
-                &params,
-                "midir-read-input",
-                move |_, message, data| {
-                    callback(message, data);
-                },
-                data,
-            )
-            .unwrap();
+        let in_port = if let Some(p) = params.port {
+            match in_ports.get(p as usize) {
+                None => return Err(MidiError::PortNumber()),
+                Some(x) => x,
+            }
+        } else {
+            match in_ports.len() {
+                0 => return Err(MidiError::NoInput()),
+                1 => {
+                    println!(
+                        "Choosing the only available intput port: {}",
+                        midi_in.port_name(&in_ports[0]).unwrap()
+                    );
+                    &in_ports[0]
+                }
+                _ => {
+                    println!("\nAvailable input ports:");
+                    for (i, p) in in_ports.iter().enumerate() {
+                        println!("{}: {}", i, midi_in.port_name(p).unwrap());
+                    }
 
-        Ok(MidirIn(conn_in))
+                    let port_number: usize = prompt_default("Select output port", 0)?;
+                    match in_ports.get(port_number) {
+                        None => return Err(MidiError::PortNumber()),
+                        Some(x) => x,
+                    }
+                }
+            }
+        };
+
+        let conn_in = midi_in.connect(
+            &in_port,
+            "midir-read-input",
+            move |_, message, data| {
+                callback(message, data);
+            },
+            data,
+        )?;
+
+        Ok(MidiReceiver(conn_in))
     }
 }

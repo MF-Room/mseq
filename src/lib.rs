@@ -44,7 +44,8 @@ pub use acid::{AcidTrig, Timing};
 pub use arp::ArpDiv;
 pub use conductor::Conductor;
 pub use div::ClockDiv;
-pub use midi_connection::MidiOut;
+pub use midi_connection::{MidiIn, MidiOut, MidiReceiver, MidiReceiverParam};
+pub use midir::Ignore;
 
 use midi_connection::MidiError;
 
