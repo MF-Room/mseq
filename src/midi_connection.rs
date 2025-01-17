@@ -82,12 +82,6 @@ pub trait MidiOut {
     fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) -> Result<(), MidiError>;
 }
 
-pub trait MidiIn<T: 'static, U, F: FnMut(&[u8], &mut T) + 'static> {
-    fn connect(callback: F, data: T, params: U) -> Result<Self, MidiError>
-    where
-        Self: Sized;
-}
-
 #[cfg(not(feature = "embedded"))]
 pub struct MidirOut(midir::MidiOutputConnection);
 
@@ -170,22 +164,31 @@ impl MidiOut for MidirOut {
     }
 }
 
+/// Struct used to handle the MIDI input. If [`MidiIn::connect`] succeed, an object of type MidiIn
+/// is returned.
 #[cfg(not(feature = "embedded"))]
-pub struct MidiReceiver<V: 'static + Send>(midir::MidiInputConnection<V>);
+#[allow(dead_code)]
+pub struct MidiIn<V: 'static + Send>(midir::MidiInputConnection<V>);
 
-#[cfg(not(feature = "embedded"))]
-pub struct MidiReceiverParam {
-    ignore: Ignore,
-    port: Option<u32>,
+/// Parameter of the MIDI input connection.
+pub struct MidiInParam {
+    /// An enum that is used to specify what kind of MIDI messages should be ignored when receiving messages.
+    pub ignore: Ignore,
+    /// MIDI port id used to receive the midi messages. If set to `None`, information about the MIDI ports
+    /// will be displayed and the input port will be asked to the user with a prompt.
+    pub port: Option<u32>,
 }
 
 #[cfg(not(feature = "embedded"))]
-impl<T: 'static + Send, F: FnMut(&[u8], &mut T) + 'static + Send> MidiIn<T, MidiReceiverParam, F>
-    for MidiReceiver<T>
-{
-    fn connect(mut callback: F, data: T, params: MidiReceiverParam) -> Result<Self, MidiError>
+impl<T: 'static + Send> MidiIn<T> {
+    /// Connect to a specified MIDI input port in order to receive messages.
+    /// For each (non ignored) incoming MIDI message, the provided callback function will be called.
+    ///
+    ///The connection will be kept open as long as the returned MidiInputConnection is kept alive.
+    pub fn connect<F>(mut callback: F, data: T, params: MidiInParam) -> Result<Self, MidiError>
     where
         Self: Sized,
+        F: FnMut(&[u8], &mut T) + 'static + Send,
     {
         let mut midi_in = MidiInput::new("in")?;
         midi_in.ignore(params.ignore);
@@ -230,6 +233,6 @@ impl<T: 'static + Send, F: FnMut(&[u8], &mut T) + 'static + Send> MidiIn<T, Midi
             data,
         )?;
 
-        Ok(MidiReceiver(conn_in))
+        Ok(MidiIn(conn_in))
     }
 }
