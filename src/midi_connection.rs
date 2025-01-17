@@ -225,7 +225,7 @@ impl<T: 'static + Send> MidiIn<T> {
         };
 
         let conn_in = midi_in.connect(
-            &in_port,
+            in_port,
             "midir-read-input",
             move |_, message, data| {
                 callback(message, data);
