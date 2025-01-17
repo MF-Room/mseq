@@ -183,6 +183,10 @@ pub struct MidiInParam {
 impl<T: 'static + Send> MidiIn<T> {
     /// Connect to a specified MIDI input port in order to receive messages.
     /// For each (non ignored) incoming MIDI message, the provided callback function will be called.
+    ///The first parameter contains the actual bytes of the MIDI message.
+    ///
+    ///Additional data that should be passed whenever the callback is invoked can be specified by data.
+    ///Use the empty tuple () if you do not want to pass any additional data.
     ///
     ///The connection will be kept open as long as the returned MidiInputConnection is kept alive.
     pub fn connect<F>(mut callback: F, data: T, params: MidiInParam) -> Result<Self, MidiError>
