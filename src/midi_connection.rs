@@ -170,7 +170,7 @@ impl MidiOut for MidirOut {
 #[allow(dead_code)]
 pub struct MidiIn<V: 'static + Send>(midir::MidiInputConnection<V>);
 
-/// Parameter of the MIDI input connection.
+/// MIDI input connection parameters.
 pub struct MidiInParam {
     /// An enum that is used to specify what kind of MIDI messages should be ignored when receiving messages.
     pub ignore: Ignore,
