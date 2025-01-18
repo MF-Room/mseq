@@ -43,7 +43,7 @@ const NOTE_OFF: u8 = 0x80;
 const CC: u8 = 0xB0;
 
 pub(crate) fn is_valid_channel(channel: u8) -> bool {
-    channel >= 1 && channel <= 16
+    (1..=16).contains(&channel)
 }
 
 /// This trait should not be implemented in the user code. The purpose of this trait is be able to reuse
@@ -153,17 +153,17 @@ impl MidiOut for MidirOut {
     }
 
     fn send_note_on(&mut self, channel_id: u8, note: u8, velocity: u8) -> Result<(), MidiError> {
-        self.0.send(&[NOTE_ON | channel_id - 1, note, velocity])?;
+        self.0.send(&[NOTE_ON | (channel_id - 1), note, velocity])?;
         Ok(())
     }
 
     fn send_note_off(&mut self, channel_id: u8, note: u8) -> Result<(), MidiError> {
-        self.0.send(&[NOTE_OFF | channel_id - 1, note, 0])?;
+        self.0.send(&[NOTE_OFF | (channel_id - 1), note, 0])?;
         Ok(())
     }
 
     fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) -> Result<(), MidiError> {
-        self.0.send(&[CC | channel_id - 1, parameter, value])?;
+        self.0.send(&[CC | (channel_id - 1), parameter, value])?;
         Ok(())
     }
 }
@@ -248,14 +248,24 @@ impl<T: 'static + Send> MidiIn<T> {
 /// Module that provides functions to handle midi input messages.
 pub mod midi_input_handler {
     use crate::midi_connection::*;
-    /// Test if the message is a CC message. To also test the channel provide a channel id otherwise
-    /// `None`;
-    pub fn is_cc(message: &[u8], channel: Option<u8>) -> bool {
-        !message.is_empty()
-            && if let Some(c) = channel {
-                is_valid_channel(c) && (message[0] & c - 1) == CC
+    /// Test if the message is a CC message. You can optionally test the `channel` or the `controller number`.
+    /// If `message` meets all the conditions, the function returns the `controller value`.
+    pub fn is_cc(message: &[u8], channel: Option<u8>, controller_number: Option<u8>) -> Option<u8> {
+        if (message.len() == 3)
+            && (if let Some(c) = channel {
+                is_valid_channel(c) && message[0] == CC & (c - 1)
             } else {
                 (message[0] & 0xf0) == CC
-            }
+            })
+            && (if let Some(cn) = controller_number {
+                cn == message[1]
+            } else {
+                true
+            })
+        {
+            Some(message[2])
+        } else {
+            None
+        }
     }
 }
