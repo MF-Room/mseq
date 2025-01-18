@@ -24,7 +24,7 @@ impl Conductor for MyConductor {
 fn main() {
     env_logger::init();
 
-    let track = DeteTrack::load_from_file("examples/res/track_0.mid", mseq::Note::A, 0, "my_track")
+    let track = DeteTrack::load_from_file("examples/res/track_0.mid", mseq::Note::A, 1, "my_track")
         .unwrap();
 
     if let Err(e) = mseq::run(

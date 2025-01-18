@@ -29,7 +29,7 @@ fn main() {
     let clk_div = DeteTrack::load_clock_div_from_file(
         "examples/res/clk_div_0.csv",
         MidiNote::new(Note::C, 4, 63),
-        0,
+        1,
         "my_clk_div",
     )
     .unwrap();

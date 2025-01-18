@@ -1,4 +1,4 @@
-use crate::midi_connection::MidiOut;
+use crate::midi_connection::{is_valid_channel, MidiOut};
 use crate::note::Note;
 use crate::Track;
 use log::error;
@@ -104,7 +104,7 @@ impl<T: MidiOut> MidiController<T> {
     /// Request the MIDI controller to play a note at the current MIDI step. Specify the length
     /// (`len`) of the note and the MIDI channel id (`channel_id`) on which to send the note.
     pub fn play_note(&mut self, midi_note: MidiNote, len: u32, channel_id: u8) {
-        if len == 0 {
+        if len == 0 && !is_valid_channel(channel_id) {
             return;
         }
 
@@ -120,6 +120,9 @@ impl<T: MidiOut> MidiController<T> {
     /// (`channel_id`). The note will not stop until [`MidiController::stop_note`] is called with
     /// the same note, ocatve and MIDI channel id.
     pub fn start_note(&mut self, midi_note: MidiNote, channel_id: u8) {
+        if !is_valid_channel(channel_id) {
+            return;
+        }
         let note_play = NotePlay {
             midi_note,
             channel_id,
@@ -132,6 +135,9 @@ impl<T: MidiOut> MidiController<T> {
     /// [`MidiController::start_note`]. The note will stop only if the note, ocatave and MIDI
     /// channel are identical to what was used in [`MidiController::start_note`].
     pub fn stop_note(&mut self, midi_note: MidiNote, channel_id: u8) {
+        if !is_valid_channel(channel_id) {
+            return;
+        }
         let note_play = NotePlay {
             midi_note,
             channel_id,
@@ -146,6 +152,9 @@ impl<T: MidiOut> MidiController<T> {
     /// Send MIDI Control Change (CC) message. You can use [`crate::param_value`] to convert a
     /// float into a integer.
     pub fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) {
+        if !is_valid_channel(channel_id) {
+            return;
+        }
         if let Err(e) = self.conn.send_cc(channel_id, parameter, value) {
             error!("MIDI: {e}");
         }
