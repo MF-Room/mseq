@@ -39,7 +39,6 @@ const STOP: u8 = 0xfc;
 const NOTE_ON: u8 = 0x90;
 #[cfg(not(feature = "embedded"))]
 const NOTE_OFF: u8 = 0x80;
-#[cfg(not(feature = "embedded"))]
 const CC: u8 = 0xB0;
 
 pub(crate) fn is_valid_channel(channel: u8) -> bool {
