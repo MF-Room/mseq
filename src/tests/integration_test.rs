@@ -188,3 +188,50 @@ fn dete_track_transpose() {
     };
     super::common::test_conductor(conductor, midi);
 }
+
+#[test]
+fn is_cc() {
+    let message = &[0xB4, 48, 64];
+    assert!(
+        if let Some(v) = crate::midi_input_handler::is_cc(message, Some(5), Some(48)) {
+            v == 64
+        } else {
+            false
+        }
+    );
+
+    for i in 1..=16 {
+        if i != 5 {
+            assert!(crate::midi_input_handler::is_cc(message, Some(i), Some(48)) == None);
+        }
+    }
+
+    for i in 0..=127 {
+        if i != 48 {
+            assert!(crate::midi_input_handler::is_cc(message, Some(5), Some(i)) == None);
+        }
+    }
+    assert!(
+        if let Some(v) = crate::midi_input_handler::is_cc(message, None, Some(48)) {
+            v == 64
+        } else {
+            false
+        }
+    );
+
+    assert!(
+        if let Some(v) = crate::midi_input_handler::is_cc(message, Some(5), None) {
+            v == 64
+        } else {
+            false
+        }
+    );
+
+    assert!(
+        if let Some(v) = crate::midi_input_handler::is_cc(message, None, None) {
+            v == 64
+        } else {
+            false
+        }
+    );
+}

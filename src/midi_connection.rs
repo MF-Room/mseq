@@ -253,7 +253,7 @@ pub mod midi_input_handler {
     pub fn is_cc(message: &[u8], channel: Option<u8>, controller_number: Option<u8>) -> Option<u8> {
         if (message.len() == 3)
             && (if let Some(c) = channel {
-                is_valid_channel(c) && message[0] == CC & (c - 1)
+                is_valid_channel(c) && message[0] == CC | (c - 1)
             } else {
                 (message[0] & 0xf0) == CC
             })
