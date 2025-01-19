@@ -186,7 +186,10 @@ pub trait MidiIn {
 /// is returned.
 #[cfg(not(feature = "embedded"))]
 #[allow(dead_code)]
-pub struct MidirIn<T: 'static>(midir::MidiInputConnection<Arc<Mutex<T>>>);
+pub struct MidirIn<T: 'static> {
+    connection: midir::MidiInputConnection<Arc<Mutex<T>>>,
+    data: Arc<Mutex<T>>,
+}
 
 /// MIDI input connection parameters.
 pub struct MidiInParam {
@@ -252,8 +255,11 @@ pub fn connect<T: MidiIn + Send>(handler: T, params: MidiInParam) -> Result<Midi
                 data.lock().unwrap().handle(m.0, &m.1);
             }
         },
-        data,
+        data.clone(),
     )?;
 
-    Ok(MidirIn(conn_in))
+    Ok(MidirIn {
+        connection: conn_in,
+        data,
+    })
 }
