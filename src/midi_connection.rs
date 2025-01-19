@@ -187,8 +187,8 @@ pub trait MidiIn {
 #[cfg(not(feature = "embedded"))]
 #[allow(dead_code)]
 pub struct MidirIn<T: 'static> {
-    connection: midir::MidiInputConnection<Arc<Mutex<T>>>,
-    data: Arc<Mutex<T>>,
+    pub connection: midir::MidiInputConnection<Arc<Mutex<T>>>,
+    pub data: Arc<Mutex<T>>,
 }
 
 /// MIDI input connection parameters.
