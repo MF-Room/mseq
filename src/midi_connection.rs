@@ -1,6 +1,8 @@
 use crate::Ignore;
 use midir::{MidiInput, MidiOutput};
+use midly::{live::LiveEvent, MidiMessage};
 use promptly::ReadlineError;
+#[cfg(not(feature = "embedded"))]
 use std::sync::{Arc, Mutex};
 
 #[cfg(feature = "embedded")]
@@ -167,19 +169,24 @@ impl MidiOut for MidirOut {
         Ok(())
     }
 }
-pub enum MidiMessage {
-    CC,
+
+fn parse(message: &[u8]) -> Option<(u8, MidiMessage)> {
+    if let Ok(LiveEvent::Midi { channel, message }) = LiveEvent::parse(message) {
+        Some((channel.as_int(), message))
+    } else {
+        None
+    }
 }
 
 pub trait MidiIn {
-    fn handle(&self, message: &MidiMessage);
+    fn handle(&self, channel: u8, message: &MidiMessage);
 }
 
 /// Struct used to handle the MIDI input. If [`MidiIn::connect`] succeed, an object of type MidiIn
 /// is returned.
 #[cfg(not(feature = "embedded"))]
 #[allow(dead_code)]
-pub struct MidirIn<T: 'static>(midir::MidiInputConnection<T>);
+pub struct MidirIn<T: 'static>(midir::MidiInputConnection<Arc<Mutex<T>>>);
 
 /// MIDI input connection parameters.
 pub struct MidiInParam {
@@ -190,68 +197,65 @@ pub struct MidiInParam {
     pub port: Option<u32>,
 }
 
+/// Connect to a specified MIDI input port in order to receive messages.
+/// For each (non ignored) incoming MIDI message, the provided callback function will be called.
+///The first parameter contains the actual bytes of the MIDI message.
+///
+///Additional data that should be passed whenever the callback is invoked can be specified by data.
+///Use the empty tuple () if you do not want to pass any additional data.
+///
+///The connection will be kept open as long as the returned MidiInputConnection is kept alive.
 #[cfg(not(feature = "embedded"))]
-impl<T: MidiIn + Send> MidirIn<Arc<Mutex<T>>> {
-    /// Connect to a specified MIDI input port in order to receive messages.
-    /// For each (non ignored) incoming MIDI message, the provided callback function will be called.
-    ///The first parameter contains the actual bytes of the MIDI message.
-    ///
-    ///Additional data that should be passed whenever the callback is invoked can be specified by data.
-    ///Use the empty tuple () if you do not want to pass any additional data.
-    ///
-    ///The connection will be kept open as long as the returned MidiInputConnection is kept alive.
-    pub fn connect(handler: T, params: MidiInParam) -> Result<Self, MidiError>
-    where
-        Self: Sized,
-    {
-        let mut midi_in = MidiInput::new("in")?;
-        midi_in.ignore(params.ignore);
-        let in_ports = midi_in.ports();
+pub fn connect<T: MidiIn + Send>(handler: T, params: MidiInParam) -> Result<MidirIn<T>, MidiError> {
+    let mut midi_in = MidiInput::new("in")?;
+    midi_in.ignore(params.ignore);
+    let in_ports = midi_in.ports();
 
-        let in_port = if let Some(p) = params.port {
-            match in_ports.get(p as usize) {
-                None => return Err(MidiError::PortNumber()),
-                Some(x) => x,
+    let in_port = if let Some(p) = params.port {
+        match in_ports.get(p as usize) {
+            None => return Err(MidiError::PortNumber()),
+            Some(x) => x,
+        }
+    } else {
+        match in_ports.len() {
+            0 => return Err(MidiError::NoInput()),
+            1 => {
+                println!(
+                    "Choosing the only available intput port: {}",
+                    midi_in.port_name(&in_ports[0]).unwrap()
+                );
+                &in_ports[0]
             }
-        } else {
-            match in_ports.len() {
-                0 => return Err(MidiError::NoInput()),
-                1 => {
-                    println!(
-                        "Choosing the only available intput port: {}",
-                        midi_in.port_name(&in_ports[0]).unwrap()
-                    );
-                    &in_ports[0]
+            _ => {
+                println!("\nAvailable input ports:");
+                for (i, p) in in_ports.iter().enumerate() {
+                    println!("{}: {}", i, midi_in.port_name(p).unwrap());
                 }
-                _ => {
-                    println!("\nAvailable input ports:");
-                    for (i, p) in in_ports.iter().enumerate() {
-                        println!("{}: {}", i, midi_in.port_name(p).unwrap());
-                    }
 
-                    let port_number: usize = prompt_default("Select output port", 0)?;
-                    match in_ports.get(port_number) {
-                        None => return Err(MidiError::PortNumber()),
-                        Some(x) => x,
-                    }
+                let port_number: usize = prompt_default("Select output port", 0)?;
+                match in_ports.get(port_number) {
+                    None => return Err(MidiError::PortNumber()),
+                    Some(x) => x,
                 }
             }
-        };
+        }
+    };
 
-        let data = Arc::new(Mutex::new(handler));
+    let data = Arc::new(Mutex::new(handler));
 
-        let conn_in = midi_in.connect(
-            in_port,
-            "midir-read-input",
-            move |_, message, data| {
-                //TODO transform message
-                let message = MidiMessage::CC;
-            },
-            data,
-        )?;
+    let conn_in = midi_in.connect(
+        in_port,
+        "midir-read-input",
+        move |_, message, data| {
+            let m = parse(message);
+            if let Some(m) = m {
+                data.lock().unwrap().handle(m.0, &m.1);
+            }
+        },
+        data,
+    )?;
 
-        Ok(MidirIn(conn_in))
-    }
+    Ok(MidirIn(conn_in))
 }
 
 /// Module that provides functions to handle midi input messages.
