@@ -1,6 +1,7 @@
 use crate::Ignore;
 use midir::{MidiInput, MidiOutput};
 use promptly::ReadlineError;
+use std::sync::{Arc, Mutex};
 
 #[cfg(feature = "embedded")]
 use crate::embedded_mod::*;
@@ -166,12 +167,19 @@ impl MidiOut for MidirOut {
         Ok(())
     }
 }
+pub enum MidiMessage {
+    CC,
+}
+
+pub trait MidiIn {
+    fn handle(&self, message: &MidiMessage);
+}
 
 /// Struct used to handle the MIDI input. If [`MidiIn::connect`] succeed, an object of type MidiIn
 /// is returned.
 #[cfg(not(feature = "embedded"))]
 #[allow(dead_code)]
-pub struct MidiIn<V: 'static + Send>(midir::MidiInputConnection<V>);
+pub struct MidirIn<T: 'static + Send>(midir::MidiInputConnection<T>);
 
 /// MIDI input connection parameters.
 pub struct MidiInParam {
@@ -183,7 +191,7 @@ pub struct MidiInParam {
 }
 
 #[cfg(not(feature = "embedded"))]
-impl<T: 'static + Send> MidiIn<T> {
+impl<T: 'static + Send> MidirIn<T> {
     /// Connect to a specified MIDI input port in order to receive messages.
     /// For each (non ignored) incoming MIDI message, the provided callback function will be called.
     ///The first parameter contains the actual bytes of the MIDI message.
@@ -192,10 +200,9 @@ impl<T: 'static + Send> MidiIn<T> {
     ///Use the empty tuple () if you do not want to pass any additional data.
     ///
     ///The connection will be kept open as long as the returned MidiInputConnection is kept alive.
-    pub fn connect<F>(mut callback: F, data: T, params: MidiInParam) -> Result<Self, MidiError>
+    pub fn connect(handler: impl MidiIn + Send, params: MidiInParam) -> Result<Self, MidiError>
     where
         Self: Sized,
-        F: FnMut(&[u8], &mut T) + 'static + Send,
     {
         let mut midi_in = MidiInput::new("in")?;
         midi_in.ignore(params.ignore);
@@ -231,16 +238,19 @@ impl<T: 'static + Send> MidiIn<T> {
             }
         };
 
+        let data = Arc::new(Mutex::new(handler));
+
         let conn_in = midi_in.connect(
             in_port,
             "midir-read-input",
             move |_, message, data| {
-                callback(message, data);
+                //TODO transform message
+                let message = MidiMessage::CC;
             },
             data,
         )?;
 
-        Ok(MidiIn(conn_in))
+        Ok(MidirIn(conn_in))
     }
 }
 

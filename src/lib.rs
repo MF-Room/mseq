@@ -44,7 +44,7 @@ pub use acid::{AcidTrig, Timing};
 pub use arp::ArpDiv;
 pub use conductor::Conductor;
 pub use div::ClockDiv;
-pub use midi_connection::{midi_input_handler, MidiOut};
+pub use midi_connection::{midi_input_handler, MidiIn, MidiMessage, MidiOut};
 pub use midir::Ignore;
 
 use midi_connection::MidiError;
@@ -53,7 +53,7 @@ use midi_connection::MidiError;
 use midi_connection::MidirOut;
 
 #[cfg(not(feature = "embedded"))]
-pub use midi_connection::{MidiIn, MidiInParam};
+pub use midi_connection::MidiInParam;
 
 pub use midi_controller::{MidiController, MidiNote};
 pub use note::Note;
