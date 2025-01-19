@@ -179,7 +179,7 @@ pub trait MidiIn {
 /// is returned.
 #[cfg(not(feature = "embedded"))]
 #[allow(dead_code)]
-pub struct MidirIn<T: 'static + Send>(midir::MidiInputConnection<T>);
+pub struct MidirIn<T: 'static>(midir::MidiInputConnection<T>);
 
 /// MIDI input connection parameters.
 pub struct MidiInParam {
@@ -191,7 +191,7 @@ pub struct MidiInParam {
 }
 
 #[cfg(not(feature = "embedded"))]
-impl<T: 'static + Send> MidirIn<T> {
+impl<T: MidiIn + Send> MidirIn<Arc<Mutex<T>>> {
     /// Connect to a specified MIDI input port in order to receive messages.
     /// For each (non ignored) incoming MIDI message, the provided callback function will be called.
     ///The first parameter contains the actual bytes of the MIDI message.
@@ -200,7 +200,7 @@ impl<T: 'static + Send> MidirIn<T> {
     ///Use the empty tuple () if you do not want to pass any additional data.
     ///
     ///The connection will be kept open as long as the returned MidiInputConnection is kept alive.
-    pub fn connect(handler: impl MidiIn + Send, params: MidiInParam) -> Result<Self, MidiError>
+    pub fn connect(handler: T, params: MidiInParam) -> Result<Self, MidiError>
     where
         Self: Sized,
     {
