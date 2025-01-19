@@ -257,28 +257,3 @@ pub fn connect<T: MidiIn + Send>(handler: T, params: MidiInParam) -> Result<Midi
 
     Ok(MidirIn(conn_in))
 }
-
-/// Module that provides functions to handle midi input messages.
-pub mod midi_input_handler {
-    use crate::midi_connection::*;
-    /// Test if the message is a CC message. You can optionally test the `channel` or the `controller number`.
-    /// If `message` meets all the conditions, the function returns the `controller value`.
-    pub fn is_cc(message: &[u8], channel: Option<u8>, controller_number: Option<u8>) -> Option<u8> {
-        if (message.len() == 3)
-            && (if let Some(c) = channel {
-                is_valid_channel(c) && message[0] == CC | (c - 1)
-            } else {
-                (message[0] & 0xf0) == CC
-            })
-            && (if let Some(cn) = controller_number {
-                cn == message[1]
-            } else {
-                true
-            })
-        {
-            Some(message[2])
-        } else {
-            None
-        }
-    }
-}
