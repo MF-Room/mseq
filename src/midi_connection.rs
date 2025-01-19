@@ -179,7 +179,7 @@ fn parse(message: &[u8]) -> Option<(u8, MidiMessage)> {
 }
 
 pub trait MidiIn {
-    fn handle(&self, channel: u8, message: &MidiMessage);
+    fn handle(&mut self, channel: u8, message: &MidiMessage);
 }
 
 /// Struct used to handle the MIDI input. If [`MidiIn::connect`] succeed, an object of type MidiIn
