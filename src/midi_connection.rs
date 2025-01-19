@@ -208,6 +208,7 @@ pub struct MidiInParam {
 ///Use the empty tuple () if you do not want to pass any additional data.
 ///
 ///The connection will be kept open as long as the returned MidiInputConnection is kept alive.
+/// TODO update doc
 #[cfg(not(feature = "embedded"))]
 pub fn connect<T: MidiIn + Send>(handler: T, params: MidiInParam) -> Result<MidirIn<T>, MidiError> {
     let mut midi_in = MidiInput::new("in")?;
