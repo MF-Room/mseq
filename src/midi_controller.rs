@@ -104,7 +104,7 @@ impl<T: MidiOut> MidiController<T> {
     /// Request the MIDI controller to play a note at the current MIDI step. Specify the length
     /// (`len`) of the note and the MIDI channel id (`channel_id`) on which to send the note.
     pub fn play_note(&mut self, midi_note: MidiNote, len: u32, channel_id: u8) {
-        if len == 0 && !is_valid_channel(channel_id) {
+        if len == 0 || !is_valid_channel(channel_id) {
             return;
         }
 
