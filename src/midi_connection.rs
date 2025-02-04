@@ -236,7 +236,7 @@ pub fn connect<T: MidiIn + Send>(handler: T, params: MidiInParam) -> Result<Midi
                     println!("{}: {}", i, midi_in.port_name(p).unwrap());
                 }
 
-                let port_number: usize = prompt_default("Select output port", 0)?;
+                let port_number: usize = prompt_default("Select input port", 0)?;
                 match in_ports.get(port_number) {
                     None => return Err(MidiError::PortNumber()),
                     Some(x) => x,
