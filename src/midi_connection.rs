@@ -253,7 +253,7 @@ pub fn connect<T: MidiIn + Send>(handler: T, params: MidiInParam) -> Result<Midi
         move |_, message, data| {
             let m = parse(message);
             if let Some(m) = m {
-                data.lock().unwrap().handle(m.0, &m.1);
+                data.lock().unwrap().handle(m.0 + 1, &m.1);
             }
         },
         data.clone(),
