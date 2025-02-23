@@ -4,7 +4,7 @@ use crate::{DeteTrack, MidiNote, Note};
 use {crate::MSeqError, std::path::Path};
 
 #[cfg(not(feature = "std"))]
-use crate::embedded_mod::*;
+use crate::no_std_mod::*;
 
 /// Time division of the arpeggiator
 #[derive(Default, Clone, Copy)]

@@ -11,7 +11,7 @@ use std::{
 const MAX_MIDI_CHANNEL: u8 = 16;
 
 #[cfg(not(feature = "std"))]
-use crate::embedded_mod::*;
+use crate::no_std_mod::*;
 
 /// Note that can be sent through a MIDI message.
 #[derive(Default, Clone, Copy, serde::Deserialize, PartialEq, Eq, Debug)]

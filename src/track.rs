@@ -4,7 +4,7 @@ use log::warn;
 use std::path::Path;
 
 #[cfg(not(feature = "std"))]
-use crate::embedded_mod::*;
+use crate::no_std_mod::*;
 #[cfg(feature = "std")]
 use {crate::MSeqError, log::debug, std::collections::HashMap, thiserror_no_std::Error};
 

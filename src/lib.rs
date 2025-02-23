@@ -30,7 +30,7 @@ mod tests;
 mod track;
 
 #[cfg(not(feature = "std"))]
-mod embedded_mod {
+mod no_std_mod {
     extern crate alloc;
     pub use alloc::{string::*, vec, vec::*};
     pub use core::hash;
@@ -66,7 +66,7 @@ pub use track::{DeteTrack, Track};
 use clock::Clock;
 
 #[cfg(not(feature = "std"))]
-use crate::embedded_mod::*;
+use crate::no_std_mod::*;
 use thiserror_no_std::Error;
 
 const DEFAULT_BPM: u8 = 120;

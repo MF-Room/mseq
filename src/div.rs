@@ -4,7 +4,7 @@ use crate::{DeteTrack, MidiNote};
 use {crate::MSeqError, std::path::Path};
 
 #[cfg(not(feature = "std"))]
-use crate::embedded_mod::*;
+use crate::no_std_mod::*;
 
 #[derive(Debug, serde::Deserialize)]
 /// Struct used in [`DeteTrack::new_clock_div`] to generate a track with a pattern based on

@@ -1,5 +1,5 @@
 #[cfg(not(feature = "std"))]
-use crate::embedded_mod::*;
+use crate::no_std_mod::*;
 #[cfg(feature = "std")]
 use std::{convert, fmt};
 
