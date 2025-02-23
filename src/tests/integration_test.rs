@@ -134,7 +134,7 @@ impl Conductor for DebugConductor3 {
                     .conn
                     .borrow()
                     .notes_on
-                    .contains_key(&(0, MidiNote::midi_value(&MidiNote::new(Note::C, 5, 89)))));
+                    .contains_key(&(1, MidiNote::midi_value(&MidiNote::new(Note::C, 5, 89)))));
             }
 
             if context.step == 25 {
@@ -142,7 +142,7 @@ impl Conductor for DebugConductor3 {
                     .conn
                     .borrow()
                     .notes_on
-                    .contains_key(&(0, MidiNote::midi_value(&MidiNote::new(Note::DS, 5, 89)))));
+                    .contains_key(&(1, MidiNote::midi_value(&MidiNote::new(Note::DS, 5, 89)))));
             }
 
             if context.step == 49 {
@@ -150,7 +150,7 @@ impl Conductor for DebugConductor3 {
                     .conn
                     .borrow()
                     .notes_on
-                    .contains_key(&(0, MidiNote::midi_value(&MidiNote::new(Note::G, 4, 89)))));
+                    .contains_key(&(1, MidiNote::midi_value(&MidiNote::new(Note::G, 4, 89)))));
             }
 
             if context.step == 73 {
@@ -158,7 +158,7 @@ impl Conductor for DebugConductor3 {
                     .conn
                     .borrow()
                     .notes_on
-                    .contains_key(&(0, MidiNote::midi_value(&MidiNote::new(Note::AS, 4, 89)))));
+                    .contains_key(&(1, MidiNote::midi_value(&MidiNote::new(Note::AS, 4, 89)))));
             }
 
             context.midi.play_track(&mut self.track);
@@ -182,7 +182,7 @@ fn dete_track_transpose() {
                 (MidiNote::new(Note::C, 5, 89), 24, 12),
             ],
             Note::A,
-            0,
+            1,
             "test_transpose",
         ),
     };
