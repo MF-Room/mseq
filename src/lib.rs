@@ -44,8 +44,11 @@ pub use acid::{AcidTrig, Timing};
 pub use arp::ArpDiv;
 pub use conductor::Conductor;
 pub use div::ClockDiv;
-pub use midi_connection::{MidiIn, MidiOut};
-pub use midir::Ignore;
+
+#[cfg(feature = "std")]
+pub use midi_connection::MidiIn;
+
+pub use midi_connection::MidiOut;
 
 use midi_connection::MidiError;
 pub use midly::MidiMessage;
@@ -74,6 +77,7 @@ pub enum MSeqError {
     /// Error type related to MIDI messages
     #[error("Midi error [{}: {}]", file!(), line!())]
     Midi(#[from] MidiError),
+    #[cfg(feature = "std")]
     /// Error type related to CSV file parsing
     #[error("Failed to parse csv file [{}: {}]\n\t{0}", file!(), line!())]
     Reading(#[from] csv::Error),

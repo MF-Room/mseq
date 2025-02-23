@@ -1,5 +1,8 @@
 #[cfg(feature = "std")]
-include!("./std_connection.rs");
+include!("./std_midi_connection.rs");
+
+#[cfg(not(feature = "std"))]
+include!("./no_std_midi_connection.rs");
 
 #[cfg(not(feature = "std"))]
 use crate::embedded_mod::*;
