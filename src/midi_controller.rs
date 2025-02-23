@@ -31,7 +31,7 @@ impl MidiNote {
     }
 
     /// Convert a MIDI note value into a [`MidiNote`].
-    pub(crate) fn from_midi_value(midi_value: u8, vel: u8) -> Self {
+    pub fn from_midi_value(midi_value: u8, vel: u8) -> Self {
         let octave = midi_value / 12;
         let note = Note::from(midi_value % 12);
         Self::new(note, octave, vel)
@@ -85,7 +85,7 @@ pub struct MidiController<T: MidiOut> {
 }
 
 impl<T: MidiOut> MidiController<T> {
-    pub(crate) fn new(conn: T) -> Self {
+    pub fn new(conn: T) -> Self {
         Self {
             step: 0,
             play_note_set: HashMap::new(),
@@ -160,26 +160,26 @@ impl<T: MidiOut> MidiController<T> {
         }
     }
 
-    pub(crate) fn send_clock(&mut self) {
+    pub fn send_clock(&mut self) {
         if let Err(e) = self.conn.send_clock() {
             error!("MIDI: {e}");
         }
     }
 
-    pub(crate) fn start(&mut self) {
+    pub fn start(&mut self) {
         self.step = 0;
         if let Err(e) = self.conn.send_start() {
             error!("MIDI: {e}");
         }
     }
 
-    pub(crate) fn send_continue(&mut self) {
+    pub fn send_continue(&mut self) {
         if let Err(e) = self.conn.send_continue() {
             error!("MIDI: {e}");
         }
     }
 
-    pub(crate) fn update(&mut self, next_step: u32) {
+    pub fn update(&mut self, next_step: u32) {
         // First send the off signal to every note that end this step.
         let notes = self.play_note_set.remove(&self.step);
         if let Some(notes_off) = notes {
@@ -209,7 +209,7 @@ impl<T: MidiOut> MidiController<T> {
         self.step = next_step;
     }
 
-    pub(crate) fn stop_all_notes(&mut self) {
+    pub fn stop_all_notes(&mut self) {
         self.start_note_set.iter().for_each(|n| {
             if let Err(e) = self
                 .conn
@@ -233,7 +233,7 @@ impl<T: MidiOut> MidiController<T> {
         self.play_note_set.clear();
     }
 
-    pub(crate) fn stop(&mut self) {
+    pub fn stop(&mut self) {
         if let Err(e) = self.conn.send_stop() {
             error!("MIDI: {e}");
         }
