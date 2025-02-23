@@ -16,7 +16,7 @@
 //! [`examples`]: https://github.com/MF-Room/mseq/tree/main/examples
 
 #![warn(missing_docs)]
-#![cfg_attr(feature = "embedded", no_std)]
+#![cfg_attr(not(feature = "std"), no_std)]
 
 mod acid;
 mod arp;
