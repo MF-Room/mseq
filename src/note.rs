@@ -4,7 +4,8 @@ use crate::no_std_mod::*;
 use std::{convert, fmt};
 
 /// Represents 1 note of the chromatic scale.
-#[derive(Debug, Default, Clone, PartialEq, Copy, serde::Deserialize, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Copy, Eq)]
+#[cfg_attr(feature = "std", derive(serde::Deserialize))]
 pub enum Note {
     #[default]
     /// C

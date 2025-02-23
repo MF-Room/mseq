@@ -6,7 +6,8 @@ use {crate::MSeqError, std::path::Path};
 #[cfg(not(feature = "std"))]
 use crate::no_std_mod::*;
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug)]
+#[cfg_attr(feature = "std", derive(serde::Deserialize))]
 /// Struct used in [`DeteTrack::new_clock_div`] to generate a track with a pattern based on
 /// clock divisions.
 pub struct ClockDiv {

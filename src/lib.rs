@@ -215,5 +215,5 @@ pub fn param_value(v: f32) -> u8 {
     if v > 1.0 {
         return 127;
     }
-    63 + (v * 63.0).round() as u8
+    63 + (v * 63.0) as u8
 }

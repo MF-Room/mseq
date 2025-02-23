@@ -14,7 +14,8 @@ const MAX_MIDI_CHANNEL: u8 = 16;
 use crate::no_std_mod::*;
 
 /// Note that can be sent through a MIDI message.
-#[derive(Default, Clone, Copy, serde::Deserialize, PartialEq, Eq, Debug)]
+#[derive(Default, Clone, Copy, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "std", derive(serde::Deserialize))]
 pub struct MidiNote {
     /// The chromatic note (A to G)
     pub note: Note,

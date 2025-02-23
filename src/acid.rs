@@ -6,8 +6,8 @@ use {crate::MSeqError, std::path::Path};
 #[cfg(not(feature = "std"))]
 use crate::no_std_mod::*;
 
-#[derive(Default, Clone, Copy, Debug, serde::Deserialize)]
-
+#[derive(Default, Clone, Copy, Debug)]
+#[cfg_attr(feature = "std", derive(serde::Deserialize))]
 /// Timing mostly used in [`AcidTrig`] to generate acid tracks.
 pub enum Timing {
     /// Play a note.
@@ -22,9 +22,10 @@ pub enum Timing {
 /// modifications.
 ///
 /// [`Roland TB-303`]: https://en.wikipedia.org/wiki/Roland_TB-303
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug)]
+#[cfg_attr(feature = "std", derive(serde::Deserialize))]
 pub struct AcidTrig {
-    #[serde(flatten)]
+    #[cfg_attr(feature = "std", serde(flatten))]
     /// Pitch and Velocity
     pub midi_note: MidiNote,
     /// Slide enable
