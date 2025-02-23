@@ -2,7 +2,7 @@ use crate::midi_connection::{is_valid_channel, MidiOut};
 use crate::note::Note;
 use crate::Track;
 use log::error;
-#[cfg(not(feature = "embedded"))]
+#[cfg(feature = "std")]
 use std::{
     collections::{HashMap, HashSet},
     hash,
@@ -10,7 +10,7 @@ use std::{
 
 const MAX_MIDI_CHANNEL: u8 = 16;
 
-#[cfg(feature = "embedded")]
+#[cfg(not(feature = "std"))]
 use crate::embedded_mod::*;
 
 /// Note that can be sent through a MIDI message.

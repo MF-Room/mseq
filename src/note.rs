@@ -1,6 +1,6 @@
-#[cfg(feature = "embedded")]
+#[cfg(not(feature = "std"))]
 use crate::embedded_mod::*;
-#[cfg(not(feature = "embedded"))]
+#[cfg(feature = "std")]
 use std::{convert, fmt};
 
 /// Represents 1 note of the chromatic scale.

@@ -1,14 +1,14 @@
-#[cfg(not(feature = "embedded"))]
+#[cfg(feature = "std")]
 use std::time::{Duration, Instant};
 
 pub(crate) struct Clock {
     period_us: u64,
-    #[cfg(not(feature = "embedded"))]
+    #[cfg(feature = "std")]
     next_clock_timestamp: Instant,
     bpm: u8,
 }
 
-#[cfg(not(feature = "embedded"))]
+#[cfg(feature = "std")]
 impl Clock {
     pub(crate) fn new(bpm: u8) -> Self {
         Self {
@@ -36,7 +36,7 @@ impl Clock {
     }
 }
 
-#[cfg(feature = "embedded")]
+#[cfg(not(feature = "std"))]
 impl Clock {
     pub(crate) fn new(bpm: u8) -> Self {
         Self {

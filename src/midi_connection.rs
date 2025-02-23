@@ -2,13 +2,13 @@ use crate::Ignore;
 use midir::{MidiInput, MidiOutput};
 use midly::{live::LiveEvent, MidiMessage};
 use promptly::ReadlineError;
-#[cfg(not(feature = "embedded"))]
+#[cfg(feature = "std")]
 use std::sync::{Arc, Mutex};
 
-#[cfg(feature = "embedded")]
+#[cfg(not(feature = "std"))]
 use crate::embedded_mod::*;
-#[cfg(not(feature = "embedded"))]
-use {promptly::prompt_default, thiserror::Error};
+#[cfg(feature = "std")]
+use {promptly::prompt_default, thiserror_no_std::Error};
 
 #[derive(Error, Debug)]
 pub enum MidiError {
@@ -30,17 +30,17 @@ pub enum MidiError {
     NoInput(),
 }
 
-#[cfg(not(feature = "embedded"))]
+#[cfg(feature = "std")]
 const CLOCK: u8 = 0xf8;
-#[cfg(not(feature = "embedded"))]
+#[cfg(feature = "std")]
 const START: u8 = 0xfa;
-#[cfg(not(feature = "embedded"))]
+#[cfg(feature = "std")]
 const CONTINUE: u8 = 0xfb;
-#[cfg(not(feature = "embedded"))]
+#[cfg(feature = "std")]
 const STOP: u8 = 0xfc;
-#[cfg(not(feature = "embedded"))]
+#[cfg(feature = "std")]
 const NOTE_ON: u8 = 0x90;
-#[cfg(not(feature = "embedded"))]
+#[cfg(feature = "std")]
 const NOTE_OFF: u8 = 0x80;
 const CC: u8 = 0xB0;
 
@@ -51,47 +51,47 @@ pub(crate) fn is_valid_channel(channel: u8) -> bool {
 /// This trait should not be implemented in the user code. The purpose of this trait is be able to reuse
 /// the same code with different midi API, using static dispatch.
 pub trait MidiOut {
-    #[cfg(not(feature = "embedded"))]
+    #[cfg(feature = "std")]
     #[doc(hidden)]
     fn send_start(&mut self) -> Result<(), MidiError>;
-    #[cfg(feature = "embedded")]
+    #[cfg(not(feature = "std"))]
     fn send_start(&mut self) -> Result<(), MidiError>;
-    #[cfg(not(feature = "embedded"))]
+    #[cfg(feature = "std")]
     #[doc(hidden)]
     fn send_continue(&mut self) -> Result<(), MidiError>;
-    #[cfg(feature = "embedded")]
+    #[cfg(not(feature = "std"))]
     fn send_continue(&mut self) -> Result<(), MidiError>;
-    #[cfg(not(feature = "embedded"))]
+    #[cfg(feature = "std")]
     #[doc(hidden)]
     fn send_stop(&mut self) -> Result<(), MidiError>;
-    #[cfg(feature = "embedded")]
+    #[cfg(not(feature = "std"))]
     fn send_stop(&mut self) -> Result<(), MidiError>;
-    #[cfg(not(feature = "embedded"))]
+    #[cfg(feature = "std")]
     #[doc(hidden)]
     fn send_clock(&mut self) -> Result<(), MidiError>;
-    #[cfg(feature = "embedded")]
+    #[cfg(not(feature = "std"))]
     fn send_clock(&mut self) -> Result<(), MidiError>;
-    #[cfg(not(feature = "embedded"))]
+    #[cfg(feature = "std")]
     #[doc(hidden)]
     fn send_note_on(&mut self, channel_id: u8, note: u8, velocity: u8) -> Result<(), MidiError>;
-    #[cfg(feature = "embedded")]
+    #[cfg(not(feature = "std"))]
     fn send_note_on(&mut self, channel_id: u8, note: u8, velocity: u8) -> Result<(), MidiError>;
-    #[cfg(not(feature = "embedded"))]
+    #[cfg(feature = "std")]
     #[doc(hidden)]
     fn send_note_off(&mut self, channel_id: u8, note: u8) -> Result<(), MidiError>;
-    #[cfg(feature = "embedded")]
+    #[cfg(not(feature = "std"))]
     fn send_note_off(&mut self, channel_id: u8, note: u8) -> Result<(), MidiError>;
-    #[cfg(not(feature = "embedded"))]
+    #[cfg(feature = "std")]
     #[doc(hidden)]
     fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) -> Result<(), MidiError>;
-    #[cfg(feature = "embedded")]
+    #[cfg(not(feature = "std"))]
     fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) -> Result<(), MidiError>;
 }
 
-#[cfg(not(feature = "embedded"))]
+#[cfg(feature = "std")]
 pub struct MidirOut(midir::MidiOutputConnection);
 
-#[cfg(not(feature = "embedded"))]
+#[cfg(feature = "std")]
 impl MidirOut {
     pub(crate) fn new(port: Option<u32>) -> Result<Self, MidiError> {
         let midi_out = MidiOutput::new("out")?;
@@ -132,7 +132,7 @@ impl MidirOut {
     }
 }
 
-#[cfg(not(feature = "embedded"))]
+#[cfg(feature = "std")]
 impl MidiOut for MidirOut {
     fn send_start(&mut self) -> Result<(), MidiError> {
         self.0.send(&[START])?;
@@ -184,7 +184,7 @@ pub trait MidiIn {
 
 /// Struct used to handle the MIDI input. If [`MidiIn::connect`] succeed, an object of type MidiIn
 /// is returned.
-#[cfg(not(feature = "embedded"))]
+#[cfg(feature = "std")]
 #[allow(dead_code)]
 pub struct MidirIn<T: 'static> {
     pub connection: midir::MidiInputConnection<Arc<Mutex<T>>>,
@@ -209,7 +209,7 @@ pub struct MidiInParam {
 ///
 ///The connection will be kept open as long as the returned MidiInputConnection is kept alive.
 /// TODO update doc
-#[cfg(not(feature = "embedded"))]
+#[cfg(feature = "std")]
 pub fn connect<T: MidiIn + Send>(handler: T, params: MidiInParam) -> Result<MidirIn<T>, MidiError> {
     let mut midi_in = MidiInput::new("in")?;
     midi_in.ignore(params.ignore);

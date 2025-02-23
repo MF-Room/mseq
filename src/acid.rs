@@ -1,9 +1,9 @@
 use crate::{DeteTrack, MidiNote, Note};
 
-#[cfg(not(feature = "embedded"))]
+#[cfg(feature = "std")]
 use {crate::MSeqError, std::path::Path};
 
-#[cfg(feature = "embedded")]
+#[cfg(not(feature = "std"))]
 use crate::embedded_mod::*;
 
 #[derive(Default, Clone, Copy, Debug, serde::Deserialize)]
@@ -107,7 +107,7 @@ impl DeteTrack {
     /// channel with `channel_id`.
     ///
     /// [`example`]: https://github.com/MF-Room/mseq/tree/main/examples/res/acid_0.csv
-    #[cfg(not(feature = "embedded"))]
+    #[cfg(feature = "std")]
     pub fn load_acid_from_file<P: AsRef<Path>>(
         filename: P,
         root: Note,

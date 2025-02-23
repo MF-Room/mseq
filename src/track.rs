@@ -1,19 +1,19 @@
 use log::warn;
 
-#[cfg(not(feature = "embedded"))]
+#[cfg(feature = "std")]
 use std::path::Path;
 
-#[cfg(feature = "embedded")]
+#[cfg(not(feature = "std"))]
 use crate::embedded_mod::*;
-#[cfg(not(feature = "embedded"))]
-use {crate::MSeqError, log::debug, std::collections::HashMap, thiserror::Error};
+#[cfg(feature = "std")]
+use {crate::MSeqError, log::debug, std::collections::HashMap, thiserror_no_std::Error};
 
 use crate::{midi_controller::MidiController, note::Note};
 use crate::{MidiNote, MidiOut};
 
 #[derive(Error, Debug)]
 pub enum TrackError {
-    #[cfg(not(feature = "embedded"))]
+    #[cfg(feature = "std")]
     #[error("Failed to read midi file: {0}")]
     Io(#[from] std::io::Error),
     #[error("Midly error: {0}")]
@@ -125,7 +125,7 @@ impl DeteTrack {
     /// Load an acid track from a midi file. Refer to `examples/midi_track.rs` for an example usage.
     /// Provide the root note of the track to allow for transposition. channel_id is the midi
     /// channel where this track will be played when passed to the MidiController.
-    #[cfg(not(feature = "embedded"))]
+    #[cfg(feature = "std")]
     pub fn load_from_file<P: AsRef<Path>>(
         filename: P,
         root: Note,

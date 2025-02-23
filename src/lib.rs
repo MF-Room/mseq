@@ -29,7 +29,7 @@ mod note;
 mod tests;
 mod track;
 
-#[cfg(feature = "embedded")]
+#[cfg(not(feature = "std"))]
 mod embedded_mod {
     extern crate alloc;
     pub use alloc::{string::*, vec, vec::*};
@@ -50,10 +50,10 @@ pub use midir::Ignore;
 use midi_connection::MidiError;
 pub use midly::MidiMessage;
 
-#[cfg(not(feature = "embedded"))]
+#[cfg(feature = "std")]
 use midi_connection::MidirOut;
 
-#[cfg(not(feature = "embedded"))]
+#[cfg(feature = "std")]
 pub use {midi_connection::connect, midi_connection::MidiInParam};
 
 pub use midi_controller::{MidiController, MidiNote};
@@ -62,10 +62,9 @@ pub use track::{DeteTrack, Track};
 
 use clock::Clock;
 
-#[cfg(feature = "embedded")]
+#[cfg(not(feature = "std"))]
 use crate::embedded_mod::*;
-#[cfg(not(feature = "embedded"))]
-use thiserror::Error;
+use thiserror_no_std::Error;
 
 const DEFAULT_BPM: u8 = 120;
 
@@ -163,7 +162,7 @@ impl<T: MidiOut> Context<T> {
 /// `mseq` entry point. Run the sequencer by providing a conductor implementation. `port` is the
 /// MIDI port id used to send the midi messages. If set to `None`, information about the MIDI ports
 /// will be displayed and the output port will be asked to the user with a prompt.
-#[cfg(not(feature = "embedded"))]
+#[cfg(feature = "std")]
 pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqError> {
     let conn = MidirOut::new(port)?;
     let midi = MidiController::new(conn);
@@ -185,7 +184,7 @@ pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqE
 /// `mseq` entry point. Run the sequencer by providing a conductor implementation. `port` is the
 /// MIDI port id used to send the midi messages. If set to `None`, information about the MIDI ports
 /// will be displayed and the output port will be asked to the user with a prompt.
-#[cfg(feature = "embedded")]
+#[cfg(not(feature = "std"))]
 pub fn run(mut conductor: impl Conductor) -> Result<(), MSeqError> {
     /*
     let midi = MidiController::new(conn);

@@ -1,9 +1,9 @@
 use crate::{DeteTrack, MidiNote};
 
-#[cfg(not(feature = "embedded"))]
+#[cfg(feature = "std")]
 use {crate::MSeqError, std::path::Path};
 
-#[cfg(feature = "embedded")]
+#[cfg(not(feature = "std"))]
 use crate::embedded_mod::*;
 
 #[derive(Debug, serde::Deserialize)]
@@ -42,7 +42,7 @@ impl DeteTrack {
     /// example file.
     ///
     /// [`example`]: https://github.com/MF-Room/mseq/tree/main/examples/res/clk_div_0.csv
-    #[cfg(not(feature = "embedded"))]
+    #[cfg(feature = "std")]
     pub fn load_clock_div_from_file<P: AsRef<Path>>(
         filename: P,
         note: MidiNote,

@@ -1,9 +1,9 @@
 use crate::{DeteTrack, MidiNote, Note};
 
-#[cfg(not(feature = "embedded"))]
+#[cfg(feature = "std")]
 use {crate::MSeqError, std::path::Path};
 
-#[cfg(feature = "embedded")]
+#[cfg(not(feature = "std"))]
 use crate::embedded_mod::*;
 
 /// Time division of the arpeggiator
@@ -49,7 +49,7 @@ impl DeteTrack {
     /// will be played on the MIDI channel with `channel_id`.
     ///
     /// [`example`]: https://github.com/MF-Room/mseq/tree/main/examples/res/arp_0.csv
-    #[cfg(not(feature = "embedded"))]
+    #[cfg(feature = "std")]
     pub fn load_arp_from_file<P: AsRef<Path>>(
         filename: P,
         div: ArpDiv,
