@@ -117,15 +117,12 @@ impl Note {
     /// Number of semitones required to transpose from root to note. The results range from 6 to -5
     /// to minimize pitch difference with the original note.
     pub fn transpose(root: Note, note: Note) -> i8 {
-        println!("root: {:?} note: {:?}", root, note);
         let root_m: u8 = root.into();
         let note_m: u8 = note.into();
         let n = (note_m as i8 - root_m as i8).rem_euclid(12);
         if n > 6 {
-            println!("{:?}", n - 12);
             n - 12
         } else {
-            println!("new: {:?}", n);
             n
         }
     }
