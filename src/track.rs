@@ -1,15 +1,14 @@
 use log::warn;
 
-#[cfg(feature = "std")]
-use std::path::Path;
-
 #[cfg(not(feature = "std"))]
 use crate::no_std_mod::*;
+
 #[cfg(feature = "std")]
-use {crate::MSeqError, log::debug, std::collections::HashMap, thiserror_no_std::Error};
+use {crate::MSeqError, log::debug, std::collections::HashMap, std::path::Path};
 
 use crate::{midi_controller::MidiController, note::Note};
 use crate::{MidiNote, MidiOut};
+use thiserror_no_std::Error;
 
 #[derive(Error, Debug)]
 pub enum TrackError {

@@ -36,7 +36,6 @@ mod no_std_mod {
     pub use core::hash;
     pub use core::{convert, fmt};
     pub use hashbrown::{HashMap, HashSet};
-    pub use thiserror_no_std::Error;
 }
 
 // Interface
@@ -65,8 +64,6 @@ pub use track::{DeteTrack, Track};
 
 use clock::Clock;
 
-#[cfg(not(feature = "std"))]
-use crate::no_std_mod::*;
 use thiserror_no_std::Error;
 
 const DEFAULT_BPM: u8 = 120;
