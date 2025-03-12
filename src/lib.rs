@@ -45,11 +45,11 @@ pub use conductor::Conductor;
 pub use div::ClockDiv;
 
 #[cfg(feature = "std")]
-pub use midi_connection::MidiIn;
+pub use {midi_connection::MidiIn, midir::Ignore};
 
+pub use midi_connection::MidiError;
 pub use midi_connection::MidiOut;
 
-use midi_connection::MidiError;
 pub use midly::MidiMessage;
 
 #[cfg(feature = "std")]
