@@ -45,9 +45,10 @@ pub use conductor::Conductor;
 pub use div::ClockDiv;
 
 #[cfg(feature = "std")]
+pub use midi_connection::MidiError;
+#[cfg(feature = "std")]
 pub use {midi_connection::MidiIn, midir::Ignore};
 
-pub use midi_connection::MidiError;
 pub use midi_connection::MidiOut;
 
 pub use midly::MidiMessage;
@@ -69,12 +70,12 @@ use thiserror_no_std::Error;
 const DEFAULT_BPM: u8 = 120;
 
 /// Error type of mseq
+#[cfg(feature = "std")]
 #[derive(Error, Debug)]
 pub enum MSeqError {
     /// Error type related to MIDI messages
     #[error("Midi error [{}: {}]", file!(), line!())]
     Midi(#[from] MidiError),
-    #[cfg(feature = "std")]
     /// Error type related to CSV file parsing
     #[error("Failed to parse csv file [{}: {}]\n\t{0}", file!(), line!())]
     Reading(#[from] csv::Error),
@@ -148,10 +149,14 @@ impl<T: MidiOut> Context<T> {
         self.process_post_run();
     }
 
+    /// MIDI logic called before the clock tick.
+    /// The user doesn't need to call this function.
     pub fn process_pre_tick(&mut self, conductor: &mut impl Conductor) {
         conductor.update(self);
     }
 
+    /// MIDI logic called after the clock tick.
+    /// The user doesn't need to call this function.
     pub fn process_post_tick(&mut self) {
         self.midi.send_clock();
         if !self.on_pause {
@@ -163,6 +168,8 @@ impl<T: MidiOut> Context<T> {
         }
     }
 
+    /// MIDI logic called at the the end of the program.
+    /// The user doesn't need to call this function.
     pub fn process_post_run(&mut self) {
         self.midi.stop_all_notes();
         self.clock.tick();

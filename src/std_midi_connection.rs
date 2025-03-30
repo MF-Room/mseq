@@ -75,6 +75,7 @@ impl MidirOut {
 }
 
 impl MidiOut for MidirOut {
+    type Error = MidiError;
     fn send_start(&mut self) -> Result<(), MidiError> {
         self.0.send(&[START])?;
         Ok(())
