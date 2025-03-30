@@ -65,7 +65,7 @@ pub use track::{DeteTrack, Track};
 
 use clock::Clock;
 
-use thiserror_no_std::Error;
+use thiserror::Error;
 
 const DEFAULT_BPM: u8 = 120;
 
@@ -77,10 +77,10 @@ pub enum MSeqError {
     #[error("Midi error [{}: {}]", file!(), line!())]
     Midi(#[from] MidiError),
     /// Error type related to CSV file parsing
-    #[error("Failed to parse csv file [{}: {}]\n\t{0}", file!(), line!())]
+    #[error("Failed to parse csv file [{f}: {l}]\n\t{0}", f=file!(), l=line!())]
     Reading(#[from] csv::Error),
     /// Error type related to MIDI file parsing
-    #[error("Failed to parse midi file [{}: {}]\n\t{0}", file!(), line!())]
+    #[error("Failed to parse midi file [{f}: {l}]\n\t{0}", f=file!(), l=line!())]
     Track(#[from] track::TrackError),
 }
 

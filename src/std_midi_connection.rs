@@ -2,7 +2,7 @@ use midir::{Ignore, MidiInput, MidiOutput};
 use midly::{live::LiveEvent, MidiMessage};
 use promptly::{prompt_default, ReadlineError};
 use std::sync::{Arc, Mutex};
-use thiserror_no_std::Error;
+use thiserror::Error;
 
 const CLOCK: u8 = 0xf8;
 const START: u8 = 0xfa;

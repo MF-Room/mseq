@@ -8,13 +8,14 @@ use {crate::MSeqError, log::debug, std::collections::HashMap, std::path::Path};
 
 use crate::{midi_controller::MidiController, note::Note};
 use crate::{MidiNote, MidiOut};
-use thiserror_no_std::Error;
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum TrackError {
     #[cfg(feature = "std")]
     #[error("Failed to read midi file: {0}")]
     Io(#[from] std::io::Error),
+    #[cfg(feature = "std")]
     #[error("Midly error: {0}")]
     Midly(#[from] midly::Error),
     #[error("Cannot play the same note before it ends")]

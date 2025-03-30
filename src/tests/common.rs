@@ -25,6 +25,7 @@ impl DebugMidiOut {
     }
 }
 impl MidiOut for DebugMidiOut {
+    type Error = MidiError;
     fn send_start(&mut self) -> Result<(), MidiError> {
         self.print_elapsed("Start");
         Ok(())
