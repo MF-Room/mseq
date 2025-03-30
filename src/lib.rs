@@ -141,19 +141,29 @@ impl<T: MidiOut> Context<T> {
 
     fn run(&mut self, mut conductor: impl Conductor) {
         while self.running {
-            conductor.update(self);
-
+            self.process_pre_tick(&mut conductor);
             self.clock.tick();
-            self.midi.send_clock();
-
-            if !self.on_pause {
-                self.step += 1;
-                self.midi.update(self.step);
-            } else if self.pause {
-                self.midi.stop();
-                self.pause = false;
-            }
+            self.process_post_tick();
         }
+        self.process_post_run();
+    }
+
+    pub fn process_pre_tick(&mut self, conductor: &mut impl Conductor) {
+        conductor.update(self);
+    }
+
+    pub fn process_post_tick(&mut self) {
+        self.midi.send_clock();
+        if !self.on_pause {
+            self.step += 1;
+            self.midi.update(self.step);
+        } else if self.pause {
+            self.midi.stop();
+            self.pause = false;
+        }
+    }
+
+    pub fn process_post_run(&mut self) {
         self.midi.stop_all_notes();
         self.clock.tick();
         self.midi.stop();
@@ -178,29 +188,6 @@ pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqE
 
     conductor.init(&mut ctx);
     ctx.run(conductor);
-
-    Ok(())
-}
-
-/// `mseq` entry point. Run the sequencer by providing a conductor implementation. `port` is the
-/// MIDI port id used to send the midi messages. If set to `None`, information about the MIDI ports
-/// will be displayed and the output port will be asked to the user with a prompt.
-#[cfg(not(feature = "std"))]
-pub fn run(mut conductor: impl Conductor) -> Result<(), MSeqError> {
-    /*
-    let midi = MidiController::new(conn);
-    let mut ctx = Context {
-        midi,
-        clock: Clock::new(DEFAULT_BPM),
-        step: 0,
-        running: true,
-        on_pause: true,
-        pause: false,
-    };
-
-    conductor.init(&mut ctx);
-    ctx.run(conductor);
-    */
 
     Ok(())
 }
