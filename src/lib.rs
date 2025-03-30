@@ -23,51 +23,31 @@ mod arp;
 mod clock;
 mod conductor;
 mod div;
-mod midi_connection;
 mod midi_controller;
+mod midi_out;
 mod note;
 mod tests;
 mod track;
-
-#[cfg(not(feature = "std"))]
-mod no_std_mod {
-    extern crate alloc;
-    pub use alloc::{string::*, vec, vec::*};
-    pub use core::hash;
-    pub use core::{convert, fmt};
-    pub use hashbrown::{HashMap, HashSet};
-}
 
 // Interface
 pub use acid::{AcidTrig, Timing};
 pub use arp::ArpDiv;
 pub use conductor::Conductor;
 pub use div::ClockDiv;
-
-#[cfg(feature = "std")]
-pub use midi_connection::MidiError;
-#[cfg(feature = "std")]
-pub use {midi_connection::MidiIn, midir::Ignore};
-
-pub use midi_connection::MidiOut;
-
-pub use midly::MidiMessage;
-
-#[cfg(feature = "std")]
-use midi_connection::MidirOut;
-
-#[cfg(feature = "std")]
-pub use {midi_connection::connect, midi_connection::MidiInParam};
-
 pub use midi_controller::{MidiController, MidiNote};
+pub use midi_out::MidiOut;
+pub use midly::MidiMessage;
 pub use note::Note;
 pub use track::{DeteTrack, Track};
 
-use clock::Clock;
-
-use thiserror::Error;
-
-const DEFAULT_BPM: u8 = 120;
+#[cfg(feature = "std")]
+mod std_midi_connection;
+#[cfg(feature = "std")]
+pub use midir::Ignore;
+#[cfg(feature = "std")]
+use std_midi_connection::MidirOut;
+#[cfg(feature = "std")]
+pub use std_midi_connection::{connect, MidiError, MidiIn, MidiInParam};
 
 /// Error type of mseq
 #[cfg(feature = "std")]
@@ -83,6 +63,20 @@ pub enum MSeqError {
     #[error("Failed to parse midi file [{f}: {l}]\n\t{0}", f=file!(), l=line!())]
     Track(#[from] track::TrackError),
 }
+
+#[cfg(not(feature = "std"))]
+mod no_std_mod {
+    extern crate alloc;
+    pub use alloc::{string::*, vec, vec::*};
+    pub use core::hash;
+    pub use core::{convert, fmt};
+    pub use hashbrown::{HashMap, HashSet};
+}
+
+use clock::Clock;
+use thiserror::Error;
+
+const DEFAULT_BPM: u8 = 120;
 
 /// An object of type [`Context`] is passed to the user [`Conductor`] at each clock tick through the
 /// method [`Conductor::update`]. This structure provides the user with a friendly MIDI interface.

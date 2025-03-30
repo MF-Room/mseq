@@ -1,4 +1,4 @@
-use crate::midi_connection::{is_valid_channel, MidiOut};
+use crate::midi_out::{is_valid_channel, MidiOut};
 use crate::note::Note;
 use crate::Track;
 use log::error;

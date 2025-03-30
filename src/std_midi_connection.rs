@@ -1,3 +1,4 @@
+use crate::midi_out::MidiOut;
 use midir::{Ignore, MidiInput, MidiOutput};
 use midly::{live::LiveEvent, MidiMessage};
 use promptly::{prompt_default, ReadlineError};

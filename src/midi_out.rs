@@ -1,6 +1,3 @@
-#[cfg(feature = "std")]
-include!("./std_midi_connection.rs");
-
 pub(crate) fn is_valid_channel(channel: u8) -> bool {
     (1..=16).contains(&channel)
 }
