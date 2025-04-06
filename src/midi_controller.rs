@@ -86,6 +86,9 @@ pub struct MidiController<T: MidiOut> {
 }
 
 impl<T: MidiOut> MidiController<T> {
+    /// This trait is not intended to be implemented by user code.
+    ///
+    /// It exists to enable code reuse across different environment and platforms.
     pub fn new(conn: T) -> Self {
         Self {
             step: 0,
@@ -161,12 +164,18 @@ impl<T: MidiOut> MidiController<T> {
         }
     }
 
+    /// This function is not intended to be directly called by the user.
+    ///
+    /// It exists to enable code reuse across different environment and platforms.
     pub fn send_clock(&mut self) {
         if let Err(e) = self.conn.send_clock() {
             error!("MIDI: {e}");
         }
     }
 
+    /// This function is not intended to be directly called by the user.
+    ///
+    /// It exists to enable code reuse across different environment and platforms.
     pub fn start(&mut self) {
         self.step = 0;
         if let Err(e) = self.conn.send_start() {
@@ -174,12 +183,18 @@ impl<T: MidiOut> MidiController<T> {
         }
     }
 
+    /// This function is not intended to be directly called by the user.
+    ///
+    /// It exists to enable code reuse across different environment and platforms.
     pub fn send_continue(&mut self) {
         if let Err(e) = self.conn.send_continue() {
             error!("MIDI: {e}");
         }
     }
 
+    /// This function is not intended to be directly called by the user.
+    ///
+    /// It exists to enable code reuse across different environment and platforms.
     pub fn update(&mut self, next_step: u32) {
         // First send the off signal to every note that end this step.
         let notes = self.play_note_set.remove(&self.step);
@@ -210,6 +225,9 @@ impl<T: MidiOut> MidiController<T> {
         self.step = next_step;
     }
 
+    /// This function is not intended to be directly called by the user.
+    ///
+    /// It exists to enable code reuse across different environment and platforms.
     pub fn stop_all_notes(&mut self) {
         self.start_note_set.iter().for_each(|n| {
             if let Err(e) = self
@@ -234,6 +252,9 @@ impl<T: MidiOut> MidiController<T> {
         self.play_note_set.clear();
     }
 
+    /// This function is not intended to be directly called by the user.
+    ///
+    /// It exists to enable code reuse across different environment and platforms.
     pub fn stop(&mut self) {
         if let Err(e) = self.conn.send_stop() {
             error!("MIDI: {e}");

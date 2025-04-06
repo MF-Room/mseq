@@ -45,9 +45,9 @@ mod std_midi_connection;
 #[cfg(feature = "std")]
 pub use midir::Ignore;
 #[cfg(feature = "std")]
-use std_midi_connection::MidirOut;
+pub use std_midi_connection::{connect, MidiIn, MidiInParam};
 #[cfg(feature = "std")]
-pub use std_midi_connection::{connect, MidiError, MidiIn, MidiInParam};
+use std_midi_connection::{MidiError, MidirOut};
 
 /// Error type of mseq
 #[cfg(feature = "std")]
@@ -76,6 +76,7 @@ mod no_std_mod {
 use clock::Clock;
 use thiserror::Error;
 
+#[cfg(feature = "std")]
 const DEFAULT_BPM: u8 = 120;
 
 /// An object of type [`Context`] is passed to the user [`Conductor`] at each clock tick through the

@@ -120,12 +120,13 @@ fn parse(message: &[u8]) -> Option<(u8, MidiMessage)> {
         None
     }
 }
-
+/// The user can create an implementation of this trait and call [`connect`] to handle MIDI inputs.
 pub trait MidiIn {
+    /// handler function for MIDI input messages
     fn handle(&mut self, channel: u8, message: &MidiMessage);
 }
 
-/// Struct used to handle the MIDI input. If [`MidiIn::connect`] succeed, an object of type MidiIn
+/// Struct used to handle the MIDI input. If [`connect`] succeed, an object of type MidiIn
 /// is returned.
 #[allow(dead_code)]
 pub struct MidirIn<T: 'static> {
