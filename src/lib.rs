@@ -76,7 +76,6 @@ mod no_std_mod {
 use clock::Clock;
 use thiserror::Error;
 
-#[cfg(feature = "std")]
 const DEFAULT_BPM: u8 = 120;
 
 /// An object of type [`Context`] is passed to the user [`Conductor`] at each clock tick through the
@@ -96,9 +95,30 @@ pub struct Context<T: MidiOut> {
 }
 
 impl<T: MidiOut> Context<T> {
+    /// Build new mseq context.
+    pub fn new(midi: MidiController<T>) -> Self {
+        Self {
+            midi,
+            clock: Clock::new(DEFAULT_BPM),
+            step: 0,
+            running: true,
+            on_pause: false,
+            pause: false,
+        }
+    }
     /// Set the BPM (Beats per minute) of the sequencer.
     pub fn set_bpm(&mut self, bpm: u8) {
         self.clock.set_bpm(bpm);
+    }
+
+    /// Get the current BPM of the sequencer
+    pub fn get_bpm(&self) -> u8 {
+        self.clock.get_bpm()
+    }
+
+    /// Get the current BPM of the sequencer
+    pub fn get_period_us(&self) -> u64 {
+        self.clock.get_period_us()
     }
 
     /// Stop and exit the sequencer.
@@ -179,14 +199,7 @@ impl<T: MidiOut> Context<T> {
 pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqError> {
     let conn = MidirOut::new(port)?;
     let midi = MidiController::new(conn);
-    let mut ctx = Context {
-        midi,
-        clock: Clock::new(DEFAULT_BPM),
-        step: 0,
-        running: true,
-        on_pause: true,
-        pause: false,
-    };
+    let mut ctx = Context::new(midi);
 
     conductor.init(&mut ctx);
     ctx.run(conductor);

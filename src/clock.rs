@@ -18,7 +18,7 @@ impl Clock {
         }
     }
 
-    pub fn tick(&mut self) {
+    pub(crate) fn tick(&mut self) {
         self.next_clock_timestamp += Duration::from_micros(self.period_us);
         let next_clock_timestamp = self.next_clock_timestamp;
 
@@ -33,6 +33,10 @@ impl Clock {
 
     fn compute_period_us(bpm: u8) -> u64 {
         60 * 1000000 / 24 / bpm as u64
+    }
+
+    pub(crate) fn get_bpm(&self) -> u8 {
+        self.bpm
     }
 }
 
@@ -56,5 +60,13 @@ impl Clock {
 
     fn compute_period_us(bpm: u8) -> u64 {
         60 * 1000000 / 24 / bpm as u64
+    }
+
+    pub fn get_period_us(&self) -> u64 {
+        self.period_us
+    }
+
+    pub fn get_bpm(&self) -> u8 {
+        self.bpm
     }
 }

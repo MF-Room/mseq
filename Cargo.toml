@@ -19,7 +19,7 @@ midir = {version = "0.9.1", optional = true}
 promptly = {version = "0.3.1", optional = true}
 serde = {version = "1.0.208", optional = true, features = ["derive"] }
 spin_sleep = {version = "1.2.1", optional = true}
-thiserror = {version="2.0.12", default-features=false}
+thiserror = {version="2.0.12", default-features = false}
 hashbrown = "0.15.2"
 log = "0.4.4"
 midly = {version = "0.5.3", default-features = false}
