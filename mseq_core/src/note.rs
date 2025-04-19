@@ -1,8 +1,7 @@
 use core::{convert, fmt};
 
 /// Represents 1 note of the chromatic scale.
-#[derive(Debug, Default, Clone, PartialEq, Copy, Eq)]
-#[cfg_attr(feature = "std", derive(serde::Deserialize))]
+#[derive(Debug, Default, Clone, PartialEq, Copy, Eq, serde::Deserialize)]
 pub enum Note {
     #[default]
     /// C
