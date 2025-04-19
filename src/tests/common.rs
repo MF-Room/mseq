@@ -1,4 +1,5 @@
-use crate::clock::Clock;
+use crate::run_ctx;
+use crate::Bpm;
 use crate::Conductor;
 use crate::Context;
 use crate::MidiController;
@@ -72,15 +73,14 @@ impl MidiOut for DebugMidiOut {
     }
 }
 
-pub(super) fn test_conductor<T: MidiOut>(mut conductor: impl Conductor, midi: MidiController<T>) {
-    let mut ctx = Context {
+pub(super) fn test_conductor<T: MidiOut>(conductor: impl Conductor, midi: MidiController<T>) {
+    let ctx = Context {
         midi,
-        clock: Clock::new(120),
+        bpm: Bpm::new(120),
         step: 0,
         running: true,
         on_pause: false,
         pause: false,
     };
-    conductor.init(&mut ctx);
-    ctx.run(conductor);
+    run_ctx(ctx, conductor).unwrap();
 }

@@ -20,7 +20,7 @@
 
 mod acid;
 mod arp;
-mod clock;
+mod bpm;
 mod conductor;
 mod div;
 mod midi_controller;
@@ -48,6 +48,8 @@ pub use midir::Ignore;
 pub use std_midi_connection::{connect, MidiIn, MidiInParam};
 #[cfg(feature = "std")]
 use std_midi_connection::{MidiError, MidirOut};
+#[cfg(feature = "std")]
+mod clock;
 
 /// Error type of mseq
 #[cfg(feature = "std")]
@@ -73,7 +75,9 @@ mod no_std_mod {
     pub use hashbrown::{HashMap, HashSet};
 }
 
+use bpm::Bpm;
 use clock::Clock;
+use core::time::Duration;
 use thiserror::Error;
 
 const DEFAULT_BPM: u8 = 120;
@@ -87,7 +91,7 @@ const DEFAULT_BPM: u8 = 120;
 pub struct Context<T: MidiOut> {
     /// Field used to send MIDI Channel Messages.
     pub midi: MidiController<T>,
-    pub(crate) clock: Clock,
+    bpm: Bpm,
     step: u32,
     running: bool,
     on_pause: bool,
@@ -99,7 +103,7 @@ impl<T: MidiOut> Context<T> {
     pub fn new(midi: MidiController<T>) -> Self {
         Self {
             midi,
-            clock: Clock::new(DEFAULT_BPM),
+            bpm: Bpm::new(DEFAULT_BPM),
             step: 0,
             running: true,
             on_pause: false,
@@ -108,19 +112,18 @@ impl<T: MidiOut> Context<T> {
     }
     /// Set the BPM (Beats per minute) of the sequencer.
     pub fn set_bpm(&mut self, bpm: u8) {
-        self.clock.set_bpm(bpm);
+        self.bpm.set_bpm(bpm);
     }
 
     /// Get the current BPM of the sequencer
     pub fn get_bpm(&self) -> u8 {
-        self.clock.get_bpm()
+        self.bpm.get_bpm()
     }
 
     /// Get the current period (in microsec) of the sequencer.
     /// A period represents the amount of time between each MIDI clock messages.
-    #[cfg(not(feature = "std"))]
     pub fn get_period_us(&self) -> u64 {
-        self.clock.get_period_us()
+        self.bpm.get_period_us()
     }
 
     /// Stop and exit the sequencer.
@@ -157,15 +160,6 @@ impl<T: MidiOut> Context<T> {
         self.step
     }
 
-    fn run(&mut self, mut conductor: impl Conductor) {
-        while self.running {
-            self.process_pre_tick(&mut conductor);
-            self.clock.tick();
-            self.process_post_tick();
-        }
-        self.process_post_run();
-    }
-
     /// MIDI logic called before the clock tick.
     /// The user doesn't need to call this function.
     pub fn process_pre_tick(&mut self, conductor: &mut impl Conductor) {
@@ -184,27 +178,37 @@ impl<T: MidiOut> Context<T> {
             self.pause = false;
         }
     }
-
-    /// MIDI logic called at the the end of the program.
-    /// The user doesn't need to call this function.
-    pub fn process_post_run(&mut self) {
-        self.midi.stop_all_notes();
-        self.clock.tick();
-        self.midi.stop();
-    }
 }
 
 /// `mseq` entry point. Run the sequencer by providing a conductor implementation. `port` is the
 /// MIDI port id used to send the midi messages. If set to `None`, information about the MIDI ports
 /// will be displayed and the output port will be asked to the user with a prompt.
 #[cfg(feature = "std")]
-pub fn run(mut conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqError> {
+pub fn run(conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqError> {
     let conn = MidirOut::new(port)?;
     let midi = MidiController::new(conn);
-    let mut ctx = Context::new(midi);
+    let ctx = Context::new(midi);
+    run_ctx(ctx, conductor)
+}
 
+/// `mseq` entry point when the `MidiOut` connection is already setup. Useful if the user wants to
+/// provide their own `MidiOut` implementation.
+#[cfg(feature = "std")]
+pub fn run_ctx<T: MidiOut>(
+    mut ctx: Context<T>,
+    mut conductor: impl Conductor,
+) -> Result<(), MSeqError> {
     conductor.init(&mut ctx);
-    ctx.run(conductor);
+    let mut clock = Clock::new();
+
+    while ctx.running {
+        ctx.process_pre_tick(&mut conductor);
+        clock.tick(&Duration::from_micros(ctx.bpm.get_period_us()));
+        ctx.process_post_tick();
+    }
+    ctx.midi.stop_all_notes();
+    clock.tick(&Duration::from_micros(ctx.bpm.get_period_us()));
+    ctx.midi.stop();
 
     Ok(())
 }
