@@ -116,7 +116,8 @@ impl<T: MidiOut> Context<T> {
         self.clock.get_bpm()
     }
 
-    /// Get the current BPM of the sequencer
+    /// Get the current period (in microsec) of the sequencer.
+    /// A period represents the amount of time between each MIDI clock messages.
     pub fn get_period_us(&self) -> u64 {
         self.clock.get_period_us()
     }
