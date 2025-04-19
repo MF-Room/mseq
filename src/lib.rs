@@ -1,16 +1,12 @@
-pub mod acid;
-pub mod arp;
 mod clock;
-pub mod div;
 mod midi_connection;
-pub mod track;
 
 pub use mseq_core::*;
+use mseq_tracks::TrackError;
 
 use std::time::Duration;
 
 use clock::Clock;
-use track::TrackError;
 
 use thiserror::Error;
 
@@ -22,9 +18,6 @@ pub enum MSeqError {
     /// Error type related to MIDI messages
     #[error("Midi error [{}: {}]", file!(), line!())]
     Midi(#[from] MidiError),
-    /// Error type related to CSV file parsing
-    #[error("Failed to parse csv file [{f}: {l}]\n\t{0}", f=file!(), l=line!())]
-    Reading(#[from] csv::Error),
     /// Error type related to MIDI file parsing
     #[error("Failed to parse midi file [{f}: {l}]\n\t{0}", f=file!(), l=line!())]
     Track(#[from] TrackError),

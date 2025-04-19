@@ -1,6 +1,7 @@
-use crate::{DeteTrack, MidiNote, Note};
+use alloc::vec;
+use alloc::vec::Vec;
 
-use {crate::MSeqError, std::path::Path};
+use mseq_core::{DeteTrack, MidiNote, Note};
 
 #[derive(Default, Clone, Copy, Debug, serde::Deserialize)]
 /// Timing mostly used in [`AcidTrig`] to generate acid tracks.
@@ -29,6 +30,8 @@ pub struct AcidTrig {
 }
 
 use Timing::*;
+
+use crate::TrackError;
 
 /// Create a new acid track following the trigs in `pattern`. The `root` note is used for
 /// transposition. The track  will be played on the MIDI channel with `channel_id`.
@@ -94,17 +97,21 @@ pub fn new_acid(pattern: Vec<AcidTrig>, root: Note, channel_id: u8, name: &str) 
     DeteTrack::new(6 * pattern.len() as u32, notes, root, channel_id, name)
 }
 
+#[cfg(feature = "std")]
+use std::path::Path;
+
 /// Load an acid track from a csv file (`filename`). Refer to this [`example`] for an example
 /// file. The `root` note is used for transposition. The track will be played on the MIDI
 /// channel with `channel_id`.
 ///
 /// [`example`]: https://github.com/MF-Room/mseq/tree/main/examples/res/acid_0.csv
+#[cfg(feature = "std")]
 pub fn load_acid_from_file<P: AsRef<Path>>(
     filename: P,
     root: Note,
     channel_id: u8,
     name: &str,
-) -> Result<DeteTrack, MSeqError> {
+) -> Result<DeteTrack, TrackError> {
     let mut rdr = csv::Reader::from_path(filename)?;
     let pattern = rdr
         .deserialize::<AcidTrig>()

@@ -29,12 +29,16 @@ impl Conductor for MyConductor {
 fn main() {
     env_logger::init();
 
-    let acid =
-        mseq::acid::load_acid_from_file("examples/res/acid_0.csv", mseq::Note::A, 1, "my_acid")
-            .unwrap();
-    let arp = mseq::arp::load_arp_from_file(
+    let acid = mseq_tracks::acid::load_acid_from_file(
+        "examples/res/acid_0.csv",
+        mseq::Note::A,
+        1,
+        "my_acid",
+    )
+    .unwrap();
+    let arp = mseq_tracks::arp::load_arp_from_file(
         "examples/res/arp_0.csv",
-        mseq::arp::ArpDiv::T8,
+        mseq_tracks::arp::ArpDiv::T8,
         mseq::Note::A,
         1,
         "my_arp",

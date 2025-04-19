@@ -25,7 +25,7 @@ fn main() {
     env_logger::init();
 
     let track =
-        mseq::track::load_from_file("examples/res/track_0.mid", mseq::Note::A, 1, "my_track")
+        mseq_tracks::midi::load_from_file("examples/res/track_0.mid", mseq::Note::A, 1, "my_track")
             .unwrap();
 
     if let Err(e) = mseq::run(

@@ -1,6 +1,8 @@
-use crate::{DeteTrack, MidiNote, Note};
+use alloc::vec::Vec;
 
-use {crate::MSeqError, std::path::Path};
+use mseq_core::{DeteTrack, MidiNote, Note};
+
+use crate::TrackError;
 
 /// Time division of the arpeggiator
 #[derive(Default, Clone, Copy)]
@@ -39,18 +41,22 @@ pub fn new_arp(
     DeteTrack::new(len, notes, root, channel_id, name)
 }
 
+#[cfg(feature = "std")]
+use std::path::Path;
+
 /// Load an arpeggiator track from a csv file (`filename`) and a time division (`div`). Refer to
 /// this [`example`] for an example file. The `root` note is used for transposition. The track
 /// will be played on the MIDI channel with `channel_id`.
 ///
 /// [`example`]: https://github.com/MF-Room/mseq/tree/main/examples/res/arp_0.csv
+#[cfg(feature = "std")]
 pub fn load_arp_from_file<P: AsRef<Path>>(
     filename: P,
     div: ArpDiv,
     root: Note,
     channel_id: u8,
     name: &str,
-) -> Result<DeteTrack, MSeqError> {
+) -> Result<DeteTrack, TrackError> {
     let mut rdr = csv::Reader::from_path(filename)?;
     let pattern = rdr
         .deserialize::<MidiNote>()
