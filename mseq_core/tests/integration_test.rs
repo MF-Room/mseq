@@ -4,15 +4,10 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::Instant;
 
-use super::common::DebugMidiOut;
-use super::common::DebugMidiOutInner;
-use crate::Conductor;
-use crate::Context;
-use crate::MidiController;
-use crate::MidiNote;
-use crate::MidiOut;
-use crate::Note;
-use crate::Track;
+mod common;
+
+use common::*;
+use mseq_core::*;
 
 #[test]
 fn play_note() {
@@ -24,7 +19,7 @@ fn play_note() {
     let mut controller = MidiController::new(DebugMidiOut(debug_conn.clone()));
     controller.start();
 
-    let note = MidiNote::new(crate::Note::B, 3, 21);
+    let note = MidiNote::new(mseq_core::Note::B, 3, 21);
     controller.play_note(note, 3, 5);
     controller.send_clock();
     assert!(debug_conn.borrow().notes_on.is_empty());
@@ -52,13 +47,13 @@ impl Conductor for DebugConductor1 {
     fn init(&mut self, _context: &mut Context<impl MidiOut>) {}
 
     fn update(&mut self, context: &mut Context<impl MidiOut>) {
-        if context.step == 0 {
-            let note = MidiNote::new(crate::Note::B, 3, 21);
+        if context.get_step() == 0 {
+            let note = MidiNote::new(mseq_core::Note::B, 3, 21);
             context.midi.play_note(note, 5, 1);
-        } else if context.step == 10 {
+        } else if context.get_step() == 10 {
             context.quit();
         }
-        if (1..=5).contains(&context.step) {
+        if (1..=5).contains(&context.get_step()) {
             assert!(self.0.borrow().notes_on.len() == 1);
         } else {
             assert!(self.0.borrow().notes_on.is_empty());
@@ -74,7 +69,7 @@ fn play_note_conductor() {
     }));
     let midi = MidiController::new(DebugMidiOut(debug_conn.clone()));
     let conductor = DebugConductor1(debug_conn);
-    super::common::test_conductor(conductor, midi);
+    test_conductor(conductor, midi);
 }
 
 struct DebugConductor2(Rc<RefCell<DebugMidiOutInner>>);
@@ -83,15 +78,15 @@ impl Conductor for DebugConductor2 {
     fn init(&mut self, _context: &mut Context<impl MidiOut>) {}
 
     fn update(&mut self, context: &mut Context<impl MidiOut>) {
-        if context.step == 0 {
+        if context.get_step() == 0 {
             let note = MidiNote::new(crate::Note::B, 10, 21);
             context.midi.play_note(note, 10, 1);
             context.midi.start_note(note, 3);
-        } else if context.step == 5 {
+        } else if context.get_step() == 5 {
             context.quit();
         }
 
-        if (1..=5).contains(&context.step) {
+        if (1..=5).contains(&context.get_step()) {
             assert!(self.0.borrow().notes_on.len() == 2);
         }
     }
@@ -105,7 +100,7 @@ fn notes_stop_on_quit() {
     }));
     let midi = MidiController::new(DebugMidiOut(debug_conn.clone()));
     let conductor = DebugConductor2(debug_conn.clone());
-    super::common::test_conductor(conductor, midi);
+    test_conductor(conductor, midi);
     assert!(debug_conn.borrow().notes_on.is_empty());
 }
 
@@ -118,18 +113,18 @@ impl Conductor for DebugConductor3 {
     fn init(&mut self, _context: &mut Context<impl MidiOut>) {}
 
     fn update(&mut self, context: &mut Context<impl MidiOut>) {
-        if context.step == 74 {
+        if context.get_step() == 74 {
             context.quit();
         } else {
-            if context.step == 0 {
+            if context.get_step() == 0 {
                 self.track.transpose(Some(Note::C));
             }
 
-            if context.step == 48 {
+            if context.get_step() == 48 {
                 self.track.transpose(Some(Note::G));
             }
 
-            if context.step == 1 {
+            if context.get_step() == 1 {
                 assert!(self
                     .conn
                     .borrow()
@@ -137,7 +132,7 @@ impl Conductor for DebugConductor3 {
                     .contains_key(&(1, MidiNote::midi_value(&MidiNote::new(Note::C, 5, 89)))));
             }
 
-            if context.step == 25 {
+            if context.get_step() == 25 {
                 assert!(self
                     .conn
                     .borrow()
@@ -145,7 +140,7 @@ impl Conductor for DebugConductor3 {
                     .contains_key(&(1, MidiNote::midi_value(&MidiNote::new(Note::DS, 5, 89)))));
             }
 
-            if context.step == 49 {
+            if context.get_step() == 49 {
                 assert!(self
                     .conn
                     .borrow()
@@ -153,7 +148,7 @@ impl Conductor for DebugConductor3 {
                     .contains_key(&(1, MidiNote::midi_value(&MidiNote::new(Note::G, 4, 89)))));
             }
 
-            if context.step == 73 {
+            if context.get_step() == 73 {
                 assert!(self
                     .conn
                     .borrow()
@@ -186,5 +181,5 @@ fn dete_track_transpose() {
             "test_transpose",
         ),
     };
-    super::common::test_conductor(conductor, midi);
+    test_conductor(conductor, midi);
 }

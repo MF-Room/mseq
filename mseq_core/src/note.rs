@@ -1,7 +1,4 @@
-#[cfg(not(feature = "std"))]
-use crate::no_std_mod::*;
-#[cfg(feature = "std")]
-use std::{convert, fmt};
+use core::{convert, fmt};
 
 /// Represents 1 note of the chromatic scale.
 #[derive(Debug, Default, Clone, PartialEq, Copy, Eq)]
@@ -100,7 +97,7 @@ impl Note {
     ///
     /// # Example
     /// ```
-    /// use mseq::Note;
+    /// use mseq_core::Note;
     ///
     /// let note = Note::G;
     /// let octave = 4;

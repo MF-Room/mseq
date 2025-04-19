@@ -1,58 +1,22 @@
-//! Library for developing MIDI Sequencers.
-//!
-//! To start using `mseq`, create a struct that implements the [`Conductor`] trait.
-//!
-//! You can then add tracks to your sequencer by adding fields (to your struct that implements the
-//! [`Conductor`] trait) of type [`DeteTrack`] or more generally fields that implement the trait
-//! [`Track`].
-//!
-//! Once this is done, you can play your track in the [`Conductor::update`] function of your struct
-//! that implements the [`Conductor`] trait. To do so, call the method
-//! [`MidiController::play_track`] (of the [`Context::midi`]) with the track you want to play as a
-//! parameter.
-//!
-//! You can find some examples in the [`examples`] directory.
-//!
-//! [`examples`]: https://github.com/MF-Room/mseq/tree/main/examples
-
-#![warn(missing_docs)]
-#![cfg_attr(not(feature = "std"), no_std)]
-
-mod acid;
-mod arp;
-mod bpm;
-mod conductor;
-mod div;
-mod midi_controller;
-mod midi_out;
-mod note;
-mod tests;
-mod track;
-
-// Interface
-pub use acid::{AcidTrig, Timing};
-pub use arp::ArpDiv;
-pub use conductor::Conductor;
-pub use div::ClockDiv;
-pub use midi_controller::{MidiController, MidiNote};
-pub use midi_out::MidiOut;
-pub use midly::MidiMessage;
-pub use note::Note;
-pub use track::{DeteTrack, Track};
-
-#[cfg(feature = "std")]
-mod std_midi_connection;
-#[cfg(feature = "std")]
-pub use midir::Ignore;
-#[cfg(feature = "std")]
-pub use std_midi_connection::{connect, MidiIn, MidiInParam};
-#[cfg(feature = "std")]
-use std_midi_connection::{MidiError, MidirOut};
-#[cfg(feature = "std")]
+pub mod acid;
+pub mod arp;
 mod clock;
+pub mod div;
+mod midi_connection;
+pub mod track;
+
+pub use mseq_core::*;
+
+use std::time::Duration;
+
+use clock::Clock;
+use track::TrackError;
+
+use thiserror::Error;
+
+use crate::midi_connection::*;
 
 /// Error type of mseq
-#[cfg(feature = "std")]
 #[derive(Error, Debug)]
 pub enum MSeqError {
     /// Error type related to MIDI messages
@@ -63,127 +27,12 @@ pub enum MSeqError {
     Reading(#[from] csv::Error),
     /// Error type related to MIDI file parsing
     #[error("Failed to parse midi file [{f}: {l}]\n\t{0}", f=file!(), l=line!())]
-    Track(#[from] track::TrackError),
-}
-
-#[cfg(not(feature = "std"))]
-mod no_std_mod {
-    extern crate alloc;
-    pub use alloc::{string::*, vec, vec::*};
-    pub use core::hash;
-    pub use core::{convert, fmt};
-    pub use hashbrown::{HashMap, HashSet};
-}
-
-use bpm::Bpm;
-use clock::Clock;
-use core::time::Duration;
-use thiserror::Error;
-
-const DEFAULT_BPM: u8 = 120;
-
-/// An object of type [`Context`] is passed to the user [`Conductor`] at each clock tick through the
-/// method [`Conductor::update`]. This structure provides the user with a friendly MIDI interface.
-/// The user can set some MIDI System Parameters (e.g., [`Context::set_bpm`]) or send some MIDI
-/// System Messages (e.g., [`Context::start`]) using directly the [`Context`] methods. The user can
-/// also send MIDI Channel Messages (e.g., [`MidiController::play_note`] or
-/// [`MidiController::play_track`]) using the field [`Context::midi`].
-pub struct Context<T: MidiOut> {
-    /// Field used to send MIDI Channel Messages.
-    pub midi: MidiController<T>,
-    bpm: Bpm,
-    step: u32,
-    running: bool,
-    on_pause: bool,
-    pause: bool,
-}
-
-impl<T: MidiOut> Context<T> {
-    /// Build new mseq context.
-    pub fn new(midi: MidiController<T>) -> Self {
-        Self {
-            midi,
-            bpm: Bpm::new(DEFAULT_BPM),
-            step: 0,
-            running: true,
-            on_pause: false,
-            pause: false,
-        }
-    }
-    /// Set the BPM (Beats per minute) of the sequencer.
-    pub fn set_bpm(&mut self, bpm: u8) {
-        self.bpm.set_bpm(bpm);
-    }
-
-    /// Get the current BPM of the sequencer
-    pub fn get_bpm(&self) -> u8 {
-        self.bpm.get_bpm()
-    }
-
-    /// Get the current period (in microsec) of the sequencer.
-    /// A period represents the amount of time between each MIDI clock messages.
-    pub fn get_period_us(&self) -> u64 {
-        self.bpm.get_period_us()
-    }
-
-    /// Stop and exit the sequencer.
-    pub fn quit(&mut self) {
-        self.running = false
-    }
-
-    /// Pause the sequencer and send a MIDI stop message.
-    pub fn pause(&mut self) {
-        self.on_pause = true;
-        self.pause = true;
-        self.midi.stop_all_notes();
-    }
-
-    /// Resume the sequencer and send a MIDI continue message.
-    pub fn resume(&mut self) {
-        self.on_pause = false;
-        self.midi.send_continue();
-    }
-
-    /// Start the sequencer and send a MIDI start message. The current step is set to 0.
-    pub fn start(&mut self) {
-        self.step = 0;
-        self.on_pause = false;
-        self.midi.start();
-    }
-
-    /// Retrieve the current MIDI step.
-    /// - 96 steps make a bar
-    /// - 24 steps make a whole note
-    /// - 12 steps make a half note
-    /// - 6 steps make a quarter note
-    pub fn get_step(&mut self) -> u32 {
-        self.step
-    }
-
-    /// MIDI logic called before the clock tick.
-    /// The user doesn't need to call this function.
-    pub fn process_pre_tick(&mut self, conductor: &mut impl Conductor) {
-        conductor.update(self);
-    }
-
-    /// MIDI logic called after the clock tick.
-    /// The user doesn't need to call this function.
-    pub fn process_post_tick(&mut self) {
-        self.midi.send_clock();
-        if !self.on_pause {
-            self.step += 1;
-            self.midi.update(self.step);
-        } else if self.pause {
-            self.midi.stop();
-            self.pause = false;
-        }
-    }
+    Track(#[from] TrackError),
 }
 
 /// `mseq` entry point. Run the sequencer by providing a conductor implementation. `port` is the
 /// MIDI port id used to send the midi messages. If set to `None`, information about the MIDI ports
 /// will be displayed and the output port will be asked to the user with a prompt.
-#[cfg(feature = "std")]
 pub fn run(conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqError> {
     let conn = MidirOut::new(port)?;
     let midi = MidiController::new(conn);
@@ -193,7 +42,6 @@ pub fn run(conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqError
 
 /// `mseq` entry point when the `MidiOut` connection is already setup. Useful if the user wants to
 /// provide their own `MidiOut` implementation.
-#[cfg(feature = "std")]
 pub fn run_ctx<T: MidiOut>(
     mut ctx: Context<T>,
     mut conductor: impl Conductor,
@@ -201,27 +49,14 @@ pub fn run_ctx<T: MidiOut>(
     conductor.init(&mut ctx);
     let mut clock = Clock::new();
 
-    while ctx.running {
+    while ctx.is_running() {
         ctx.process_pre_tick(&mut conductor);
-        clock.tick(&Duration::from_micros(ctx.bpm.get_period_us()));
+        clock.tick(&Duration::from_micros(ctx.get_period_us()));
         ctx.process_post_tick();
     }
     ctx.midi.stop_all_notes();
-    clock.tick(&Duration::from_micros(ctx.bpm.get_period_us()));
+    clock.tick(&Duration::from_micros(ctx.get_period_us()));
     ctx.midi.stop();
 
     Ok(())
-}
-
-/// Perform a linear conversion from `[0.0, 1.0]` to [0, 127]. If `v` is smaller than `0.0` return
-/// 0. If `v` is greater than `1.0` return 127. The main purpose of this function is to be used with
-/// MIDI control changes (CC).
-pub fn param_value(v: f32) -> u8 {
-    if v < -1.0 {
-        return 0;
-    }
-    if v > 1.0 {
-        return 127;
-    }
-    63 + (v * 63.0) as u8
 }

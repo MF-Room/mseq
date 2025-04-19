@@ -1,0 +1,21 @@
+[package]
+name = "mseq_core"
+version = "0.1.0"
+edition = "2021"
+license = "LGPL-2.1"
+readme = "README.md"
+repository = "https://github.com/MF-Room/mseq_core"
+authors = ["Julien Eudine <julien@eudine.fr>", "Marius Debussche <marius.debussche@gmail.com>"]
+description = "Library for developing MIDI Sequencers."
+keywords = ["midi", "music", "sequencer"]
+categories = ["multimedia"]
+
+[dependencies]
+serde = {version = "1.0.208", default-features = false, features = ["derive"] }
+thiserror = { version="2.0.12", default-features = false }
+hashbrown = "0.15.2"
+log = "0.4.27"
+
+[features]
+default = ["std"]
+std = ["thiserror/std", "log/std"]

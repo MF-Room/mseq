@@ -1,21 +1,18 @@
+use alloc::vec;
+use alloc::vec::Vec;
+use core::hash;
+
+use hashbrown::{HashMap, HashSet};
+use log::error;
+
 use crate::midi_out::{is_valid_channel, MidiOut};
 use crate::note::Note;
 use crate::Track;
-use log::error;
-#[cfg(feature = "std")]
-use std::{
-    collections::{HashMap, HashSet},
-    hash,
-};
 
 const MAX_MIDI_CHANNEL: u8 = 16;
 
-#[cfg(not(feature = "std"))]
-use crate::no_std_mod::*;
-
 /// Note that can be sent through a MIDI message.
-#[derive(Default, Clone, Copy, PartialEq, Eq, Debug)]
-#[cfg_attr(feature = "std", derive(serde::Deserialize))]
+#[derive(Default, Clone, Copy, PartialEq, Eq, Debug, serde::Deserialize)]
 pub struct MidiNote {
     /// The chromatic note (A to G)
     pub note: Note,
@@ -49,8 +46,8 @@ impl MidiNote {
         }
     }
 
-    // Retrieve the MIDI value of the MidiNote, which can be sent through a MIDI message.
-    pub(crate) fn midi_value(&self) -> u8 {
+    /// Retrieve the MIDI value of the MidiNote, which can be sent through a MIDI message.
+    pub fn midi_value(&self) -> u8 {
         u8::from(self.note) + 12 * self.octave
     }
 }

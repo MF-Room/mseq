@@ -26,7 +26,7 @@ impl Conductor for MyConductor {
 fn main() {
     env_logger::init();
 
-    let clk_div = DeteTrack::load_clock_div_from_file(
+    let clk_div = mseq::div::load_clock_div_from_file(
         "examples/res/clk_div_0.csv",
         MidiNote::new(Note::C, 4, 63),
         1,

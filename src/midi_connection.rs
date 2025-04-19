@@ -1,6 +1,6 @@
-use crate::midi_out::MidiOut;
 use midir::{Ignore, MidiInput, MidiOutput};
 use midly::{live::LiveEvent, MidiMessage};
+use mseq_core::MidiOut;
 use promptly::{prompt_default, ReadlineError};
 use std::sync::{Arc, Mutex};
 use thiserror::Error;

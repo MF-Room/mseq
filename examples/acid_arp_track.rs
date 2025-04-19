@@ -30,11 +30,11 @@ fn main() {
     env_logger::init();
 
     let acid =
-        DeteTrack::load_acid_from_file("examples/res/acid_0.csv", mseq::Note::A, 1, "my_acid")
+        mseq::acid::load_acid_from_file("examples/res/acid_0.csv", mseq::Note::A, 1, "my_acid")
             .unwrap();
-    let arp = DeteTrack::load_arp_from_file(
+    let arp = mseq::arp::load_arp_from_file(
         "examples/res/arp_0.csv",
-        mseq::ArpDiv::T8,
+        mseq::arp::ArpDiv::T8,
         mseq::Note::A,
         1,
         "my_arp",
