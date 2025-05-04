@@ -2,6 +2,7 @@ use log::warn;
 
 use crate::{midi_controller::MidiController, note::Note};
 use crate::{MidiNote, MidiOut};
+use serde::{Deserialize, Serialize};
 
 use alloc::string::{String, ToString};
 use alloc::vec;
@@ -35,7 +36,7 @@ pub trait Track {
 /// DeteTrack implements the Track trait, so it can be passed to the MidiController to play it. It
 /// is defined by a list of notes that will always play at the same time in the track, hence the
 /// name (Deterministic Track).
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct DeteTrack {
     len: u32,
     notes: Vec<(MidiNote, u32, u32)>, // (Note, start step, length)

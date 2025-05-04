@@ -1,9 +1,10 @@
 use alloc::vec;
 use alloc::vec::Vec;
-use core::hash;
+use core::hash::{Hash, Hasher};
 
 use hashbrown::{HashMap, HashSet};
 use log::error;
+use serde::{Deserialize, Serialize};
 
 use crate::midi_out::{is_valid_channel, MidiOut};
 use crate::note::Note;
@@ -12,7 +13,7 @@ use crate::Track;
 const MAX_MIDI_CHANNEL: u8 = 16;
 
 /// Note that can be sent through a MIDI message.
-#[derive(Default, Clone, Copy, PartialEq, Eq, Debug, serde::Deserialize)]
+#[derive(Default, Clone, Copy, PartialEq, Eq, Debug, Deserialize, Serialize, Hash)]
 pub struct MidiNote {
     /// The chromatic note (A to G)
     pub note: Note,
@@ -58,8 +59,8 @@ struct NotePlay {
     channel_id: u8,
 }
 
-impl hash::Hash for NotePlay {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+impl Hash for NotePlay {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         (self.midi_note.midi_value() as u32 + MAX_MIDI_CHANNEL as u32 * self.channel_id as u32)
             .hash(state);
     }

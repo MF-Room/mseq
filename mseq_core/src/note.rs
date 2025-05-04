@@ -1,7 +1,8 @@
-use core::{convert, fmt};
+use core::{convert, fmt, hash::Hash};
+use serde::{Deserialize, Serialize};
 
 /// Represents 1 note of the chromatic scale.
-#[derive(Debug, Default, Clone, PartialEq, Copy, Eq, serde::Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Copy, Eq, Deserialize, Serialize, Hash)]
 pub enum Note {
     #[default]
     /// C
