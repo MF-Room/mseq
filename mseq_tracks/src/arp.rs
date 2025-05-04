@@ -19,7 +19,7 @@ pub enum ArpDiv {
 /// Create a new arpeggiator track following the notes in `pattern` with the `div` time
 /// division. The `root` note is used for transposition. The track  will be played on the MIDI
 /// channel with `channel_id`.
-pub fn new_arp(
+pub fn new(
     pattern: Vec<MidiNote>,
     div: ArpDiv,
     root: Note,
@@ -50,7 +50,7 @@ use std::path::Path;
 ///
 /// [`example`]: https://github.com/MF-Room/mseq/tree/main/examples/res/arp_0.csv
 #[cfg(feature = "std")]
-pub fn load_arp_from_file<P: AsRef<Path>>(
+pub fn load_from_file<P: AsRef<Path>>(
     filename: P,
     div: ArpDiv,
     root: Note,
@@ -61,5 +61,5 @@ pub fn load_arp_from_file<P: AsRef<Path>>(
     let pattern = rdr
         .deserialize::<MidiNote>()
         .collect::<Result<Vec<_>, _>>()?;
-    Ok(new_arp(pattern, div, root, channel_id, name))
+    Ok(new(pattern, div, root, channel_id, name))
 }

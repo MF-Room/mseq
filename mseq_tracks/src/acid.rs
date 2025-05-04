@@ -35,7 +35,7 @@ use crate::TrackError;
 
 /// Create a new acid track following the trigs in `pattern`. The `root` note is used for
 /// transposition. The track  will be played on the MIDI channel with `channel_id`.
-pub fn new_acid(pattern: Vec<AcidTrig>, root: Note, channel_id: u8, name: &str) -> DeteTrack {
+pub fn new(pattern: Vec<AcidTrig>, root: Note, channel_id: u8, name: &str) -> DeteTrack {
     if pattern.is_empty() {
         return DeteTrack::new(0, vec![], root, channel_id, name);
     }
@@ -106,7 +106,7 @@ use std::path::Path;
 ///
 /// [`example`]: https://github.com/MF-Room/mseq/tree/main/examples/res/acid_0.csv
 #[cfg(feature = "std")]
-pub fn load_acid_from_file<P: AsRef<Path>>(
+pub fn load_from_file<P: AsRef<Path>>(
     filename: P,
     root: Note,
     channel_id: u8,
@@ -116,5 +116,5 @@ pub fn load_acid_from_file<P: AsRef<Path>>(
     let pattern = rdr
         .deserialize::<AcidTrig>()
         .collect::<Result<Vec<_>, _>>()?;
-    Ok(new_acid(pattern, root, channel_id, name))
+    Ok(new(pattern, root, channel_id, name))
 }
