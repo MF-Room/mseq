@@ -1,5 +1,6 @@
 use alloc::vec;
 use alloc::vec::Vec;
+use std::io::Read;
 
 use mseq_core::{DeteTrack, MidiNote, Note};
 
@@ -113,6 +114,15 @@ pub fn load_from_file<P: AsRef<Path>>(
     name: &str,
 ) -> Result<DeteTrack, TrackError> {
     let mut rdr = csv::Reader::from_path(filename)?;
+    load_from_reader(&mut rdr, root, channel_id, name)
+}
+#[cfg(feature = "std")]
+pub(crate) fn load_from_reader<R: Read>(
+    rdr: &mut csv::Reader<R>,
+    root: Note,
+    channel_id: u8,
+    name: &str,
+) -> Result<DeteTrack, TrackError> {
     let pattern = rdr
         .deserialize::<AcidTrig>()
         .collect::<Result<Vec<_>, _>>()?;
