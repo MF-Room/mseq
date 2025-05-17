@@ -5,7 +5,7 @@ members = ["mseq_core", "mseq_tracks"]
 [package]
 name = "mseq"
 version = "0.1.2"
-edition = "2021"
+edition = "2024"
 license = "LGPL-2.1"
 readme = "README.md"
 repository = "https://github.com/MF-Room/mseq"

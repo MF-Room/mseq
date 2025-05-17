@@ -1,5 +1,5 @@
 use mseq::{Conductor, MidiNote, Track};
-use rand::{thread_rng, Rng};
+use rand::{Rng, distributions::Uniform, thread_rng};
 
 struct MyTrack {
     channel_id: u8,
@@ -16,7 +16,7 @@ impl Track for MyTrack {
         if step % 8 == 0 {
             // Choose a random note
             let note = MidiNote {
-                note: thread_rng().gen::<u8>().into(),
+                note: thread_rng().sample(Uniform::new(0u8, 255u8)).into(),
                 octave: 4,
                 vel: 127,
             };
