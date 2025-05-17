@@ -1,7 +1,5 @@
-use log::warn;
-
-use crate::{midi_controller::MidiController, note::Note};
 use crate::{MidiNote, MidiOut};
+use crate::{midi_controller::MidiController, note::Note};
 use serde::{Deserialize, Serialize};
 
 use alloc::string::{String, ToString};
@@ -15,18 +13,6 @@ pub trait Track {
     /// Implement what the track should play at that step. See `examples/impl_track.rs` for an
     /// example usage. Implementation required.
     fn play_step(&mut self, step: u32, midi_controller: &mut MidiController<impl MidiOut>);
-    /// Transpose the track. The default implementation returns a warning. Optional implementation.
-    fn transpose(&mut self, _note: Option<Note>) {
-        warn!("Track::transpose() not implemented")
-    }
-    /// Returns the root of the track. Optional implementation.
-    fn get_root(&self) -> Note {
-        Note::C
-    }
-    /// Set the start step of the track. Optional implementation.
-    fn set_start_step(&mut self, _start_step: u32) {
-        warn!("Track::set_start_step() not implemented")
-    }
     /// Returns the name of the track. Optional implementation.
     fn get_name(&self) -> String {
         "Unamed".to_string()
@@ -58,20 +44,8 @@ impl Track for DeteTrack {
         }
     }
 
-    fn transpose(&mut self, note: Option<Note>) {
-        self.transpose = note.map(|n| Note::transpose(self.root, n));
-    }
-
-    fn get_root(&self) -> Note {
-        self.root
-    }
-
     fn get_name(&self) -> String {
         self.name.clone()
-    }
-
-    fn set_start_step(&mut self, start_step: u32) {
-        self.start_step = start_step;
     }
 }
 
@@ -114,5 +88,10 @@ impl DeteTrack {
             }
         }
         notes
+    }
+
+    /// Transpose the DeteTrack.
+    pub fn transpose(&mut self, note: Option<Note>) {
+        self.transpose = note.map(|n| Note::transpose(self.root, n));
     }
 }

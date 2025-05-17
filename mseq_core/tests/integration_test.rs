@@ -125,35 +125,39 @@ impl Conductor for DebugConductor3 {
             }
 
             if context.get_step() == 1 {
-                assert!(self
-                    .conn
-                    .borrow()
-                    .notes_on
-                    .contains_key(&(1, MidiNote::midi_value(&MidiNote::new(Note::C, 5, 89)))));
+                assert!(
+                    self.conn
+                        .borrow()
+                        .notes_on
+                        .contains_key(&(1, MidiNote::midi_value(&MidiNote::new(Note::C, 5, 89))))
+                );
             }
 
             if context.get_step() == 25 {
-                assert!(self
-                    .conn
-                    .borrow()
-                    .notes_on
-                    .contains_key(&(1, MidiNote::midi_value(&MidiNote::new(Note::DS, 5, 89)))));
+                assert!(
+                    self.conn
+                        .borrow()
+                        .notes_on
+                        .contains_key(&(1, MidiNote::midi_value(&MidiNote::new(Note::DS, 5, 89))))
+                );
             }
 
             if context.get_step() == 49 {
-                assert!(self
-                    .conn
-                    .borrow()
-                    .notes_on
-                    .contains_key(&(1, MidiNote::midi_value(&MidiNote::new(Note::G, 4, 89)))));
+                assert!(
+                    self.conn
+                        .borrow()
+                        .notes_on
+                        .contains_key(&(1, MidiNote::midi_value(&MidiNote::new(Note::G, 4, 89))))
+                );
             }
 
             if context.get_step() == 73 {
-                assert!(self
-                    .conn
-                    .borrow()
-                    .notes_on
-                    .contains_key(&(1, MidiNote::midi_value(&MidiNote::new(Note::AS, 4, 89)))));
+                assert!(
+                    self.conn
+                        .borrow()
+                        .notes_on
+                        .contains_key(&(1, MidiNote::midi_value(&MidiNote::new(Note::AS, 4, 89))))
+                );
             }
 
             context.midi.play_track(&mut self.track);
