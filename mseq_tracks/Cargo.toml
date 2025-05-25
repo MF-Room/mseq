@@ -20,6 +20,7 @@ midly = "0.5.3"
 fs-err = "2.11.0"
 log = "0.4.27"
 hashbrown = "0.15.2"
+toml = "0.8.22"
 
 [features]
 default = ["std"]
