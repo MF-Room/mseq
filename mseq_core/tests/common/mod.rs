@@ -70,13 +70,16 @@ impl MidiOut for DebugMidiOut {
     }
 }
 
-pub fn test_conductor<T: MidiOut>(mut conductor: impl Conductor, midi: MidiController<T>) {
-    let mut ctx = Context::new(midi);
+pub fn test_conductor<T: MidiOut>(
+    mut conductor: impl Conductor,
+    mut midi_controller: MidiController<T>,
+) {
+    let mut ctx = Context::new();
     conductor.init(&mut ctx);
     while ctx.is_running() {
-        ctx.process_pre_tick(&mut conductor);
-        ctx.process_post_tick();
+        ctx.process_pre_tick(&mut conductor, &mut midi_controller);
+        ctx.process_post_tick(&mut midi_controller);
     }
-    ctx.midi.stop_all_notes();
-    ctx.midi.stop();
+    midi_controller.stop_all_notes(None);
+    midi_controller.stop();
 }

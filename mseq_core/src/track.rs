@@ -1,5 +1,6 @@
-use crate::{MidiNote, MidiOut};
-use crate::{midi_controller::MidiController, note::Note};
+use crate::MidiNote;
+use crate::midi_controller::Instruction;
+use crate::note::Note;
 use serde::{Deserialize, Serialize};
 
 use alloc::string::{String, ToString};
@@ -12,7 +13,7 @@ use alloc::vec::Vec;
 pub trait Track {
     /// Implement what the track should play at that step. See `examples/impl_track.rs` for an
     /// example usage. Implementation required.
-    fn play_step(&mut self, step: u32, midi_controller: &mut MidiController<impl MidiOut>);
+    fn play_step(&mut self, step: u32) -> Vec<Instruction>;
     /// Returns the name of the track. Optional implementation.
     fn get_name(&self) -> String {
         "Unamed".to_string()
@@ -34,14 +35,24 @@ pub struct DeteTrack {
 }
 
 impl Track for DeteTrack {
-    fn play_step(&mut self, step: u32, midi_controller: &mut MidiController<impl MidiOut>) {
+    fn play_step(&mut self, step: u32) -> Vec<Instruction> {
         let cur_step = step % self.len;
-        for n in &self.notes {
-            if (n.1 + self.start_step) % self.len == cur_step {
-                let note = self.transpose.map_or(n.0, |t| n.0.transpose(t));
-                midi_controller.play_note(note, n.2, self.channel_id)
-            }
-        }
+        self.notes
+            .iter()
+            .filter_map(|n| {
+                if (n.1 + self.start_step) % self.len == cur_step {
+                    let note = self.transpose.map_or(n.0, |t| n.0.transpose(t));
+
+                    Some(Instruction::PlayNote {
+                        midi_note: note,
+                        len: n.2,
+                        channel_id: self.channel_id,
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 
     fn get_name(&self) -> String {

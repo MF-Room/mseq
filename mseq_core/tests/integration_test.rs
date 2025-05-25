@@ -44,12 +44,17 @@ fn play_note() {
 struct DebugConductor1(Rc<RefCell<DebugMidiOutInner>>);
 
 impl Conductor for DebugConductor1 {
-    fn init(&mut self, _context: &mut Context<impl MidiOut>) {}
+    fn init(&mut self, _context: &mut Context) {}
 
-    fn update(&mut self, context: &mut Context<impl MidiOut>) {
+    fn update(&mut self, context: &mut Context) -> Vec<Instruction> {
+        let mut instructions = vec![];
         if context.get_step() == 0 {
             let note = MidiNote::new(mseq_core::Note::B, 3, 21);
-            context.midi.play_note(note, 5, 1);
+            instructions.push(Instruction::PlayNote {
+                midi_note: note,
+                len: 5,
+                channel_id: 1,
+            });
         } else if context.get_step() == 10 {
             context.quit();
         }
@@ -58,6 +63,7 @@ impl Conductor for DebugConductor1 {
         } else {
             assert!(self.0.borrow().notes_on.is_empty());
         }
+        instructions
     }
 }
 
@@ -75,13 +81,21 @@ fn play_note_conductor() {
 struct DebugConductor2(Rc<RefCell<DebugMidiOutInner>>);
 
 impl Conductor for DebugConductor2 {
-    fn init(&mut self, _context: &mut Context<impl MidiOut>) {}
+    fn init(&mut self, _context: &mut Context) {}
 
-    fn update(&mut self, context: &mut Context<impl MidiOut>) {
+    fn update(&mut self, context: &mut Context) -> Vec<Instruction> {
+        let mut instructions = vec![];
         if context.get_step() == 0 {
             let note = MidiNote::new(crate::Note::B, 10, 21);
-            context.midi.play_note(note, 10, 1);
-            context.midi.start_note(note, 3);
+            instructions.push(Instruction::PlayNote {
+                midi_note: note,
+                len: 10,
+                channel_id: 1,
+            });
+            instructions.push(Instruction::StartNote {
+                midi_note: note,
+                channel_id: 3,
+            });
         } else if context.get_step() == 5 {
             context.quit();
         }
@@ -89,6 +103,8 @@ impl Conductor for DebugConductor2 {
         if (1..=5).contains(&context.get_step()) {
             assert!(self.0.borrow().notes_on.len() == 2);
         }
+
+        instructions
     }
 }
 
@@ -110,11 +126,12 @@ struct DebugConductor3 {
 }
 
 impl Conductor for DebugConductor3 {
-    fn init(&mut self, _context: &mut Context<impl MidiOut>) {}
+    fn init(&mut self, _context: &mut Context) {}
 
-    fn update(&mut self, context: &mut Context<impl MidiOut>) {
+    fn update(&mut self, context: &mut Context) -> Vec<Instruction> {
         if context.get_step() == 74 {
             context.quit();
+            vec![]
         } else {
             if context.get_step() == 0 {
                 self.track.transpose(Some(Note::C));
@@ -160,7 +177,7 @@ impl Conductor for DebugConductor3 {
                 );
             }
 
-            context.midi.play_track(&mut self.track);
+            self.track.play_step(context.get_step())
         }
     }
 }
