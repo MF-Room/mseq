@@ -28,6 +28,7 @@ mod midi_out;
 mod note;
 mod track;
 
+use alloc::collections::vec_deque::VecDeque;
 // Interface
 pub use conductor::Conductor;
 pub use midi::*;
@@ -131,7 +132,13 @@ impl Context {
         &mut self,
         conductor: &mut impl Conductor,
         controller: &mut MidiController<impl MidiOut>,
+        queue: Option<&mut VecDeque<(u8, MidiMessage)>>,
     ) {
+        if let Some(queue) = queue {
+            queue
+                .drain(..)
+                .for_each(|(channel, message)| conductor.handle_input(channel, message, self))
+        }
         conductor
             .update(self)
             .into_iter()

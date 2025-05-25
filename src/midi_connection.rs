@@ -1,8 +1,11 @@
 use midir::{Ignore, MidiInput, MidiOutput};
-use midly::{MidiMessage, live::LiveEvent};
-use mseq_core::{Conductor, MidiOut};
+use midly::live::LiveEvent;
+use mseq_core::{MidiController, MidiMessage, MidiOut};
 use promptly::{ReadlineError, prompt_default};
-use std::sync::{Arc, Mutex};
+use std::{
+    collections::VecDeque,
+    sync::{Arc, Mutex},
+};
 use thiserror::Error;
 
 const CLOCK: u8 = 0xf8;
@@ -113,7 +116,7 @@ impl MidiOut for StdMidiOut {
     }
 }
 
-fn parse(message: &[u8]) -> Option<(u8, MidiMessage)> {
+fn parse(message: &[u8]) -> Option<(u8, midly::MidiMessage)> {
     if let Ok(LiveEvent::Midi { channel, message }) = LiveEvent::parse(message) {
         Some((channel.as_int(), message))
     } else {
@@ -124,8 +127,30 @@ fn parse(message: &[u8]) -> Option<(u8, MidiMessage)> {
 /// Struct used to handle the MIDI input. If [`connect`] succeed, an object of type MidiIn
 /// is returned.
 #[allow(dead_code)]
-pub struct StdMidiIn<C: Conductor + 'static> {
-    pub connection: midir::MidiInputConnection<Arc<Mutex<C>>>,
+pub struct StdMidiIn<T: MidiOut + 'static> {
+    pub connection: midir::MidiInputConnection<(
+        Arc<Mutex<VecDeque<(u8, MidiMessage)>>>,
+        Arc<Mutex<MidiController<T>>>,
+    )>,
+    pub queue: Arc<Mutex<VecDeque<(u8, MidiMessage)>>>,
+}
+
+fn parse_to_mesq(m: midly::MidiMessage) -> Option<MidiMessage> {
+    match m {
+        midly::MidiMessage::NoteOff { key, vel } => Some(MidiMessage::NoteOff {
+            key: key.as_int(),
+            vel: vel.as_int(),
+        }),
+        midly::MidiMessage::NoteOn { key, vel } => Some(MidiMessage::NoteOn {
+            key: key.as_int(),
+            vel: vel.as_int(),
+        }),
+        midly::MidiMessage::Controller { controller, value } => Some(MidiMessage::CC {
+            controller: controller.as_int(),
+            value: value.as_int(),
+        }),
+        _ => None,
+    }
 }
 
 /// MIDI input connection parameters.
@@ -135,9 +160,9 @@ pub struct MidiInParam {
     /// MIDI port id used to receive the midi messages. If set to `None`, information about the MIDI ports
     /// will be displayed and the input port will be asked to the user with a prompt.
     pub port: Option<u32>,
+    // pub filter: dyn Fn(MidiMessage) -> (bool, MidiMessage),
 }
 
-/*
 /// Connect to a specified MIDI input port in order to receive messages.
 /// For each (non ignored) incoming MIDI message, the provided callback function will be called.
 ///The first parameter contains the actual bytes of the MIDI message.
@@ -147,12 +172,15 @@ pub struct MidiInParam {
 ///
 ///The connection will be kept open as long as the returned MidiInputConnection is kept alive.
 /// TODO update doc
-pub fn connect<C: Conductor + Send + 'static>(
-    conductor: Arc<Mutex<C>>,
+pub fn connect<T: MidiOut + Send + 'static>(
+    midi_controller: Arc<Mutex<MidiController<T>>>,
     params: MidiInParam,
-) -> Result<StdMidiIn<C>, MidiError> {
+    callback: Arc<impl Fn((u8, MidiMessage)) -> (bool, (u8, MidiMessage)) + Send + Sync + 'static>,
+) -> Result<StdMidiIn<T>, MidiError> {
     let mut midi_in = MidiInput::new("in")?;
     midi_in.ignore(params.ignore);
+
+    // Find port
     let in_ports = midi_in.ports();
 
     let in_port = if let Some(p) = params.port {
@@ -185,22 +213,29 @@ pub fn connect<C: Conductor + Send + 'static>(
         }
     };
 
+    let queue = Arc::new(Mutex::new(VecDeque::new()));
     let conn_in = midi_in.connect(
         in_port,
         "midir-read-input",
-        move |_, message, data| {
-            let m = parse(message);
+        move |_, message, (queue, midi_controller)| {
+            let m = parse(message).and_then(|(c, m)| parse_to_mesq(m).map(|m| (c, m)));
             if let Some(m) = m {
-                let conductor = conductor.lock().unwrap();
-                conductor.midi_input_callback(m.0 + 1, &m.1);
+                let (forward, message) = callback(m);
+                if forward {
+                    midi_controller
+                        .lock()
+                        .unwrap()
+                        .send_message(message.0, message.1);
+                } else {
+                    queue.lock().unwrap().push_back(message);
+                }
             }
         },
-        data.clone(),
+        (queue.clone(), midi_controller.clone()),
     )?;
 
     Ok(StdMidiIn {
         connection: conn_in,
-        conductor: handler,
+        queue,
     })
 }
-*/

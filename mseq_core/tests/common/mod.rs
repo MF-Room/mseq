@@ -77,7 +77,7 @@ pub fn test_conductor<T: MidiOut>(
     let mut ctx = Context::new();
     conductor.init(&mut ctx);
     while ctx.is_running() {
-        ctx.process_pre_tick(&mut conductor, &mut midi_controller);
+        ctx.process_pre_tick(&mut conductor, &mut midi_controller, None);
         ctx.process_post_tick(&mut midi_controller);
     }
     midi_controller.stop_all_notes(None);
