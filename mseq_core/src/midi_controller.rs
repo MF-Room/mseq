@@ -6,9 +6,8 @@ use hashbrown::{HashMap, HashSet};
 use log::error;
 use serde::{Deserialize, Serialize};
 
-use crate::midi_out::{is_valid_channel, MidiOut};
+use crate::midi_out::{MidiOut, is_valid_channel};
 use crate::note::Note;
-use crate::Track;
 
 const MAX_MIDI_CHANNEL: u8 = 16;
 
@@ -66,6 +65,54 @@ impl Hash for NotePlay {
     }
 }
 
+pub enum Instruction {
+    PlayNote {
+        midi_note: MidiNote,
+        len: u32,
+        channel_id: u8,
+    },
+    StartNote {
+        midi_note: MidiNote,
+        channel_id: u8,
+    },
+    StopNote {
+        midi_note: MidiNote,
+        channel_id: u8,
+    },
+    SendCC {
+        channel_id: u8,
+        parameter: u8,
+        value: u8,
+    },
+    StopAllNotes {
+        channel_id: Option<u8>,
+    },
+    Continue,
+    Start,
+    Stop,
+}
+
+impl Instruction {
+    pub fn transpose(&mut self, semitones: i8) {
+        match self {
+            Instruction::PlayNote {
+                midi_note,
+                len: _,
+                channel_id: _,
+            } => *midi_note = midi_note.transpose(semitones),
+            Instruction::StartNote {
+                midi_note,
+                channel_id: _,
+            } => *midi_note = midi_note.transpose(semitones),
+            Instruction::StopNote {
+                midi_note,
+                channel_id: _,
+            } => *midi_note = midi_note.transpose(semitones),
+            _ => (),
+        }
+    }
+}
+
 /// The [`MidiController`] provides a MIDI interface to the user.
 pub struct MidiController<T: MidiOut> {
     step: u32,
@@ -80,27 +127,48 @@ pub struct MidiController<T: MidiOut> {
     // Notes to play at the next update call
     notes_to_play: Vec<NotePlay>,
 
-    conn: T,
+    midi_out: T,
 }
 
 impl<T: MidiOut> MidiController<T> {
     /// This trait is not intended to be implemented by user code.
     ///
     /// It exists to enable code reuse across different environment and platforms.
-    pub fn new(conn: T) -> Self {
+    pub fn new(midi_out: T) -> Self {
         Self {
             step: 0,
             play_note_set: HashMap::new(),
             start_note_set: HashSet::new(),
             notes_to_play: vec![],
-            conn,
+            midi_out,
         }
     }
 
-    /// Request the [`MidiController`] to play `track`. This method has to be called at every MIDI
-    /// step the user wants the track to be played.
-    pub fn play_track(&mut self, track: &mut impl Track) {
-        track.play_step(self.step, self);
+    pub fn execute(&mut self, instruction: Instruction) {
+        match instruction {
+            Instruction::PlayNote {
+                midi_note,
+                len,
+                channel_id,
+            } => self.play_note(midi_note, len, channel_id),
+            Instruction::StartNote {
+                midi_note,
+                channel_id,
+            } => self.start_note(midi_note, channel_id),
+            Instruction::StopNote {
+                midi_note,
+                channel_id,
+            } => self.stop_note(midi_note, channel_id),
+            Instruction::SendCC {
+                channel_id,
+                parameter,
+                value,
+            } => self.send_cc(channel_id, parameter, value),
+            Instruction::StopAllNotes { channel_id } => self.stop_all_notes(channel_id),
+            Instruction::Continue => self.send_continue(),
+            Instruction::Start => self.start(),
+            Instruction::Stop => self.stop(),
+        }
     }
 
     /// Request the MIDI controller to play a note at the current MIDI step. Specify the length
@@ -157,7 +225,7 @@ impl<T: MidiOut> MidiController<T> {
         if !is_valid_channel(channel_id) {
             return;
         }
-        if let Err(e) = self.conn.send_cc(channel_id, parameter, value) {
+        if let Err(e) = self.midi_out.send_cc(channel_id, parameter, value) {
             error!("MIDI: {e}");
         }
     }
@@ -166,7 +234,7 @@ impl<T: MidiOut> MidiController<T> {
     ///
     /// It exists to enable code reuse across different environment and platforms.
     pub fn send_clock(&mut self) {
-        if let Err(e) = self.conn.send_clock() {
+        if let Err(e) = self.midi_out.send_clock() {
             error!("MIDI: {e}");
         }
     }
@@ -176,7 +244,7 @@ impl<T: MidiOut> MidiController<T> {
     /// It exists to enable code reuse across different environment and platforms.
     pub fn start(&mut self) {
         self.step = 0;
-        if let Err(e) = self.conn.send_start() {
+        if let Err(e) = self.midi_out.send_start() {
             error!("MIDI: {e}");
         }
     }
@@ -185,7 +253,7 @@ impl<T: MidiOut> MidiController<T> {
     ///
     /// It exists to enable code reuse across different environment and platforms.
     pub fn send_continue(&mut self) {
-        if let Err(e) = self.conn.send_continue() {
+        if let Err(e) = self.midi_out.send_continue() {
             error!("MIDI: {e}");
         }
     }
@@ -199,7 +267,7 @@ impl<T: MidiOut> MidiController<T> {
         if let Some(notes_off) = notes {
             for n in notes_off {
                 if let Err(e) = self
-                    .conn
+                    .midi_out
                     .send_note_off(n.channel_id, n.midi_note.midi_value())
                 {
                     error!("MIDI: {e}");
@@ -210,7 +278,7 @@ impl<T: MidiOut> MidiController<T> {
         // Then play all the notes that were triggered this step...
         for n in &self.notes_to_play {
             if let Err(e) =
-                self.conn
+                self.midi_out
                     .send_note_on(n.channel_id, n.midi_note.midi_value(), n.midi_note.vel)
             {
                 error!("MIDI: {e}");
@@ -226,21 +294,20 @@ impl<T: MidiOut> MidiController<T> {
     /// This function is not intended to be directly called by the user.
     ///
     /// It exists to enable code reuse across different environment and platforms.
-    pub fn stop_all_notes(&mut self) {
+    pub fn stop_all_notes(&mut self, channel: Option<u8>) {
         self.start_note_set.iter().for_each(|n| {
             if let Err(e) = self
-                .conn
+                .midi_out
                 .send_note_off(n.channel_id, n.midi_note.midi_value())
             {
                 error!("MIDI: {e}");
             }
         });
-        self.start_note_set.clear();
 
         self.play_note_set.values().for_each(|notes| {
             for n in notes {
                 if let Err(e) = self
-                    .conn
+                    .midi_out
                     .send_note_off(n.channel_id, n.midi_note.midi_value())
                 {
                     error!("MIDI: {e}");
@@ -254,7 +321,7 @@ impl<T: MidiOut> MidiController<T> {
     ///
     /// It exists to enable code reuse across different environment and platforms.
     pub fn stop(&mut self) {
-        if let Err(e) = self.conn.send_stop() {
+        if let Err(e) = self.midi_out.send_stop() {
             error!("MIDI: {e}");
         }
     }

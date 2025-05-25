@@ -22,6 +22,7 @@ extern crate alloc;
 
 mod bpm;
 mod conductor;
+mod midi;
 mod midi_controller;
 mod midi_out;
 mod note;
@@ -29,7 +30,8 @@ mod track;
 
 // Interface
 pub use conductor::Conductor;
-pub use midi_controller::{MidiController, MidiNote};
+pub use midi::*;
+pub use midi_controller::*;
 pub use midi_out::MidiOut;
 pub use note::Note;
 pub use track::*;
@@ -53,9 +55,8 @@ const DEFAULT_BPM: u8 = 120;
 /// System Messages (e.g., [`Context::start`]) using directly the [`Context`] methods. The user can
 /// also send MIDI Channel Messages (e.g., [`MidiController::play_note`] or
 /// [`MidiController::play_track`]) using the field [`Context::midi`].
-pub struct Context<T: MidiOut> {
+pub struct Context {
     /// Field used to send MIDI Channel Messages.
-    pub midi: MidiController<T>,
     bpm: Bpm,
     step: u32,
     running: bool,
@@ -63,11 +64,10 @@ pub struct Context<T: MidiOut> {
     pause: bool,
 }
 
-impl<T: MidiOut> Context<T> {
+impl Context {
     /// Build new mseq context.
-    pub fn new(midi: MidiController<T>) -> Self {
+    pub fn new() -> Self {
         Self {
-            midi,
             bpm: Bpm::new(DEFAULT_BPM),
             step: 0,
             running: true,
@@ -97,23 +97,23 @@ impl<T: MidiOut> Context<T> {
     }
 
     /// Pause the sequencer and send a MIDI stop message.
-    pub fn pause(&mut self) {
+    pub fn pause(&mut self) -> Instruction {
         self.on_pause = true;
         self.pause = true;
-        self.midi.stop_all_notes();
+        Instruction::StopAllNotes { channel_id: None }
     }
 
     /// Resume the sequencer and send a MIDI continue message.
-    pub fn resume(&mut self) {
+    pub fn resume(&mut self) -> Instruction {
         self.on_pause = false;
-        self.midi.send_continue();
+        Instruction::Continue
     }
 
     /// Start the sequencer and send a MIDI start message. The current step is set to 0.
-    pub fn start(&mut self) {
+    pub fn start(&mut self) -> Instruction {
         self.step = 0;
         self.on_pause = false;
-        self.midi.start();
+        Instruction::Start
     }
 
     /// Retrieve the current MIDI step.
@@ -127,19 +127,26 @@ impl<T: MidiOut> Context<T> {
 
     /// MIDI logic called before the clock tick.
     /// The user doesn't need to call this function.
-    pub fn process_pre_tick(&mut self, conductor: &mut impl Conductor) {
-        conductor.update(self);
+    pub fn process_pre_tick(
+        &mut self,
+        conductor: &mut impl Conductor,
+        controller: &mut MidiController<impl MidiOut>,
+    ) {
+        conductor
+            .update(self)
+            .into_iter()
+            .for_each(|instruction| controller.execute(instruction));
     }
 
     /// MIDI logic called after the clock tick.
     /// The user doesn't need to call this function.
-    pub fn process_post_tick(&mut self) {
-        self.midi.send_clock();
+    pub fn process_post_tick(&mut self, controller: &mut MidiController<impl MidiOut>) {
+        controller.send_clock();
         if !self.on_pause {
             self.step += 1;
-            self.midi.update(self.step);
+            controller.update(self.step);
         } else if self.pause {
-            self.midi.stop();
+            controller.stop();
             self.pause = false;
         }
     }

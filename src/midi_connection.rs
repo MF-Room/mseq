@@ -1,7 +1,7 @@
 use midir::{Ignore, MidiInput, MidiOutput};
-use midly::{live::LiveEvent, MidiMessage};
-use mseq_core::MidiOut;
-use promptly::{prompt_default, ReadlineError};
+use midly::{MidiMessage, live::LiveEvent};
+use mseq_core::{Conductor, MidiOut};
+use promptly::{ReadlineError, prompt_default};
 use std::sync::{Arc, Mutex};
 use thiserror::Error;
 
@@ -33,9 +33,9 @@ pub enum MidiError {
     NoInput(),
 }
 
-pub struct MidirOut(midir::MidiOutputConnection);
+pub struct StdMidiOut(midir::MidiOutputConnection);
 
-impl MidirOut {
+impl StdMidiOut {
     pub(crate) fn new(port: Option<u32>) -> Result<Self, MidiError> {
         let midi_out = MidiOutput::new("out")?;
         let out_ports = midi_out.ports();
@@ -75,7 +75,7 @@ impl MidirOut {
     }
 }
 
-impl MidiOut for MidirOut {
+impl MidiOut for StdMidiOut {
     type Error = MidiError;
     fn send_start(&mut self) -> Result<(), MidiError> {
         self.0.send(&[START])?;
@@ -120,18 +120,12 @@ fn parse(message: &[u8]) -> Option<(u8, MidiMessage)> {
         None
     }
 }
-/// The user can create an implementation of this trait and call [`connect`] to handle MIDI inputs.
-pub trait MidiIn {
-    /// handler function for MIDI input messages
-    fn handle(&mut self, channel: u8, message: &MidiMessage);
-}
 
 /// Struct used to handle the MIDI input. If [`connect`] succeed, an object of type MidiIn
 /// is returned.
 #[allow(dead_code)]
-pub struct MidirIn<T: 'static> {
-    pub connection: midir::MidiInputConnection<Arc<Mutex<T>>>,
-    pub data: Arc<Mutex<T>>,
+pub struct StdMidiIn<C: Conductor + 'static> {
+    pub connection: midir::MidiInputConnection<Arc<Mutex<C>>>,
 }
 
 /// MIDI input connection parameters.
@@ -143,6 +137,7 @@ pub struct MidiInParam {
     pub port: Option<u32>,
 }
 
+/*
 /// Connect to a specified MIDI input port in order to receive messages.
 /// For each (non ignored) incoming MIDI message, the provided callback function will be called.
 ///The first parameter contains the actual bytes of the MIDI message.
@@ -152,7 +147,10 @@ pub struct MidiInParam {
 ///
 ///The connection will be kept open as long as the returned MidiInputConnection is kept alive.
 /// TODO update doc
-pub fn connect<T: MidiIn + Send>(handler: T, params: MidiInParam) -> Result<MidirIn<T>, MidiError> {
+pub fn connect<C: Conductor + Send + 'static>(
+    conductor: Arc<Mutex<C>>,
+    params: MidiInParam,
+) -> Result<StdMidiIn<C>, MidiError> {
     let mut midi_in = MidiInput::new("in")?;
     midi_in.ignore(params.ignore);
     let in_ports = midi_in.ports();
@@ -187,22 +185,22 @@ pub fn connect<T: MidiIn + Send>(handler: T, params: MidiInParam) -> Result<Midi
         }
     };
 
-    let data = Arc::new(Mutex::new(handler));
-
     let conn_in = midi_in.connect(
         in_port,
         "midir-read-input",
         move |_, message, data| {
             let m = parse(message);
             if let Some(m) = m {
-                data.lock().unwrap().handle(m.0 + 1, &m.1);
+                let conductor = conductor.lock().unwrap();
+                conductor.midi_input_callback(m.0 + 1, &m.1);
             }
         },
         data.clone(),
     )?;
 
-    Ok(MidirIn {
+    Ok(StdMidiIn {
         connection: conn_in,
-        data,
+        conductor: handler,
     })
 }
+*/

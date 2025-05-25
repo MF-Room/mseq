@@ -1,25 +1,29 @@
-use mseq::{Conductor, DeteTrack, MidiNote, Note};
+use mseq::{Conductor, DeteTrack, Instruction, MidiNote, Note, Track};
 
 struct MyConductor {
     clk_div: DeteTrack,
 }
 
 impl Conductor for MyConductor {
-    fn init(&mut self, context: &mut mseq::Context<impl mseq::MidiOut>) {
+    fn init(&mut self, context: &mut mseq::Context) {
         // The sequencer is on pause by default
         context.start();
         // Set the bpm to 157
         context.set_bpm(157);
     }
 
-    fn update(&mut self, context: &mut mseq::Context<impl mseq::MidiOut>) {
-        // Play the clk_div track
-        context.midi.play_track(&mut self.clk_div);
+    fn update(&mut self, context: &mut mseq::Context) -> Vec<Instruction> {
+        // Quit after 960 steps
+        let step = context.get_step();
 
         // Quit after 960 steps
-        if context.get_step() == 959 {
+        if step == 959 {
             context.quit();
+            return vec![];
         }
+
+        // Play the clk_div track
+        self.clk_div.play_step(step)
     }
 }
 

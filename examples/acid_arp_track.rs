@@ -1,4 +1,4 @@
-use mseq::{Conductor, DeteTrack};
+use mseq::{Conductor, DeteTrack, Instruction, Track};
 
 struct MyConductor {
     acid: DeteTrack,
@@ -6,22 +6,23 @@ struct MyConductor {
 }
 
 impl Conductor for MyConductor {
-    fn init(&mut self, context: &mut mseq::Context<impl mseq::MidiOut>) {
+    fn init(&mut self, context: &mut mseq::Context) {
         // The sequencer is on pause by default
         context.start();
     }
 
-    fn update(&mut self, context: &mut mseq::Context<impl mseq::MidiOut>) {
-        // First play acid on channel 0 and then arp on channel 1
-        if context.get_step() < 430 {
-            context.midi.play_track(&mut self.acid);
-        } else {
-            context.midi.play_track(&mut self.arp);
-        }
-
+    fn update(&mut self, context: &mut mseq::Context) -> Vec<Instruction> {
+        let step = context.get_step();
         // Quit after 960 steps
         if context.get_step() == 959 {
             context.quit();
+        }
+
+        // First play acid on channel 0 and then arp on channel 1
+        if step < 430 {
+            self.acid.play_step(step)
+        } else {
+            self.arp.play_step(step)
         }
     }
 }

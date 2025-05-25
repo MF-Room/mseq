@@ -1,23 +1,25 @@
-use mseq::{Conductor, DeteTrack};
+use mseq::{Conductor, DeteTrack, Instruction, Track};
 
 struct MyConductor {
     track: DeteTrack,
 }
 
 impl Conductor for MyConductor {
-    fn init(&mut self, context: &mut mseq::Context<impl mseq::MidiOut>) {
+    fn init(&mut self, context: &mut mseq::Context) {
         // The sequencer is on pause by default
         context.start();
     }
 
-    fn update(&mut self, context: &mut mseq::Context<impl mseq::MidiOut>) {
-        // The conductor plays the track
-        context.midi.play_track(&mut self.track);
-
+    fn update(&mut self, context: &mut mseq::Context) -> Vec<Instruction> {
+        let step = context.get_step();
         // Quit after 960 steps
-        if context.get_step() == 959 {
+        if step == 959 {
             context.quit();
+            return vec![];
         }
+
+        // The conductor plays the track
+        self.track.play_step(step)
     }
 }
 
