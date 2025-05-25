@@ -1,3 +1,5 @@
+use crate::MidiMessage;
+
 pub(crate) fn is_valid_channel(channel: u8) -> bool {
     (1..=16).contains(&channel)
 }
@@ -8,6 +10,18 @@ pub(crate) fn is_valid_channel(channel: u8) -> bool {
 pub trait MidiOut {
     /// Error type returned by the different member functions.
     type Error: core::fmt::Display;
+    /// Send MIDI message
+    fn send_message(&mut self, channel_id: u8, message: MidiMessage) -> Result<(), Self::Error> {
+        match message {
+            MidiMessage::NoteOff { key, vel: _ } => self.send_note_off(channel_id, key),
+            MidiMessage::NoteOn { key, vel } => self.send_note_on(channel_id, key, vel),
+            MidiMessage::CC { controller, value } => self.send_cc(channel_id, controller, value),
+            MidiMessage::Clock => self.send_clock(),
+            MidiMessage::Start => self.send_start(),
+            MidiMessage::Continue => self.send_continue(),
+            MidiMessage::Stop => self.send_stop(),
+        }
+    }
     /// Send MIDI start message.
     fn send_start(&mut self) -> Result<(), Self::Error>;
     /// Send MIDI continue message.

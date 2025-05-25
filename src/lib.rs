@@ -4,7 +4,7 @@ mod midi_connection;
 pub use mseq_core::*;
 use mseq_tracks::TrackError;
 
-use std::time::Duration;
+use std::{collections::VecDeque, time::Duration};
 
 use clock::Clock;
 
@@ -42,9 +42,8 @@ pub fn run_ctx(
 ) -> Result<(), MSeqError> {
     conductor.init(&mut ctx);
     let mut clock = Clock::new();
-
     while ctx.is_running() {
-        ctx.process_pre_tick(&mut conductor, &mut controller);
+        ctx.process_pre_tick(&mut conductor, &mut controller, None);
         clock.tick(&Duration::from_micros(ctx.get_period_us()));
         ctx.process_post_tick(&mut controller);
     }

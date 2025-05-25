@@ -6,6 +6,7 @@ use hashbrown::{HashMap, HashSet};
 use log::error;
 use serde::{Deserialize, Serialize};
 
+use crate::MidiMessage;
 use crate::midi_out::{MidiOut, is_valid_channel};
 use crate::note::Note;
 
@@ -322,6 +323,12 @@ impl<T: MidiOut> MidiController<T> {
     /// It exists to enable code reuse across different environment and platforms.
     pub fn stop(&mut self) {
         if let Err(e) = self.midi_out.send_stop() {
+            error!("MIDI: {e}");
+        }
+    }
+
+    pub fn send_message(&mut self, channel_id: u8, message: MidiMessage) {
+        if let Err(e) = self.midi_out.send_message(channel_id, message) {
             error!("MIDI: {e}");
         }
     }
