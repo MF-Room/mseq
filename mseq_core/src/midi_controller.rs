@@ -88,6 +88,10 @@ pub enum Instruction {
     StopAllNotes {
         channel_id: Option<u8>,
     },
+    MidiMessage {
+        channel_id: u8,
+        midi_message: MidiMessage,
+    },
     Continue,
     Start,
     Stop,
@@ -169,6 +173,10 @@ impl<T: MidiOut> MidiController<T> {
             Instruction::Continue => self.send_continue(),
             Instruction::Start => self.start(),
             Instruction::Stop => self.stop(),
+            Instruction::MidiMessage {
+                channel_id,
+                midi_message,
+            } => self.send_message(channel_id, midi_message),
         }
     }
 
@@ -213,6 +221,7 @@ impl<T: MidiOut> MidiController<T> {
             midi_note,
             channel_id,
         };
+        self.start_note_set.remove(&note_play);
         self.stop_note_at_step(note_play, self.step);
     }
 

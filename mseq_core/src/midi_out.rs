@@ -13,8 +13,10 @@ pub trait MidiOut {
     /// Send MIDI message
     fn send_message(&mut self, channel_id: u8, message: MidiMessage) -> Result<(), Self::Error> {
         match message {
-            MidiMessage::NoteOff { key, vel: _ } => self.send_note_off(channel_id, key),
-            MidiMessage::NoteOn { key, vel } => self.send_note_on(channel_id, key, vel),
+            MidiMessage::NoteOff { note } => self.send_note_off(channel_id, note.midi_value()),
+            MidiMessage::NoteOn { note } => {
+                self.send_note_on(channel_id, note.midi_value(), note.vel)
+            }
             MidiMessage::CC { controller, value } => self.send_cc(channel_id, controller, value),
             MidiMessage::Clock => self.send_clock(),
             MidiMessage::Start => self.send_start(),

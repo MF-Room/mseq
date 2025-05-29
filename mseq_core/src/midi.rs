@@ -1,20 +1,12 @@
+use crate::MidiNote;
+
 /// Midi Message representation according to the Midi Standard
 /// https://www.music.mcgill.ca/~ich/classes/mumt306/StandardMIDIfileformat.html#BMA1_
 pub enum MidiMessage {
     /// Note Off event. This message is sent when a note is released.
-    NoteOff {
-        /// Key
-        key: u8,
-        /// Velocity
-        vel: u8,
-    },
+    NoteOff { note: MidiNote },
     /// Note On event. This message is sent when a note is pressed.
-    NoteOn {
-        /// Key
-        key: u8,
-        /// Velocity
-        vel: u8,
-    },
+    NoteOn { note: MidiNote },
     /// Control Change. This message is sent when a controller value changes.
     CC {
         /// Controller number
