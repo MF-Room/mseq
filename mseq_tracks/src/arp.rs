@@ -1,4 +1,5 @@
 use alloc::vec::Vec;
+use serde::Deserialize;
 use std::io::Read;
 
 use mseq_core::{DeteTrack, MidiNote, Note};
@@ -6,7 +7,7 @@ use mseq_core::{DeteTrack, MidiNote, Note};
 use crate::TrackError;
 
 /// Time division of the arpeggiator
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, Debug, Deserialize)]
 pub enum ArpDiv {
     #[default]
     /// Play every quarter note.
