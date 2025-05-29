@@ -1,0 +1,21 @@
+[[acid]]
+name = "acid"
+file = "acid.csv"
+root = "C"
+channel = 7
+
+[[arp]]
+name = "arp"
+file = "arp.csv"
+root = "A"
+channel = 6
+div = "T8"
+
+[[div]]
+name = "div"
+file = "div.csv"
+note= "C"
+octave = 3
+vel = 63
+channel = 5
+
