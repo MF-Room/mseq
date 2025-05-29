@@ -1,6 +1,6 @@
 use midir::{Ignore, MidiInput, MidiOutput};
 use midly::live::LiveEvent;
-use mseq_core::{MidiController, MidiMessage, MidiOut};
+use mseq_core::{InputQueue, MidiController, MidiMessage, MidiNote, MidiOut};
 use promptly::{ReadlineError, prompt_default};
 use std::{
     collections::VecDeque,
@@ -135,15 +135,13 @@ pub struct StdMidiIn<T: MidiOut + 'static> {
     pub queue: Arc<Mutex<VecDeque<(u8, MidiMessage)>>>,
 }
 
-fn parse_to_mesq(m: midly::MidiMessage) -> Option<MidiMessage> {
+fn parse_to_mseq(m: midly::MidiMessage) -> Option<MidiMessage> {
     match m {
         midly::MidiMessage::NoteOff { key, vel } => Some(MidiMessage::NoteOff {
-            key: key.as_int(),
-            vel: vel.as_int(),
+            note: MidiNote::from_midi_value(key.as_int(), vel.as_int()),
         }),
         midly::MidiMessage::NoteOn { key, vel } => Some(MidiMessage::NoteOn {
-            key: key.as_int(),
-            vel: vel.as_int(),
+            note: MidiNote::from_midi_value(key.as_int(), vel.as_int()),
         }),
         midly::MidiMessage::Controller { controller, value } => Some(MidiMessage::CC {
             controller: controller.as_int(),
@@ -213,12 +211,12 @@ pub fn connect<T: MidiOut + Send + 'static>(
         }
     };
 
-    let queue = Arc::new(Mutex::new(VecDeque::new()));
+    let queue = Arc::new(Mutex::new(InputQueue::new()));
     let conn_in = midi_in.connect(
         in_port,
         "midir-read-input",
         move |_, message, (queue, midi_controller)| {
-            let m = parse(message).and_then(|(c, m)| parse_to_mesq(m).map(|m| (c, m)));
+            let m = parse(message).and_then(|(c, m)| parse_to_mseq(m).map(|m| (c, m)));
             if let Some(m) = m {
                 let (forward, message) = callback(m);
                 if forward {

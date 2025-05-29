@@ -65,6 +65,12 @@ pub struct Context {
     pause: bool,
 }
 
+/// Inputs queue to process.
+pub type InputQueue = VecDeque<(
+    u8,          // Midi channel
+    MidiMessage, // Midi message
+)>;
+
 impl Context {
     /// Build new mseq context.
     pub fn new() -> Self {
@@ -122,7 +128,7 @@ impl Context {
     /// - 24 steps make a whole note
     /// - 12 steps make a half note
     /// - 6 steps make a quarter note
-    pub fn get_step(&mut self) -> u32 {
+    pub fn get_step(&self) -> u32 {
         self.step
     }
 
@@ -132,13 +138,7 @@ impl Context {
         &mut self,
         conductor: &mut impl Conductor,
         controller: &mut MidiController<impl MidiOut>,
-        queue: Option<&mut VecDeque<(u8, MidiMessage)>>,
     ) {
-        if let Some(queue) = queue {
-            queue
-                .drain(..)
-                .for_each(|(channel, message)| conductor.handle_input(channel, message, self))
-        }
         conductor
             .update(self)
             .into_iter()
@@ -161,6 +161,18 @@ impl Context {
     /// Return true if the sequencer is running, false if the sequencer should stop.
     pub fn is_running(&self) -> bool {
         self.running
+    }
+
+    pub fn handle_inputs(
+        &mut self,
+        conductor: &mut impl Conductor,
+        controller: &mut MidiController<impl MidiOut>,
+        input_queue: &mut InputQueue,
+    ) {
+        input_queue
+            .drain(..)
+            .flat_map(|(channel, message)| conductor.handle_input(channel, message, self))
+            .for_each(|instruction| controller.execute(instruction));
     }
 }
 
