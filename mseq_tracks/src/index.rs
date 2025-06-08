@@ -40,7 +40,7 @@ struct Index {
     div: Option<Vec<Div>>,
 }
 
-pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Vec<DeteTrack>, TrackError> {
+pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Vec<(DeteTrack, String)>, TrackError> {
     let toml_str = std::fs::read_to_string(&path)?;
     let base_dir = path.as_ref().parent().expect("Base path has no parent");
     let index: Index = toml::from_str(&toml_str)?;
@@ -53,9 +53,10 @@ pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Vec<DeteTrack>, TrackEr
         .map(|a| {
             let relative_path = Path::new(&a.file);
             let path = base_dir.join(relative_path);
-            acid::load_from_file(path, a.root, a.channel, &a.name)
+            acid::load_from_file(path.clone(), a.root, a.channel, &a.name)
+                .map(|t| (t, path.to_string_lossy().into()))
         })
-        .collect::<Result<Vec<DeteTrack>, _>>()?;
+        .collect::<Result<Vec<(DeteTrack, String)>, _>>()?;
 
     let mut arp_tracks = index
         .arp
@@ -64,9 +65,10 @@ pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Vec<DeteTrack>, TrackEr
         .map(|a| {
             let relative_path = Path::new(&a.file);
             let path = base_dir.join(relative_path);
-            arp::load_from_file(path, a.div, a.root, a.channel, &a.name)
+            arp::load_from_file(path.clone(), a.div, a.root, a.channel, &a.name)
+                .map(|t| (t, path.to_string_lossy().into()))
         })
-        .collect::<Result<Vec<DeteTrack>, _>>()?;
+        .collect::<Result<Vec<(DeteTrack, String)>, _>>()?;
 
     let mut div_tracks = index
         .div
@@ -80,9 +82,10 @@ pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Vec<DeteTrack>, TrackEr
                 octave: a.octave,
                 vel: a.vel,
             };
-            div::load_from_file(path, midi_note, a.channel, &a.name)
+            div::load_from_file(path.clone(), midi_note, a.channel, &a.name)
+                .map(|t| (t, path.to_string_lossy().into()))
         })
-        .collect::<Result<Vec<DeteTrack>, _>>()?;
+        .collect::<Result<Vec<(DeteTrack, String)>, _>>()?;
 
     tracks.append(&mut acid_tracks);
     tracks.append(&mut arp_tracks);

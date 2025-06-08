@@ -21,8 +21,8 @@ pub fn load_from_file<P: AsRef<Path>>(
     channel_id: u8,
     name: &str,
 ) -> Result<DeteTrack, TrackError> {
-    let bytes = fs_err::read(filename).map_err(|e| TrackError::Io(e))?;
-    let smf = midly::Smf::parse(&bytes).map_err(|e| TrackError::Midly(e))?;
+    let bytes = fs_err::read(filename).map_err(TrackError::Io)?;
+    let smf = midly::Smf::parse(&bytes).map_err(TrackError::Midly)?;
 
     match smf.header.format {
         midly::Format::SingleTrack => (),
