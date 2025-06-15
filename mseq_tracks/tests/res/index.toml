@@ -19,3 +19,8 @@ octave = 3
 vel = 63
 channel = 5
 
+[[midi]]
+name = "midi"
+file = "midi.mid"
+root = "A"
+channel = 4

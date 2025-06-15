@@ -1,6 +1,6 @@
 use crate::TrackError;
 use crate::arp::ArpDiv;
-use crate::{acid, arp, div};
+use crate::{acid, arp, div, midi};
 use mseq_core::Note;
 use mseq_core::{DeteTrack, MidiNote};
 use serde::Deserialize;
@@ -34,10 +34,19 @@ struct Div {
 }
 
 #[derive(Debug, Default, Deserialize)]
+struct Midi {
+    name: String,
+    file: String,
+    root: Note,
+    channel: u8,
+}
+
+#[derive(Debug, Default, Deserialize)]
 struct Index {
     acid: Option<Vec<Acid>>,
     arp: Option<Vec<Arp>>,
     div: Option<Vec<Div>>,
+    midi: Option<Vec<Midi>>,
 }
 
 pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Vec<(DeteTrack, String)>, TrackError> {
@@ -87,9 +96,22 @@ pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Vec<(DeteTrack, String)
         })
         .collect::<Result<Vec<(DeteTrack, String)>, _>>()?;
 
+    let mut midi_tracks = index
+        .midi
+        .unwrap_or_default()
+        .iter()
+        .map(|a| {
+            let relative_path = Path::new(&a.file);
+            let path = base_dir.join(relative_path);
+            midi::load_from_file(path.clone(), a.root, a.channel, &a.name)
+                .map(|t| (t, path.to_string_lossy().into()))
+        })
+        .collect::<Result<Vec<(DeteTrack, String)>, _>>()?;
+
     tracks.append(&mut acid_tracks);
     tracks.append(&mut arp_tracks);
     tracks.append(&mut div_tracks);
+    tracks.append(&mut midi_tracks);
 
     Ok(tracks)
 }

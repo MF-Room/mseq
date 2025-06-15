@@ -25,7 +25,7 @@ jobs:
           rust-version: stable
 
       - name: cargo test
-        run: cargo test --all-features
+        run: cargo test --workspace --all-features
 
       - name: rustfmt
         run: cargo fmt --workspace -- --check
