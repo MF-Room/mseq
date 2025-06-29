@@ -2,6 +2,7 @@ use crate::MidiNote;
 
 /// Midi Message representation according to the Midi Standard
 /// https://www.music.mcgill.ca/~ich/classes/mumt306/StandardMIDIfileformat.html#BMA1_
+#[derive(PartialEq)]
 pub enum MidiMessage {
     /// Note Off event. This message is sent when a note is released.
     NoteOff { note: MidiNote },
