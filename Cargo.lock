@@ -490,7 +490,6 @@ dependencies = [
  "fs-err",
  "log",
  "midir",
- "midly",
  "mseq_core",
  "mseq_tracks",
  "promptly",

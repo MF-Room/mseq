@@ -4,54 +4,12 @@ use core::hash::{Hash, Hasher};
 
 use hashbrown::{HashMap, HashSet};
 use log::error;
-use serde::{Deserialize, Serialize};
 
 use crate::MidiMessage;
-use crate::midi_out::{MidiOut, is_valid_channel};
-use crate::note::Note;
+use crate::midi::{MidiNote, is_valid_channel};
+use crate::midi_out::MidiOut;
 
 const MAX_MIDI_CHANNEL: u8 = 16;
-
-/// Note that can be sent through a MIDI message.
-#[derive(Default, Clone, Copy, PartialEq, Eq, Debug, Deserialize, Serialize, Hash)]
-pub struct MidiNote {
-    /// The chromatic note (A to G)
-    pub note: Note,
-    /// The octave of the note
-    pub octave: u8,
-    /// The velocity of the note (0 to 127)
-    pub vel: u8,
-}
-
-impl MidiNote {
-    /// Construct a new [`MidiNote`]
-    pub fn new(note: Note, octave: u8, vel: u8) -> Self {
-        Self { note, octave, vel }
-    }
-
-    /// Convert a MIDI note value into a [`MidiNote`].
-    pub fn from_midi_value(midi_value: u8, vel: u8) -> Self {
-        let octave = midi_value / 12;
-        let note = Note::from(midi_value % 12);
-        Self::new(note, octave, vel)
-    }
-
-    /// Transpose the [`MidiNote`].
-    /// The `transpose` parameter corresponds to the number of semitones to add to the note.
-    pub fn transpose(&self, transpose: i8) -> Self {
-        let (note, octave) = self.note.add_semitone(self.octave, transpose);
-        Self {
-            note,
-            octave,
-            vel: self.vel,
-        }
-    }
-
-    /// Retrieve the MIDI value of the MidiNote, which can be sent through a MIDI message.
-    pub fn midi_value(&self) -> u8 {
-        u8::from(self.note) + 12 * self.octave
-    }
-}
 
 #[derive(Default, Clone, Copy, PartialEq, Eq, Debug)]
 struct NotePlay {
@@ -89,7 +47,6 @@ pub enum Instruction {
         channel_id: Option<u8>,
     },
     MidiMessage {
-        channel_id: u8,
         midi_message: MidiMessage,
     },
     Continue,
@@ -173,10 +130,7 @@ impl<T: MidiOut> MidiController<T> {
             Instruction::Continue => self.send_continue(),
             Instruction::Start => self.start(),
             Instruction::Stop => self.stop(),
-            Instruction::MidiMessage {
-                channel_id,
-                midi_message,
-            } => self.send_message(channel_id, midi_message),
+            Instruction::MidiMessage { midi_message } => self.send_message(midi_message),
         }
     }
 
@@ -336,8 +290,8 @@ impl<T: MidiOut> MidiController<T> {
         }
     }
 
-    pub fn send_message(&mut self, channel_id: u8, message: MidiMessage) {
-        if let Err(e) = self.midi_out.send_message(channel_id, message) {
+    pub fn send_message(&mut self, message: MidiMessage) {
+        if let Err(e) = self.midi_out.send_message(message) {
             error!("MIDI: {e}");
         }
     }

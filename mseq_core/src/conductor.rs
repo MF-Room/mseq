@@ -20,12 +20,7 @@ pub trait Conductor {
     /// do any intensive computation, or block the thread.__
     fn update(&mut self, context: &mut Context) -> Vec<Instruction>;
     /// Midi input callback function. Default implementation does nothing.
-    fn handle_input(
-        &mut self,
-        _channel_id: u8,
-        _input: MidiMessage,
-        _context: &Context,
-    ) -> Vec<Instruction> {
+    fn handle_input(&mut self, _input: MidiMessage, _context: &Context) -> Vec<Instruction> {
         vec![]
     }
 }

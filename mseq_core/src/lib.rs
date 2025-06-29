@@ -66,10 +66,9 @@ pub struct Context {
 }
 
 /// Inputs queue to process.
-pub type InputQueue = VecDeque<(
-    u8,          // Midi channel
+pub type InputQueue = VecDeque<
     MidiMessage, // Midi message
-)>;
+>;
 
 impl Context {
     /// Build new mseq context.
@@ -171,7 +170,7 @@ impl Context {
     ) {
         input_queue
             .drain(..)
-            .flat_map(|(channel, message)| conductor.handle_input(channel, message, self))
+            .flat_map(|message| conductor.handle_input(message, self))
             .for_each(|instruction| controller.execute(instruction));
     }
 }

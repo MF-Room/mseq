@@ -1,6 +1,5 @@
 use midir::{Ignore, MidiInput, MidiOutput};
-use midly::live::LiveEvent;
-use mseq_core::{InputQueue, MidiController, MidiMessage, MidiNote, MidiOut};
+use mseq_core::{InputQueue, MidiController, MidiMessage, MidiOut};
 use promptly::{ReadlineError, prompt_default};
 use std::{
     collections::VecDeque,
@@ -15,6 +14,7 @@ const STOP: u8 = 0xfc;
 const NOTE_ON: u8 = 0x90;
 const NOTE_OFF: u8 = 0x80;
 const CC: u8 = 0xB0;
+const PC: u8 = 0xC0;
 
 #[derive(Error, Debug)]
 pub enum MidiError {
@@ -114,41 +114,21 @@ impl MidiOut for StdMidiOut {
         self.0.send(&[CC | (channel_id - 1), parameter, value])?;
         Ok(())
     }
-}
 
-fn parse(message: &[u8]) -> Option<(u8, midly::MidiMessage)> {
-    if let Ok(LiveEvent::Midi { channel, message }) = LiveEvent::parse(message) {
-        Some((channel.as_int(), message))
-    } else {
-        None
+    fn send_pc(&mut self, channel_id: u8, value: u8) -> Result<(), MidiError> {
+        self.0.send(&[PC | (channel_id - 1), value])?;
+        Ok(())
     }
 }
 
 /// Struct used to handle the MIDI input. If [`connect`] succeed, an object of type MidiIn
 /// is returned.
-#[allow(dead_code)]
 pub struct StdMidiIn<T: MidiOut + 'static> {
     pub connection: midir::MidiInputConnection<(
-        Arc<Mutex<VecDeque<(u8, MidiMessage)>>>,
+        Arc<Mutex<VecDeque<MidiMessage>>>,
         Arc<Mutex<MidiController<T>>>,
     )>,
-    pub queue: Arc<Mutex<VecDeque<(u8, MidiMessage)>>>,
-}
-
-fn parse_to_mseq(m: midly::MidiMessage) -> Option<MidiMessage> {
-    match m {
-        midly::MidiMessage::NoteOff { key, vel } => Some(MidiMessage::NoteOff {
-            note: MidiNote::from_midi_value(key.as_int(), vel.as_int()),
-        }),
-        midly::MidiMessage::NoteOn { key, vel } => Some(MidiMessage::NoteOn {
-            note: MidiNote::from_midi_value(key.as_int(), vel.as_int()),
-        }),
-        midly::MidiMessage::Controller { controller, value } => Some(MidiMessage::CC {
-            controller: controller.as_int(),
-            value: value.as_int(),
-        }),
-        _ => None,
-    }
+    pub queue: Arc<Mutex<VecDeque<MidiMessage>>>,
 }
 
 /// MIDI input connection parameters.
@@ -173,7 +153,6 @@ pub struct MidiInParam {
 pub fn connect<T: MidiOut + Send + 'static>(
     midi_controller: Arc<Mutex<MidiController<T>>>,
     params: MidiInParam,
-    callback: Arc<impl Fn((u8, MidiMessage)) -> (bool, (u8, MidiMessage)) + Send + Sync + 'static>,
 ) -> Result<StdMidiIn<T>, MidiError> {
     let mut midi_in = MidiInput::new("in")?;
     midi_in.ignore(params.ignore);
@@ -216,16 +195,19 @@ pub fn connect<T: MidiOut + Send + 'static>(
         in_port,
         "midir-read-input",
         move |_, message, (queue, midi_controller)| {
-            let m = parse(message).and_then(|(c, m)| parse_to_mseq(m).map(|m| (c, m)));
+            let m = MidiMessage::parse(message);
             if let Some(m) = m {
-                let (forward, message) = callback(m);
-                if forward {
-                    midi_controller
-                        .lock()
-                        .unwrap()
-                        .send_message(message.0, message.1);
-                } else {
-                    queue.lock().unwrap().push_back(message);
+                match m {
+                    MidiMessage::Clock => {
+                        todo!()
+                    }
+                    MidiMessage::Start => {
+                        todo!()
+                    }
+                    MidiMessage::Stop => {
+                        todo!()
+                    }
+                    _ => queue.lock().unwrap().push_back(m),
                 }
             }
         },
