@@ -3,7 +3,7 @@ use mseq_core::{InputQueue, MidiController, MidiMessage, MidiOut};
 use promptly::{ReadlineError, prompt_default};
 use std::{
     collections::VecDeque,
-    sync::{Arc, Mutex},
+    sync::{Arc, Condvar, Mutex},
 };
 use thiserror::Error;
 
@@ -123,22 +123,20 @@ impl MidiOut for StdMidiOut {
 
 /// Struct used to handle the MIDI input. If [`connect`] succeed, an object of type MidiIn
 /// is returned.
-pub struct StdMidiIn<T: MidiOut + 'static> {
-    pub connection: midir::MidiInputConnection<(
-        Arc<Mutex<VecDeque<MidiMessage>>>,
-        Arc<Mutex<MidiController<T>>>,
-    )>,
+pub struct StdMidiIn {
+    pub connection: midir::MidiInputConnection<Arc<Mutex<VecDeque<MidiMessage>>>>,
     pub queue: Arc<Mutex<VecDeque<MidiMessage>>>,
 }
 
 /// MIDI input connection parameters.
+#[derive(Clone)]
 pub struct MidiInParam {
     /// An enum that is used to specify what kind of MIDI messages should be ignored when receiving messages.
     pub ignore: Ignore,
     /// MIDI port id used to receive the midi messages. If set to `None`, information about the MIDI ports
     /// will be displayed and the input port will be asked to the user with a prompt.
     pub port: Option<u32>,
-    // pub filter: dyn Fn(MidiMessage) -> (bool, MidiMessage),
+    pub slave: bool,
 }
 
 /// Connect to a specified MIDI input port in order to receive messages.
@@ -150,10 +148,7 @@ pub struct MidiInParam {
 ///
 ///The connection will be kept open as long as the returned MidiInputConnection is kept alive.
 /// TODO update doc
-pub fn connect<T: MidiOut + Send + 'static>(
-    midi_controller: Arc<Mutex<MidiController<T>>>,
-    params: MidiInParam,
-) -> Result<StdMidiIn<T>, MidiError> {
+pub fn connect(params: MidiInParam) -> Result<StdMidiIn, MidiError> {
     let mut midi_in = MidiInput::new("in")?;
     midi_in.ignore(params.ignore);
 
@@ -194,7 +189,7 @@ pub fn connect<T: MidiOut + Send + 'static>(
     let conn_in = midi_in.connect(
         in_port,
         "midir-read-input",
-        move |_, message, (queue, midi_controller)| {
+        move |_, message, queue| {
             let m = MidiMessage::parse(message);
             if let Some(m) = m {
                 match m {
@@ -211,7 +206,7 @@ pub fn connect<T: MidiOut + Send + 'static>(
                 }
             }
         },
-        (queue.clone(), midi_controller.clone()),
+        queue.clone(),
     )?;
 
     Ok(StdMidiIn {

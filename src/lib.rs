@@ -1,12 +1,17 @@
+//! TODO
+
+#![warn(missing_docs)]
+
 mod clock;
 mod midi_connection;
 
 pub use mseq_core::*;
 use mseq_tracks::TrackError;
 
-use std::time::Duration;
-
 use clock::Clock;
+use std::sync::{Arc, Condvar, Mutex};
+use std::thread;
+use std::time::Duration;
 
 use thiserror::Error;
 
@@ -26,16 +31,44 @@ pub enum MSeqError {
 /// `mseq` entry point. Run the sequencer by providing a conductor implementation. `port` is the
 /// MIDI port id used to send the midi messages. If set to `None`, information about the MIDI ports
 /// will be displayed and the output port will be asked to the user with a prompt.
-pub fn run(conductor: impl Conductor, port: Option<u32>) -> Result<(), MSeqError> {
-    let midi_out = StdMidiOut::new(port)?;
+/// TODO update doc
+pub fn run(
+    conductor: impl Conductor + std::marker::Send + 'static,
+    out_port: Option<u32>,
+    midi_in: Option<MidiInParam>,
+) -> Result<(), MSeqError> {
+    let midi_out = StdMidiOut::new(out_port)?;
     let midi_controller = MidiController::new(midi_out);
     let ctx = Context::new();
-    run_ctx(ctx, midi_controller, conductor)
+
+    if let Some(params) = midi_in {
+        let midi_in = connect(params.clone())?;
+        let run = Arc::new(Mutex::new((conductor, midi_controller, ctx)));
+        let cond_var = Arc::new(Condvar::new());
+        let run_consumer = run.clone();
+        let cond_var_consumer = cond_var.clone();
+        let consumer = thread::spawn(move || {
+            loop {
+                let r = run_consumer.lock().unwrap();
+                let mut r = cond_var_consumer.wait(r).unwrap();
+                let (ref mut conductor, ref mut controller, ref mut ctx) = *r;
+                let mut queue = midi_in.queue.lock().unwrap();
+                ctx.handle_inputs(conductor, controller, &mut *queue);
+            }
+        });
+        let res = if params.slave {
+            run_slave(run)
+        } else {
+            run_master(run)
+        };
+        consumer.join();
+        res
+    } else {
+        run_no_input(ctx, midi_controller, conductor)
+    }
 }
 
-/// `mseq` entry point when the `MidiOut` connection is already setup. Useful if the user wants to
-/// provide their own `MidiOut` implementation.
-pub fn run_ctx(
+fn run_no_input(
     mut ctx: Context,
     mut controller: MidiController<impl MidiOut>,
     mut conductor: impl Conductor,
@@ -52,4 +85,43 @@ pub fn run_ctx(
     controller.stop();
 
     Ok(())
+}
+
+fn run_master(
+    run: Arc<Mutex<(impl Conductor, MidiController<impl MidiOut>, Context)>>,
+) -> Result<(), MSeqError> {
+    {
+        let mut r = run.lock().unwrap();
+        let (ref mut conductor, _, ref mut ctx) = *r;
+        conductor.init(ctx);
+    }
+    let mut clock = Clock::new();
+
+    loop {
+        let period_us = {
+            let mut r = run.lock().unwrap();
+            let (ref mut conductor, ref mut controller, ref mut ctx) = *r;
+            ctx.process_pre_tick(conductor, controller);
+            ctx.get_period_us()
+        };
+        clock.tick(&Duration::from_micros(period_us));
+        let mut r = run.lock().unwrap();
+        let (_, ref mut controller, ref mut ctx) = *r;
+        ctx.process_post_tick(controller);
+        if !ctx.is_running() {
+            break;
+        }
+    }
+    let mut r = run.lock().unwrap();
+    let (_, ref mut controller, ref mut ctx) = *r;
+    controller.stop_all_notes(None);
+    clock.tick(&Duration::from_micros(ctx.get_period_us()));
+    controller.stop();
+    Ok(())
+}
+
+fn run_slave(
+    run: Arc<Mutex<(impl Conductor, MidiController<impl MidiOut>, Context)>>,
+) -> Result<(), MSeqError> {
+    todo!();
 }

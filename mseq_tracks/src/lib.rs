@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 pub mod acid;
 pub mod arp;
 pub mod div;
