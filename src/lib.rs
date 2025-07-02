@@ -9,6 +9,7 @@ pub use mseq_core::*;
 use mseq_tracks::TrackError;
 
 use clock::Clock;
+use std::any::Any;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -42,11 +43,11 @@ pub fn run(
     let ctx = Context::new();
 
     if let Some(params) = midi_in {
-        let midi_in = connect(params.clone())?;
         let run = Arc::new(Mutex::new((conductor, midi_controller, ctx)));
         let cond_var = Arc::new(Condvar::new());
         let run_consumer = run.clone();
         let cond_var_consumer = cond_var.clone();
+        let midi_in = connect(params.clone(), cond_var)?;
         let consumer = thread::spawn(move || {
             loop {
                 let r = run_consumer.lock().unwrap();
@@ -56,13 +57,13 @@ pub fn run(
                 ctx.handle_inputs(conductor, controller, &mut *queue);
             }
         });
-        let res = if params.slave {
-            run_slave(run)
+        if params.slave {
+            run_slave(run)?;
         } else {
-            run_master(run)
+            run_master(run)?;
         };
-        consumer.join();
-        res
+        consumer.join().unwrap();
+        Ok(())
     } else {
         run_no_input(ctx, midi_controller, conductor)
     }

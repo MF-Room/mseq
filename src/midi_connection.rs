@@ -124,7 +124,7 @@ impl MidiOut for StdMidiOut {
 /// Struct used to handle the MIDI input. If [`connect`] succeed, an object of type MidiIn
 /// is returned.
 pub struct StdMidiIn {
-    pub connection: midir::MidiInputConnection<Arc<Mutex<VecDeque<MidiMessage>>>>,
+    pub connection: midir::MidiInputConnection<(Arc<Mutex<VecDeque<MidiMessage>>>, Arc<Condvar>)>,
     pub queue: Arc<Mutex<VecDeque<MidiMessage>>>,
 }
 
@@ -148,7 +148,7 @@ pub struct MidiInParam {
 ///
 ///The connection will be kept open as long as the returned MidiInputConnection is kept alive.
 /// TODO update doc
-pub fn connect(params: MidiInParam) -> Result<StdMidiIn, MidiError> {
+pub fn connect(params: MidiInParam, cond_var: Arc<Condvar>) -> Result<StdMidiIn, MidiError> {
     let mut midi_in = MidiInput::new("in")?;
     midi_in.ignore(params.ignore);
 
@@ -186,10 +186,11 @@ pub fn connect(params: MidiInParam) -> Result<StdMidiIn, MidiError> {
     };
 
     let queue = Arc::new(Mutex::new(InputQueue::new()));
+    let input = (queue.clone(), cond_var);
     let conn_in = midi_in.connect(
         in_port,
         "midir-read-input",
-        move |_, message, queue| {
+        move |_, message, input| {
             let m = MidiMessage::parse(message);
             if let Some(m) = m {
                 match m {
@@ -202,11 +203,14 @@ pub fn connect(params: MidiInParam) -> Result<StdMidiIn, MidiError> {
                     MidiMessage::Stop => {
                         todo!()
                     }
-                    _ => queue.lock().unwrap().push_back(m),
+                    _ => {
+                        input.0.lock().unwrap().push_back(m);
+                        input.1.notify_all();
+                    }
                 }
             }
         },
-        queue.clone(),
+        input,
     )?;
 
     Ok(StdMidiIn {
