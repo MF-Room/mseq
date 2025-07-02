@@ -68,6 +68,12 @@ impl MidiOut for DebugMidiOut {
         self.print_elapsed(&message);
         Ok(())
     }
+
+    fn send_pc(&mut self, channel: u8, value: u8) -> Result<(), String> {
+        let message = format!("Pc\tchn:{}\tval:{}", channel, value);
+        self.print_elapsed(&message);
+        Ok(())
+    }
 }
 
 pub fn test_conductor<T: MidiOut>(

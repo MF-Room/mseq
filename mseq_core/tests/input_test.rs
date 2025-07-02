@@ -41,23 +41,22 @@ impl Conductor for DebugInputConductor {
 
     fn handle_input(
         &mut self,
-        channel_id: u8,
         input: mseq_core::MidiMessage,
         _context: &Context,
     ) -> Vec<Instruction> {
         match input {
-            mseq_core::MidiMessage::NoteOff { note } => {
+            mseq_core::MidiMessage::NoteOff { channel, note } => {
                 vec![Instruction::MidiMessage {
-                    channel_id,
                     midi_message: MidiMessage::NoteOff {
+                        channel,
                         note: note.transpose(3),
                     },
                 }]
             }
-            mseq_core::MidiMessage::NoteOn { note } => {
+            mseq_core::MidiMessage::NoteOn { channel, note } => {
                 vec![Instruction::MidiMessage {
-                    channel_id,
                     midi_message: MidiMessage::NoteOn {
+                        channel,
                         note: note.transpose(3),
                     },
                 }]
@@ -69,27 +68,23 @@ impl Conductor for DebugInputConductor {
 
 fn input_test_simulation(ctx: &Context, input_queue: &mut InputQueue) {
     if ctx.get_step() == 20 {
-        input_queue.push_back((
-            1,
-            MidiMessage::NoteOn {
-                note: MidiNote {
-                    note: Note::AS,
-                    octave: 3,
-                    vel: 160,
-                },
+        input_queue.push_back(MidiMessage::NoteOn {
+            channel: 1,
+            note: MidiNote {
+                note: Note::AS,
+                octave: 3,
+                vel: 160,
             },
-        ));
+        });
     } else if ctx.get_step() == 24 {
-        input_queue.push_back((
-            1,
-            MidiMessage::NoteOff {
-                note: MidiNote {
-                    note: Note::AS,
-                    octave: 3,
-                    vel: 160,
-                },
+        input_queue.push_back(MidiMessage::NoteOff {
+            channel: 1,
+            note: MidiNote {
+                note: Note::AS,
+                octave: 3,
+                vel: 160,
             },
-        ));
+        });
     }
 }
 

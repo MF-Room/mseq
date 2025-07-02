@@ -64,6 +64,7 @@ fn main() {
         },
         // The midi port will be selected at runtime by the user
         None,
+        None,
     ) {
         println!("An error occured: {:?}", e);
     }
