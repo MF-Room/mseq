@@ -15,7 +15,3 @@ serde = {version = "1.0.208", default-features = false, features = ["derive", "a
 thiserror = { version="2.0.12", default-features = false }
 hashbrown = "0.15.2"
 log = "0.4.27"
-
-[features]
-default = ["std"]
-std = ["thiserror/std", "log/std"]

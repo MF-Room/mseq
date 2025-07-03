@@ -30,23 +30,13 @@ mod track;
 
 use alloc::collections::vec_deque::VecDeque;
 // Interface
+use bpm::Bpm;
 pub use conductor::Conductor;
 pub use midi::*;
 pub use midi_controller::*;
 pub use midi_out::MidiOut;
 pub use note::Note;
 pub use track::*;
-
-#[cfg(not(feature = "std"))]
-mod no_std_mod {
-    extern crate alloc;
-    pub use alloc::{string::*, vec, vec::*};
-    pub use core::hash;
-    pub use core::{convert, fmt};
-    pub use hashbrown::{HashMap, HashSet};
-}
-
-use bpm::Bpm;
 
 const DEFAULT_BPM: u8 = 120;
 
