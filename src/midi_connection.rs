@@ -203,6 +203,9 @@ pub fn connect(params: MidiInParam, cond_var: Arc<Condvar>) -> Result<StdMidiIn,
                     MidiMessage::Stop => {
                         todo!()
                     }
+                    MidiMessage::Continue => {
+                        todo!()
+                    }
                     _ => {
                         input.0.lock().unwrap().push_back(m);
                         input.1.notify_all();
