@@ -40,7 +40,7 @@ pub fn run(
 ) -> Result<(), MSeqError> {
     let midi_out = StdMidiOut::new(out_port)?;
     let midi_controller = MidiController::new(midi_out);
-    let ctx = Context::new();
+    let ctx = Context::default();
 
     if let Some(params) = midi_in {
         let run = Arc::new(Mutex::new((conductor, midi_controller, ctx)));

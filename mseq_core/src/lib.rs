@@ -60,9 +60,8 @@ pub type InputQueue = VecDeque<
     MidiMessage, // Midi message
 >;
 
-impl Context {
-    /// Build new mseq context.
-    pub fn new() -> Self {
+impl Default for Context {
+    fn default() -> Self {
         Self {
             bpm: Bpm::new(DEFAULT_BPM),
             step: 0,
@@ -71,6 +70,9 @@ impl Context {
             pause: false,
         }
     }
+}
+
+impl Context {
     /// Set the BPM (Beats per minute) of the sequencer.
     pub fn set_bpm(&mut self, bpm: u8) {
         self.bpm.set_bpm(bpm);
