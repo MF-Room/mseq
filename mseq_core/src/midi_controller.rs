@@ -24,37 +24,73 @@ impl Hash for NotePlay {
     }
 }
 
+/// Represents instructions that can be interpreted and processed by the [`MidiController`].
+///
+/// These instructions are used to generate and send MIDI messages.
 pub enum Instruction {
+    /// Plays a note for a specified duration on a given MIDI channel.
     PlayNote {
+        /// The note to play, including pitch and velocity.
         midi_note: MidiNote,
+        /// Duration of the note in MIDI clock ticks (1 tick = 1/24 of a quarter note at the current BPM).
         len: u32,
+        /// The MIDI channel to send the message on (1–16).
         channel_id: u8,
     },
+    /// Starts playing a MIDI note without specifying a duration.
+    ///
+    /// Requires a corresponding [`StopNote`] to stop the note.
     StartNote {
+        /// The MIDI note to start.
         midi_note: MidiNote,
+        /// MIDI channel (1–16) to use.
         channel_id: u8,
     },
+    /// Stops a previously started MIDI note.
     StopNote {
+        /// The MIDI note to stop.
         midi_note: MidiNote,
+        /// MIDI channel (1–16) used when the note was started.
         channel_id: u8,
     },
+    /// Sends a MIDI Control Change (CC) message.
     SendCC {
+        /// MIDI channel (1–16).
         channel_id: u8,
+        /// The controller number (0–127).
         parameter: u8,
+        /// The controller value (0–127).
         value: u8,
     },
-    StopAllNotes {
-        channel_id: Option<u8>,
-    },
+    /// Stops all currently playing notes.
+    StopAllNotes,
+    /// Sends a raw MIDI message directly.
     MidiMessage {
+        /// The raw MIDI message to send.
         midi_message: MidiMessage,
     },
+    /// Sends a MIDI Continue message to resume playback.
+    ///
+    /// This instruction is not intended to be called manually.
+    /// Prefer calling [`crate::Context::resume`] instead.
     Continue,
+    /// Sends a MIDI Start message to begin playback from the start.
+    ///
+    /// This instruction is not intended to be called manually.
+    /// Prefer calling [`crate::Context::start`] instead.
     Start,
+    /// Sends a MIDI Stop message to halt playback.
+    ///
+    /// This instruction is not intended to be called manually.
+    /// Prefer calling [`Context::stop`] instead.
     Stop,
 }
 
 impl Instruction {
+    /// Transposes the note in the instruction by the given number of `semitones`.
+    ///
+    /// This function is only applicable when the [`Instruction`] variant is
+    /// [`Instruction::PlayNote`], [`Instruction::StartNote`], or [`Instruction::StopNote`].
     pub fn transpose(&mut self, semitones: i8) {
         match self {
             Instruction::PlayNote {
@@ -75,7 +111,15 @@ impl Instruction {
     }
 }
 
-/// The [`MidiController`] provides a MIDI interface to the user.
+/// Provides a reusable MIDI interface and core logic across different platforms.
+///
+/// This struct is intended for internal use only and should not be accessed directly by users.
+/// Instead, users should:
+/// - Use your implementation of [`Conductor`] to send MIDI messages.
+/// - Use the [`Context`] to access system settings.
+///
+/// [`Conductor`]: crate::conductor::Conductor
+/// [`Context`]: crate::Context
 pub struct MidiController<T: MidiOut> {
     step: u32,
 
@@ -93,9 +137,9 @@ pub struct MidiController<T: MidiOut> {
 }
 
 impl<T: MidiOut> MidiController<T> {
-    /// This trait is not intended to be implemented by user code.
+    /// This function is not intended to be called directly by the user.
     ///
-    /// It exists to enable code reuse across different environment and platforms.
+    /// It exists to facilitate code reuse across different environments and platforms.
     pub fn new(midi_out: T) -> Self {
         Self {
             step: 0,
@@ -106,7 +150,7 @@ impl<T: MidiOut> MidiController<T> {
         }
     }
 
-    pub fn execute(&mut self, instruction: Instruction) {
+    pub(crate) fn execute(&mut self, instruction: Instruction) {
         match instruction {
             Instruction::PlayNote {
                 midi_note,
@@ -126,7 +170,7 @@ impl<T: MidiOut> MidiController<T> {
                 parameter,
                 value,
             } => self.send_cc(channel_id, parameter, value),
-            Instruction::StopAllNotes { channel_id } => self.stop_all_notes(channel_id),
+            Instruction::StopAllNotes => self.stop_all_notes(),
             Instruction::Continue => self.send_continue(),
             Instruction::Start => self.start(),
             Instruction::Stop => self.stop(),
@@ -136,7 +180,7 @@ impl<T: MidiOut> MidiController<T> {
 
     /// Request the MIDI controller to play a note at the current MIDI step. Specify the length
     /// (`len`) of the note and the MIDI channel id (`channel_id`) on which to send the note.
-    pub fn play_note(&mut self, midi_note: MidiNote, len: u32, channel_id: u8) {
+    fn play_note(&mut self, midi_note: MidiNote, len: u32, channel_id: u8) {
         if len == 0 || !is_valid_channel(channel_id) {
             return;
         }
@@ -152,7 +196,7 @@ impl<T: MidiOut> MidiController<T> {
     /// Request the MIDI controller to start playing a note. Specify the MIDI channel id
     /// (`channel_id`). The note will not stop until [`MidiController::stop_note`] is called with
     /// the same note, ocatve and MIDI channel id.
-    pub fn start_note(&mut self, midi_note: MidiNote, channel_id: u8) {
+    fn start_note(&mut self, midi_note: MidiNote, channel_id: u8) {
         if !is_valid_channel(channel_id) {
             return;
         }
@@ -167,7 +211,7 @@ impl<T: MidiOut> MidiController<T> {
     /// Request the MIDI controller to stop playing a note that was started by
     /// [`MidiController::start_note`]. The note will stop only if the note, ocatave and MIDI
     /// channel are identical to what was used in [`MidiController::start_note`].
-    pub fn stop_note(&mut self, midi_note: MidiNote, channel_id: u8) {
+    fn stop_note(&mut self, midi_note: MidiNote, channel_id: u8) {
         if !is_valid_channel(channel_id) {
             return;
         }
@@ -183,9 +227,7 @@ impl<T: MidiOut> MidiController<T> {
         self.play_note_set.entry(step).or_default().push(note_play);
     }
 
-    /// Send MIDI Control Change (CC) message. You can use [`crate::param_value`] to convert a
-    /// float into a integer.
-    pub fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) {
+    fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) {
         if !is_valid_channel(channel_id) {
             return;
         }
@@ -194,38 +236,29 @@ impl<T: MidiOut> MidiController<T> {
         }
     }
 
-    /// This function is not intended to be directly called by the user.
-    ///
-    /// It exists to enable code reuse across different environment and platforms.
-    pub fn send_clock(&mut self) {
+    pub(crate) fn send_clock(&mut self) {
         if let Err(e) = self.midi_out.send_clock() {
             error!("MIDI: {e}");
         }
     }
 
-    /// This function is not intended to be directly called by the user.
-    ///
-    /// It exists to enable code reuse across different environment and platforms.
-    pub fn start(&mut self) {
+    fn start(&mut self) {
         self.step = 0;
         if let Err(e) = self.midi_out.send_start() {
             error!("MIDI: {e}");
         }
     }
 
-    /// This function is not intended to be directly called by the user.
+    /// This function is not intended to be called directly by the user.
     ///
-    /// It exists to enable code reuse across different environment and platforms.
+    /// It exists to facilitate code reuse across different environments and platforms.
     pub fn send_continue(&mut self) {
         if let Err(e) = self.midi_out.send_continue() {
             error!("MIDI: {e}");
         }
     }
 
-    /// This function is not intended to be directly called by the user.
-    ///
-    /// It exists to enable code reuse across different environment and platforms.
-    pub fn update(&mut self, next_step: u32) {
+    pub(crate) fn update(&mut self, next_step: u32) {
         // First send the off signal to every note that end this step.
         let notes = self.play_note_set.remove(&self.step);
         if let Some(notes_off) = notes {
@@ -255,10 +288,10 @@ impl<T: MidiOut> MidiController<T> {
         self.step = next_step;
     }
 
-    /// This function is not intended to be directly called by the user.
+    /// This function is not intended to be called directly by the user.
     ///
-    /// It exists to enable code reuse across different environment and platforms.
-    pub fn stop_all_notes(&mut self, channel: Option<u8>) {
+    /// It exists to facilitate code reuse across different environments and platforms.
+    pub fn stop_all_notes(&mut self) {
         self.start_note_set.iter().for_each(|n| {
             if let Err(e) = self
                 .midi_out
@@ -281,16 +314,16 @@ impl<T: MidiOut> MidiController<T> {
         self.play_note_set.clear();
     }
 
-    /// This function is not intended to be directly called by the user.
+    /// This function is not intended to be called directly by the user.
     ///
-    /// It exists to enable code reuse across different environment and platforms.
+    /// It exists to facilitate code reuse across different environments and platforms.
     pub fn stop(&mut self) {
         if let Err(e) = self.midi_out.send_stop() {
             error!("MIDI: {e}");
         }
     }
 
-    pub fn send_message(&mut self, message: MidiMessage) {
+    fn send_message(&mut self, message: MidiMessage) {
         if let Err(e) = self.midi_out.send_message(message) {
             error!("MIDI: {e}");
         }

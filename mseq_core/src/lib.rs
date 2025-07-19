@@ -96,7 +96,7 @@ impl Context {
     pub fn pause(&mut self) -> Instruction {
         self.on_pause = true;
         self.pause = true;
-        Instruction::StopAllNotes { channel_id: None }
+        Instruction::StopAllNotes
     }
 
     /// Resume the sequencer and send a MIDI continue message.

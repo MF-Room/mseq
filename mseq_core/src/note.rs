@@ -87,7 +87,7 @@ impl fmt::Display for Note {
             Note::AS => "A#",
             Note::B => "B",
         };
-        write!(f, "{}", str)
+        write!(f, "{str}")
     }
 }
 
@@ -118,10 +118,6 @@ impl Note {
         let root_m: u8 = root.into();
         let note_m: u8 = note.into();
         let n = (note_m as i8 - root_m as i8).rem_euclid(12);
-        if n > 6 {
-            n - 12
-        } else {
-            n
-        }
+        if n > 6 { n - 12 } else { n }
     }
 }
