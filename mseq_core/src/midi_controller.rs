@@ -39,7 +39,7 @@ pub enum Instruction {
     },
     /// Starts playing a MIDI note without specifying a duration.
     ///
-    /// Requires a corresponding [`StopNote`] to stop the note.
+    /// Requires a corresponding [`Instruction::StopNote`] to stop the note.
     StartNote {
         /// The MIDI note to start.
         midi_note: MidiNote,
@@ -82,7 +82,7 @@ pub enum Instruction {
     /// Sends a MIDI Stop message to halt playback.
     ///
     /// This instruction is not intended to be called manually.
-    /// Prefer calling [`Context::stop`] instead.
+    /// Prefer calling [`crate::Context::pause`] instead.
     Stop,
 }
 

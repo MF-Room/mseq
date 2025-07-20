@@ -1,19 +1,30 @@
-//! Library for developing MIDI Sequencers.
+//! Core framework for building custom MIDI sequencers.
 //!
-//! To start using `mseq`, create a struct that implements the [`Conductor`] trait.
+//! `mseq_core` provides the foundational traits and utilities needed to implement
+//! your own MIDI sequencer, with a focus on portability and modularity.
 //!
-//! You can then add tracks to your sequencer by adding fields (to your struct that implements the
-//! [`Conductor`] trait) of type [`DeteTrack`] or more generally fields that implement the trait
-//! [`Track`].
+//! This crate is built with `#![no_std]`, making it suitable for embedded platforms
+//! as well as standard operating systems.
 //!
-//! Once this is done, you can play your track in the [`Conductor::update`] function of your struct
-//! that implements the [`Conductor`] trait. To do so, call the method
-//! [`MidiController::play_track`] (of the [`Context::midi`]) with the track you want to play as a
-//! parameter.
+//! ## Getting Started
 //!
-//! You can find some examples in the [`examples`] directory.
+//! To create a custom sequencer, you typically:
 //!
-//! [`examples`]: https://github.com/MF-Room/mseq/tree/main/examples
+//! - Implement the [`Conductor`] trait to define your sequencer's control logic.
+//! - Define one or more tracks by either:
+//!   - Implementing the [`Track`] trait for custom behavior.
+//!   - Instantiating [`DeteTrack`] for deterministic, looping patterns.
+//!
+//! ## Platform Support
+//!
+//! - For OS-based systems, use the [`mseq`](https://crates.io/crates/mseq) crate — a reference implementation of `mseq_core` for standard platforms.
+//! - For embedded development (e.g., STM32F4), see the [`mseq_embedded`](https://github.com/MF-Room/mseq_embedded) repository, which provides an STM32-specific integration of `mseq_core`.
+//!
+//! ## Crate Features
+//!
+//! - No `std` dependency (`#![no_std]` compatible).
+//! - Modular and extensible design.
+//! - Reusable across multiple platforms.
 
 #![warn(missing_docs)]
 #![no_std]
@@ -40,12 +51,15 @@ pub use track::*;
 
 const DEFAULT_BPM: u8 = 120;
 
-/// An object of type [`Context`] is passed to the user [`Conductor`] at each clock tick through the
-/// method [`Conductor::update`]. This structure provides the user with a friendly MIDI interface.
-/// The user can set some MIDI System Parameters (e.g., [`Context::set_bpm`]) or send some MIDI
-/// System Messages (e.g., [`Context::start`]) using directly the [`Context`] methods. The user can
-/// also send MIDI Channel Messages (e.g., [`MidiController::play_note`] or
-/// [`MidiController::play_track`]) using the field [`Context::midi`].
+/// An object of type [`Context`] is passed to the user’s [`Conductor`] at each clock tick
+/// via the [`Conductor::update`] method. It provides a high-level interface to send
+/// system MIDI messages and modify system parameters.
+///
+/// The user can set MIDI system parameters (e.g., [`Context::set_bpm`]) or send system messages
+/// (e.g., [`Context::start`]) using the provided methods.
+///
+/// In addition to sending the corresponding MIDI system messages, these methods also update
+/// the internal logic of the sequencer to reflect the change.
 pub struct Context {
     /// Field used to send MIDI Channel Messages.
     bpm: Bpm,
@@ -161,8 +175,8 @@ impl Context {
     /// This function is not intended to be called directly by users.  
     /// Instead, users should implement [`Conductor::handle_input`] for their custom input handler logic.
     ///
-    /// `handle_inputs` is used internally to enable code reuse across platforms and unify MIDI input processing.
-    pub fn handle_inputs(
+    /// `handle_input` is used internally to enable code reuse across platforms and unify MIDI input processing.
+    pub fn handle_input(
         &mut self,
         conductor: &mut impl Conductor,
         controller: &mut MidiController<impl MidiOut>,

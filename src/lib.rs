@@ -54,7 +54,7 @@ pub fn run(
                 let mut r = cond_var_consumer.wait(r).unwrap();
                 let (ref mut conductor, ref mut controller, ref mut ctx) = *r;
                 let mut queue = midi_in.queue.lock().unwrap();
-                ctx.handle_inputs(conductor, controller, &mut *queue);
+                ctx.handle_input(conductor, controller, &mut *queue);
             }
         });
         if params.slave {

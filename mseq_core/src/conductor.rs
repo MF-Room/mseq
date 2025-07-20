@@ -3,23 +3,51 @@ use alloc::vec::Vec;
 
 use crate::{Context, MidiMessage, midi_controller::Instruction};
 
-/// The Conductor trait is the trait that the user has to implement to be able to use mseq. The user
-/// has to implement [`Conductor::init`] and [`Conductor::update`], then pass the Conductor to the
-/// main entry point [`crate::run`]. Refer to these [`examples`] for complete implementation
-/// examples.
+/// Entry point for user-defined sequencer behavior.
 ///
-/// [`examples`]: https://github.com/MF-Room/mseq/tree/main/examples
+/// The `Conductor` trait must be implemented by the user to define how their sequencer
+/// is initialized, updated, and how it responds to external inputs. It serves as the
+/// core integration point between the `mseq_core` engine and user-defined sequencing logic.
+///
+/// This trait provides three key methods:
+///
+/// - [`Self::update`] — Called at each step to update the sequencer logic (e.g., advance position, trigger tracks).
+/// - [`Self::handle_input`] — Called when an external input (e.g., MIDI event) is received.
+///
+/// # Example
+///
+/// See example implementations in the [mseq GitHub repository](https://github.com/MF-Room/mseq/tree/main/examples).
 pub trait Conductor {
-    /// This function will be called only once at the start when the Conductor is passed to
-    /// [`crate::run`] (the main entry point).
+    ///Called once at startup to initialize state.
     fn init(&mut self, context: &mut Context);
-    /// This function will be called at every midi clock cycle. All the notes sent to the
-    /// [`Context::midi`] will be played at the beginning of the next midi clock cycle.
+    /// Called at every clock tick to advance the sequencer state.
     ///
-    /// __Warning: if this function takes too long, the midi clock might be late. Be careful not to
-    /// do any intensive computation, or block the thread.__
+    /// This method is responsible for progressing the sequencer and producing
+    /// the set of instructions that should be executed at the current tick (e.g., sending MIDI events).
+    ///
+    /// # Returns
+    ///
+    /// A `Vec<Instruction>` containing the actions to be passed to the MIDI controller
+    /// or output backend for this tick.
     fn update(&mut self, context: &mut Context) -> Vec<Instruction>;
-    /// Midi input callback function. Default implementation does nothing.
+
+    /// Handles a single input message and updates the conductor state accordingly.
+    ///
+    /// This method is called whenever a new [`MidiMessage`] is received.
+    /// It allows the conductor to react to external inputs by updating internal state or triggering events.
+    ///
+    /// The returned `Vec<Instruction>` is passed directly to the MIDI controller or output backend,
+    /// allowing the conductor to immediately produce output in response to the input.
+    ///
+    /// # Intercepted Messages
+    ///
+    /// Depending on the platform-specific implementation, certain MIDI messages such as
+    /// [`MidiMessage::Clock`] may be intercepted by the runtime before reaching this function.
+    /// These are typically used for transport control and synchronization.
+    ///
+    /// # Returns
+    ///
+    /// A `Vec<Instruction>` to be sent to the MIDI output immediately.
     fn handle_input(&mut self, _input: MidiMessage, _context: &Context) -> Vec<Instruction> {
         vec![]
     }
