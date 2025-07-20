@@ -30,7 +30,7 @@ impl Hash for NotePlay {
 pub enum Instruction {
     /// Plays a note for a specified duration on a given MIDI channel.
     PlayNote {
-        /// The note to play, including pitch and velocity.
+        /// The MIDI note to play.
         midi_note: MidiNote,
         /// Duration of the note in MIDI clock ticks (1 tick = 1/24 of a quarter note at the current BPM).
         len: u32,
@@ -178,7 +178,7 @@ impl<T: MidiOut> MidiController<T> {
         }
     }
 
-    /// Request the MIDI controller to play a note at the current MIDI step. Specify the length
+    /// Requests the MIDI controller to play a note at the current MIDI step. Specify the length
     /// (`len`) of the note and the MIDI channel id (`channel_id`) on which to send the note.
     fn play_note(&mut self, midi_note: MidiNote, len: u32, channel_id: u8) {
         if len == 0 || !is_valid_channel(channel_id) {
@@ -193,7 +193,7 @@ impl<T: MidiOut> MidiController<T> {
         self.stop_note_at_step(note_play, self.step + len);
     }
 
-    /// Request the MIDI controller to start playing a note. Specify the MIDI channel id
+    /// Requests the MIDI controller to start playing a note. Specify the MIDI channel id
     /// (`channel_id`). The note will not stop until [`MidiController::stop_note`] is called with
     /// the same note, ocatve and MIDI channel id.
     fn start_note(&mut self, midi_note: MidiNote, channel_id: u8) {
@@ -208,8 +208,8 @@ impl<T: MidiOut> MidiController<T> {
         self.start_note_set.insert(note_play);
     }
 
-    /// Request the MIDI controller to stop playing a note that was started by
-    /// [`MidiController::start_note`]. The note will stop only if the note, ocatave and MIDI
+    /// Requests the MIDI controller to stop playing a note that was started by
+    /// [`MidiController::start_note`]. The note will stop only if the note, octave and MIDI
     /// channel are identical to what was used in [`MidiController::start_note`].
     fn stop_note(&mut self, midi_note: MidiNote, channel_id: u8) {
         if !is_valid_channel(channel_id) {

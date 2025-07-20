@@ -73,48 +73,48 @@ impl Default for Context {
 }
 
 impl Context {
-    /// Set the BPM (Beats per minute) of the sequencer.
+    /// Sets the BPM (Beats per minute) of the sequencer.
     pub fn set_bpm(&mut self, bpm: u8) {
         self.bpm.set_bpm(bpm);
     }
 
-    /// Get the current BPM of the sequencer
+    /// Gets the current BPM of the sequencer.
     pub fn get_bpm(&self) -> u8 {
         self.bpm.get_bpm()
     }
 
-    /// Get the current period (in microsec) of the sequencer.
+    /// Gets the current period (in microsec) of the sequencer.
     /// A period represents the amount of time between each MIDI clock messages.
     pub fn get_period_us(&self) -> u64 {
         self.bpm.get_period_us()
     }
 
-    /// Stop and exit the sequencer.
+    /// Stops and exit the sequencer.
     pub fn quit(&mut self) {
         self.running = false
     }
 
-    /// Pause the sequencer and send a MIDI stop message.
+    /// Pauses the sequencer and send a MIDI stop message.
     pub fn pause(&mut self) -> Instruction {
         self.on_pause = true;
         self.pause = true;
         Instruction::StopAllNotes
     }
 
-    /// Resume the sequencer and send a MIDI continue message.
+    /// Resumes the sequencer and send a MIDI continue message.
     pub fn resume(&mut self) -> Instruction {
         self.on_pause = false;
         Instruction::Continue
     }
 
-    /// Start the sequencer and send a MIDI start message. The current step is set to 0.
+    /// Starts the sequencer and send a MIDI start message. The current step is set to 0.
     pub fn start(&mut self) -> Instruction {
         self.step = 0;
         self.on_pause = false;
         Instruction::Start
     }
 
-    /// Retrieve the current MIDI step.
+    /// Retrieves the current MIDI step.
     /// - 96 steps make a bar
     /// - 24 steps make a whole note
     /// - 12 steps make a half note
@@ -124,7 +124,8 @@ impl Context {
     }
 
     /// MIDI logic called before the clock tick.
-    /// The user doesn't need to call this function.
+    /// This function is not intended to be called directly by users.  
+    /// `handle_inputs` is used internally to enable code reuse across platforms.
     pub fn process_pre_tick(
         &mut self,
         conductor: &mut impl Conductor,
@@ -137,7 +138,8 @@ impl Context {
     }
 
     /// MIDI logic called after the clock tick.
-    /// The user doesn't need to call this function.
+    /// This function is not intended to be called directly by users.  
+    /// `handle_inputs` is used internally to enable code reuse across platforms.
     pub fn process_post_tick(&mut self, controller: &mut MidiController<impl MidiOut>) {
         controller.send_clock();
         if !self.on_pause {
@@ -149,11 +151,17 @@ impl Context {
         }
     }
 
-    /// Return true if the sequencer is running, false if the sequencer should stop.
+    /// Returns `true` if the sequencer is currently running, `false` otherwise.
     pub fn is_running(&self) -> bool {
         self.running
     }
 
+    /// Internal MIDI input handler.
+    ///
+    /// This function is not intended to be called directly by users.  
+    /// Instead, users should implement [`Conductor::handle_input`] for their custom input handler logic.
+    ///
+    /// `handle_inputs` is used internally to enable code reuse across platforms and unify MIDI input processing.
     pub fn handle_inputs(
         &mut self,
         conductor: &mut impl Conductor,
@@ -167,7 +175,7 @@ impl Context {
     }
 }
 
-/// Perform a linear conversion from `[0.0, 1.0]` to [0, 127]. If `v` is smaller than `0.0` return
+/// Performs a linear conversion from `[0.0, 1.0]` to [0, 127]. If `v` is smaller than `0.0` return
 /// 0. If `v` is greater than `1.0` return 127. The main purpose of this function is to be used with
 /// MIDI control changes (CC).
 pub fn param_value(v: f32) -> u8 {

@@ -1,6 +1,15 @@
 use crate::note::Note;
 use serde::{Deserialize, Serialize};
 
+const CLOCK: u8 = 0xf8;
+const START: u8 = 0xfa;
+const CONTINUE: u8 = 0xfb;
+const STOP: u8 = 0xfc;
+const NOTE_ON: u8 = 0x90;
+const NOTE_OFF: u8 = 0x80;
+const CC: u8 = 0xB0;
+const PC: u8 = 0xC0;
+
 pub(crate) fn is_valid_channel(channel: u8) -> bool {
     (1..=16).contains(&channel)
 }
@@ -46,45 +55,78 @@ impl MidiNote {
     }
 }
 
-/// Midi Message representation according to the Midi Standard
+/// Represents a parsed MIDI instruction.
+///
+/// This enum defines all supported MIDI messages used for input handling.
 #[derive(PartialEq)]
 pub enum MidiMessage {
     /// Note Off event. This message is sent when a note is released.
-    NoteOff { channel: u8, note: MidiNote },
-    /// Note On event. This message is sent when a note is pressed.
-    NoteOn { channel: u8, note: MidiNote },
-    /// Control Change. This message is sent when a controller value changes.
-    CC {
+    NoteOff {
+        /// MIDI channel (1-16).
         channel: u8,
-        /// Controller number
+        /// The MIDI note.
+        note: MidiNote,
+    },
+    /// Note On event. This message is sent when a note is pressed.
+    NoteOn {
+        /// MIDI channel (1-16).
+        channel: u8,
+        /// The MIDI note.
+        note: MidiNote,
+    },
+    /// A MIDI Control Change (CC) message.
+    CC {
+        /// MIDI channel (1-16).
+        channel: u8,
+        /// The controller number (0–127).
         controller: u8,
-        /// The new value
+        /// The controller value (0–127).
         value: u8,
     },
-    /// Program Change.
-    PC { channel: u8, value: u8 },
+    /// A MIDI Program Change (PC) message.
+    PC {
+        /// MIDI channel (1-16).
+        channel: u8,
+        /// The controller value (0–127).
+        value: u8,
+    },
     /// Timing Clock. Sent 24 times per quarter note when synchronisation is required.
+    ///
+    /// Intercepted internally for transport synchronization.
     Clock,
     /// Start. Start the current sequence playing.
+    ///
+    /// Intercepted internally for transport synchronization.
     Start,
     /// Continue. Continue at the point the sequence was Stopped.
+    ///
+    /// Intercepted internally for transport synchronization.
     Continue,
     /// Stop. Stop the current sequence.
+    ///
+    /// Intercepted internally for transport synchronization.
     Stop,
 }
 
 impl MidiMessage {
+    /// Parses a byte slice into a `MidiMessage` struct.
+    ///
+    /// This function is not intended to be called directly by end users.  
+    /// It is used internally to ensure consistent MIDI message parsing logic across platforms.
+    ///
+    /// Returns `Some(MidiMessage)` if the byte slice represents a known and valid MIDI message,
+    /// or `None` if the data does not match any recognized MIDI message format.
     pub fn parse(bytes: &[u8]) -> Option<MidiMessage> {
         if bytes.len() == 1 {
             match bytes[0] {
-                0xF8 => Some(MidiMessage::Clock),
-                0xFA => Some(MidiMessage::Start),
-                0xFB => Some(MidiMessage::Continue),
-                0xFC => Some(MidiMessage::Stop),
+                CLOCK => Some(MidiMessage::Clock),
+                START => Some(MidiMessage::Start),
+                CONTINUE => Some(MidiMessage::Continue),
+                STOP => Some(MidiMessage::Stop),
                 _ => None,
             }
-        } else if bytes.len() == 2 && bytes[0] & 0xF0 == 0xC0 {
-            let channel = bytes[0] & 0x0F + 1;
+        } else if bytes.len() == 2 && bytes[0] & 0xF0 == PC {
+            let channel = (bytes[0] & 0x0F) + 1;
             if is_valid_channel(channel) {
                 Some(MidiMessage::PC {
                     channel,
@@ -94,18 +136,18 @@ impl MidiMessage {
                 None
             }
         } else if bytes.len() == 3 {
-            let channel = bytes[0] & 0x0F + 1;
+            let channel = (bytes[0] & 0x0F) + 1;
             if is_valid_channel(channel) {
                 match bytes[0] & 0xF0 {
-                    0x80 => Some(MidiMessage::NoteOff {
+                    NOTE_OFF => Some(MidiMessage::NoteOff {
                         channel,
                         note: MidiNote::from_midi_value(bytes[1], bytes[2]),
                     }),
-                    0x90 => Some(MidiMessage::NoteOn {
+                    NOTE_ON => Some(MidiMessage::NoteOn {
                         channel,
                         note: MidiNote::from_midi_value(bytes[1], bytes[2]),
                     }),
-                    0xB0 => Some(MidiMessage::CC {
+                    CC => Some(MidiMessage::CC {
                         channel,
                         controller: bytes[1],
                         value: bytes[2],
