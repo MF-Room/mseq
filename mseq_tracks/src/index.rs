@@ -49,6 +49,16 @@ struct Index {
     midi: Option<Vec<Midi>>,
 }
 
+/// Loads a list of tracks from a TOML index file located at `path`.
+///
+/// The index file can include references to various track types (`acid`, `arp`, `div`, and `midi`),
+/// each with its own configuration and relative file paths. The function resolves the file paths
+/// relative to the index file's location, loads the corresponding tracks, and returns them as a list,
+/// each paired with its source file path as a string.
+///
+/// See this [`example`] for a sample index file structure.
+///
+/// [`example`]: https://github.com/MF-Room/mseq/tree/main/mseq_tracks/tests/res/index.toml
 pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Vec<(DeteTrack, String)>, TrackError> {
     let toml_str = std::fs::read_to_string(&path)?;
     let base_dir = path.as_ref().parent().expect("Base path has no parent");

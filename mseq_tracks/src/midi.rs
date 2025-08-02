@@ -8,13 +8,11 @@ use mseq_core::{DeteTrack, MidiNote, Note};
 
 use crate::TrackError;
 
-#[cfg(feature = "std")]
 use std::path::Path;
 
-/// Load an acid track from a midi file. Refer to `examples/midi_track.rs` for an example usage.
-/// Provide the root note of the track to allow for transposition. channel_id is the midi
-/// channel where this track will be played when passed to the MidiController.
-#[cfg(feature = "std")]
+/// Load atrack from a MIDI file (`filename`).
+/// The `root` note is used for transposition. The track will be played on the MIDI
+/// channel with `channel_id`.
 pub fn load_from_file<P: AsRef<Path>>(
     filename: P,
     root: Note,
@@ -45,7 +43,7 @@ pub fn load_from_file<P: AsRef<Path>>(
     let track = smf.tracks.first().ok_or(TrackError::BadFormat)?;
 
     for event in track {
-        debug!("step: {}, event: {:?}", step, event);
+        debug!("step: {step}, event: {event:?}");
         let nb_clocks = u32::from(event.delta) / step_size;
 
         // Increase duration of all the current notes
@@ -73,16 +71,16 @@ pub fn load_from_file<P: AsRef<Path>>(
                         return Err(TrackError::DuplicateNote);
                     }
                 }
-                _ => warn!("Unsupported midi event: {:?}", event),
+                _ => warn!("Unsupported midi event: {event:?}"),
             },
             midly::TrackEventKind::Meta(m) => {
                 if m == midly::MetaMessage::EndOfTrack {
                     break;
                 } else {
-                    warn!("Unsupported midi event: {:?}", event);
+                    warn!("Unsupported midi event: {event:?}");
                 }
             }
-            _ => warn!("Unsupported midi event: {:?}", event),
+            _ => warn!("Unsupported midi event: {event:?}"),
         }
     }
     Ok(DeteTrack::new(step, notes, root, channel_id, name))

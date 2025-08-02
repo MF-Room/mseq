@@ -1,10 +1,9 @@
 use alloc::vec;
 use alloc::vec::Vec;
+#[cfg(feature = "std")]
 use std::io::Read;
 
 use mseq_core::{DeteTrack, MidiNote};
-
-use crate::TrackError;
 
 #[derive(Debug, serde::Deserialize)]
 /// Struct used in [`DeteTrack::new_clock_div`] to generate a track with a pattern based on
@@ -34,6 +33,8 @@ pub fn new(pattern: Vec<ClockDiv>, note: MidiNote, channel_id: u8, name: &str) -
 #[cfg(feature = "std")]
 use std::path::Path;
 
+#[cfg(feature = "std")]
+use crate::TrackError;
 /// Load a clock division track from a csv file (`filename`). This pattern
 /// triggers `note` on the MIDI channel with `channel_id`. Refer to this [`example`] for an
 /// example file.

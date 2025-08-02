@@ -1,10 +1,9 @@
 use alloc::vec::Vec;
 use serde::Deserialize;
+#[cfg(feature = "std")]
 use std::io::Read;
 
 use mseq_core::{DeteTrack, MidiNote, Note};
-
-use crate::TrackError;
 
 /// Time division of the arpeggiator
 #[derive(Default, Clone, Copy, Debug, Deserialize)]
@@ -46,6 +45,8 @@ pub fn new(
 #[cfg(feature = "std")]
 use std::path::Path;
 
+#[cfg(feature = "std")]
+use crate::TrackError;
 /// Load an arpeggiator track from a csv file (`filename`) and a time division (`div`). Refer to
 /// this [`example`] for an example file. The `root` note is used for transposition. The track
 /// will be played on the MIDI channel with `channel_id`.

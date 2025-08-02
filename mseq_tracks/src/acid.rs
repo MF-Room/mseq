@@ -1,5 +1,6 @@
 use alloc::vec;
 use alloc::vec::Vec;
+#[cfg(feature = "std")]
 use std::io::Read;
 
 use mseq_core::{DeteTrack, MidiNote, Note};
@@ -31,8 +32,6 @@ pub struct AcidTrig {
 }
 
 use Timing::*;
-
-use crate::TrackError;
 
 /// Create a new acid track following the trigs in `pattern`. The `root` note is used for
 /// transposition. The track  will be played on the MIDI channel with `channel_id`.
@@ -100,6 +99,9 @@ pub fn new(pattern: Vec<AcidTrig>, root: Note, channel_id: u8, name: &str) -> De
 
 #[cfg(feature = "std")]
 use std::path::Path;
+
+#[cfg(feature = "std")]
+use crate::TrackError;
 
 /// Load an acid track from a csv file (`filename`). Refer to this [`example`] for an example
 /// file. The `root` note is used for transposition. The track will be played on the MIDI
