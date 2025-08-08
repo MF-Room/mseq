@@ -137,9 +137,23 @@ impl Context {
         self.step
     }
 
+    /// MIDI logic called at the initialization.
+    /// This function is not intended to be called directly by users.  
+    /// `init` is used internally to enable code reuse across platforms.
+    pub fn init(
+        &mut self,
+        conductor: &mut impl Conductor,
+        controller: &mut MidiController<impl MidiOut>,
+    ) {
+        conductor
+            .init(self)
+            .into_iter()
+            .for_each(|instruction| controller.execute(instruction));
+    }
+
     /// MIDI logic called before the clock tick.
     /// This function is not intended to be called directly by users.  
-    /// `handle_inputs` is used internally to enable code reuse across platforms.
+    /// `process_pre_tick` is used internally to enable code reuse across platforms.
     pub fn process_pre_tick(
         &mut self,
         conductor: &mut impl Conductor,
@@ -153,7 +167,7 @@ impl Context {
 
     /// MIDI logic called after the clock tick.
     /// This function is not intended to be called directly by users.  
-    /// `handle_inputs` is used internally to enable code reuse across platforms.
+    /// `process_post_tick` is used internally to enable code reuse across platforms.
     pub fn process_post_tick(&mut self, controller: &mut MidiController<impl MidiOut>) {
         controller.send_clock();
         if !self.on_pause {

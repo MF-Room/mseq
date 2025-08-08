@@ -6,9 +6,10 @@ struct MyConductor {
 }
 
 impl Conductor for MyConductor {
-    fn init(&mut self, context: &mut mseq::Context) {
+    fn init(&mut self, context: &mut mseq::Context) -> Vec<Instruction> {
         // The sequencer is on pause by default
         context.start();
+        vec![]
     }
 
     fn update(&mut self, context: &mut mseq::Context) -> Vec<Instruction> {

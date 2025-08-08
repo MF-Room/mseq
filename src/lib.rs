@@ -75,7 +75,7 @@ fn run_no_input(
     mut controller: MidiController<impl MidiOut>,
     mut conductor: impl Conductor,
 ) -> Result<(), MSeqError> {
-    conductor.init(&mut ctx);
+    ctx.init(&mut conductor, &mut controller);
     let mut clock = Clock::new();
     while ctx.is_running() {
         ctx.process_pre_tick(&mut conductor, &mut controller);
@@ -94,8 +94,8 @@ fn run_master(
 ) -> Result<(), MSeqError> {
     {
         let mut r = run.lock().unwrap();
-        let (ref mut conductor, _, ref mut ctx) = *r;
-        conductor.init(ctx);
+        let (ref mut conductor, ref mut controller, ref mut ctx) = *r;
+        ctx.init(conductor, controller);
     }
     let mut clock = Clock::new();
 

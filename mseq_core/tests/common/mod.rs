@@ -1,6 +1,3 @@
-use mseq_core::Conductor;
-use mseq_core::Context;
-use mseq_core::MidiController;
 use mseq_core::MidiOut;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -74,19 +71,4 @@ impl MidiOut for DebugMidiOut {
         self.print_elapsed(&message);
         Ok(())
     }
-}
-
-pub fn test_conductor<T: MidiOut>(
-    mut conductor: impl Conductor,
-    mut midi_controller: MidiController<T>,
-) {
-    let mut ctx = Context::new();
-    conductor.init(&mut ctx);
-    while ctx.is_running() {
-        ctx.process_pre_tick(&mut conductor, &mut midi_controller);
-        // No sleep between each cycle because we're testing
-        ctx.process_post_tick(&mut midi_controller);
-    }
-    midi_controller.stop_all_notes(None);
-    midi_controller.stop();
 }

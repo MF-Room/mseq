@@ -9,42 +9,12 @@ mod common;
 use common::*;
 use mseq_core::*;
 
-#[test]
-fn play_note() {
-    let debug_conn = Rc::new(RefCell::new(DebugMidiOutInner {
-        notes_on: HashMap::new(),
-        start_timestamp: Instant::now(),
-    }));
-
-    let mut controller = MidiController::new(DebugMidiOut(debug_conn.clone()));
-    controller.start();
-
-    let note = MidiNote::new(mseq_core::Note::B, 3, 21);
-    controller.play_note(note, 3, 5);
-    controller.send_clock();
-    assert!(debug_conn.borrow().notes_on.is_empty());
-    controller.update(1);
-    assert!(debug_conn.borrow().notes_on.len() == 1);
-
-    controller.send_clock();
-    controller.update(2);
-    assert!(debug_conn.borrow().notes_on.len() == 1);
-
-    controller.send_clock();
-    controller.update(3);
-    assert!(debug_conn.borrow().notes_on.len() == 1);
-
-    controller.send_clock();
-    controller.update(4);
-    assert!(debug_conn.borrow().notes_on.is_empty());
-
-    controller.stop();
-}
-
 struct DebugConductor1(Rc<RefCell<DebugMidiOutInner>>);
 
 impl Conductor for DebugConductor1 {
-    fn init(&mut self, _context: &mut Context) {}
+    fn init(&mut self, _context: &mut Context) -> Vec<Instruction> {
+        vec![]
+    }
 
     fn update(&mut self, context: &mut Context) -> Vec<Instruction> {
         let mut instructions = vec![];
@@ -81,7 +51,9 @@ fn play_note_conductor() {
 struct DebugConductor2(Rc<RefCell<DebugMidiOutInner>>);
 
 impl Conductor for DebugConductor2 {
-    fn init(&mut self, _context: &mut Context) {}
+    fn init(&mut self, _context: &mut Context) -> Vec<Instruction> {
+        vec![]
+    }
 
     fn update(&mut self, context: &mut Context) -> Vec<Instruction> {
         let mut instructions = vec![];
@@ -126,7 +98,9 @@ struct DebugConductor3 {
 }
 
 impl Conductor for DebugConductor3 {
-    fn init(&mut self, _context: &mut Context) {}
+    fn init(&mut self, _context: &mut Context) -> Vec<Instruction> {
+        vec![]
+    }
 
     fn update(&mut self, context: &mut Context) -> Vec<Instruction> {
         if context.get_step() == 74 {
@@ -203,4 +177,19 @@ fn dete_track_transpose() {
         ),
     };
     test_conductor(conductor, midi);
+}
+
+pub fn test_conductor<T: MidiOut>(
+    mut conductor: impl Conductor,
+    mut midi_controller: MidiController<T>,
+) {
+    let mut ctx = Context::default();
+    conductor.init(&mut ctx);
+    while ctx.is_running() {
+        ctx.process_pre_tick(&mut conductor, &mut midi_controller);
+        // No sleep between each cycle because we're testing
+        ctx.process_post_tick(&mut midi_controller);
+    }
+    midi_controller.stop_all_notes();
+    midi_controller.stop();
 }

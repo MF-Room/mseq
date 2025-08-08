@@ -5,11 +5,12 @@ struct MyConductor {
 }
 
 impl Conductor for MyConductor {
-    fn init(&mut self, context: &mut mseq::Context) {
+    fn init(&mut self, context: &mut mseq::Context) -> Vec<Instruction> {
         // The sequencer is on pause by default
         context.start();
         // Set the bpm to 157
         context.set_bpm(157);
+        vec![]
     }
 
     fn update(&mut self, context: &mut mseq::Context) -> Vec<Instruction> {

@@ -11,7 +11,9 @@ struct DebugInputConductor {
 }
 
 impl Conductor for DebugInputConductor {
-    fn init(&mut self, _context: &mut Context) {}
+    fn init(&mut self, _context: &mut Context) -> Vec<Instruction> {
+        vec![]
+    }
 
     fn update(&mut self, context: &mut Context) -> Vec<Instruction> {
         if context.get_step() == 30 {
@@ -93,7 +95,7 @@ fn test_conductor_with_input<T: MidiOut>(
     mut midi_controller: MidiController<T>,
     input_simulation: impl Fn(&Context, &mut InputQueue),
 ) {
-    let mut ctx = Context::new();
+    let mut ctx = Context::default();
     let mut input_queue = InputQueue::new();
     conductor.init(&mut ctx);
     while ctx.is_running() {
@@ -104,9 +106,9 @@ fn test_conductor_with_input<T: MidiOut>(
         ctx.process_post_tick(&mut midi_controller);
 
         // Simulate input handling
-        ctx.handle_inputs(&mut conductor, &mut midi_controller, &mut input_queue);
+        ctx.handle_input(&mut conductor, &mut midi_controller, &mut input_queue);
     }
-    midi_controller.stop_all_notes(None);
+    midi_controller.stop_all_notes();
     midi_controller.stop();
 }
 

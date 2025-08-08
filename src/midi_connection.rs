@@ -1,6 +1,6 @@
 use midir::{Ignore, MidiInput, MidiOutput};
 use mseq_core::{InputQueue, MidiController, MidiMessage, MidiOut};
-use promptly::{ReadlineError, prompt_default};
+use promptly::{prompt_default, ReadlineError};
 use std::{
     collections::VecDeque,
     sync::{Arc, Condvar, Mutex},

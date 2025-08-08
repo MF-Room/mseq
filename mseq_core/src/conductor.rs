@@ -19,7 +19,8 @@ use crate::{Context, MidiMessage, midi_controller::Instruction};
 /// See example implementations in the [mseq GitHub repository](https://github.com/MF-Room/mseq/tree/main/examples).
 pub trait Conductor {
     ///Called once at startup to initialize state.
-    fn init(&mut self, context: &mut Context);
+    ///Returns the set of instructions that should be executed at initialization.
+    fn init(&mut self, context: &mut Context) -> Vec<Instruction>;
     /// Called at every clock tick to advance the sequencer state.
     ///
     /// This method is responsible for progressing the sequencer and producing
