@@ -7,6 +7,7 @@ mod midi_connection;
 
 pub use mseq_core::*;
 use mseq_tracks::TrackError;
+pub use mseq_tracks::*;
 
 use clock::Clock;
 use std::any::Any;
