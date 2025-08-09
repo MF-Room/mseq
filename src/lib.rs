@@ -49,7 +49,7 @@ pub fn run(
         let run_consumer = run.clone();
         let cond_var_consumer = cond_var.clone();
         let midi_in = connect(params.clone(), cond_var)?;
-        let consumer = thread::spawn(move || {
+        thread::spawn(move || {
             loop {
                 let r = run_consumer.lock().unwrap();
                 let mut r = cond_var_consumer.wait(r).unwrap();
@@ -59,12 +59,10 @@ pub fn run(
             }
         });
         if params.slave {
-            run_slave(run)?;
+            run_slave(run)
         } else {
-            run_master(run)?;
-        };
-        consumer.join().unwrap();
-        Ok(())
+            run_master(run)
+        }
     } else {
         run_no_input(ctx, midi_controller, conductor)
     }
