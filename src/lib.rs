@@ -5,12 +5,12 @@
 mod clock;
 mod midi_connection;
 
+pub use midi_connection::MidiInParam;
+pub use midir::Ignore;
 pub use mseq_core::*;
-use mseq_tracks::TrackError;
 pub use mseq_tracks::*;
 
 use clock::Clock;
-use std::any::Any;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 use std::time::Duration;

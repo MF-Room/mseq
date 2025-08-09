@@ -159,7 +159,9 @@ impl Context {
         conductor: &mut impl Conductor,
         controller: &mut MidiController<impl MidiOut>,
     ) {
-        if !self.on_pause {
+        if self.on_pause {
+            conductor.update(self);
+        } else {
             conductor
                 .update(self)
                 .into_iter()
