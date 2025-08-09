@@ -80,7 +80,7 @@ impl Default for Context {
             bpm: Bpm::new(DEFAULT_BPM),
             step: 0,
             running: true,
-            on_pause: false,
+            on_pause: true,
             pause: false,
         }
     }
@@ -159,10 +159,12 @@ impl Context {
         conductor: &mut impl Conductor,
         controller: &mut MidiController<impl MidiOut>,
     ) {
-        conductor
-            .update(self)
-            .into_iter()
-            .for_each(|instruction| controller.execute(instruction));
+        if !self.on_pause {
+            conductor
+                .update(self)
+                .into_iter()
+                .for_each(|instruction| controller.execute(instruction));
+        }
     }
 
     /// MIDI logic called after the clock tick.

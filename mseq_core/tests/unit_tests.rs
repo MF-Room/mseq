@@ -12,8 +12,8 @@ use mseq_core::*;
 struct DebugConductor1(Rc<RefCell<DebugMidiOutInner>>);
 
 impl Conductor for DebugConductor1 {
-    fn init(&mut self, _context: &mut Context) -> Vec<Instruction> {
-        vec![]
+    fn init(&mut self, context: &mut Context) -> Vec<Instruction> {
+        vec![context.start()]
     }
 
     fn update(&mut self, context: &mut Context) -> Vec<Instruction> {
@@ -51,8 +51,8 @@ fn play_note_conductor() {
 struct DebugConductor2(Rc<RefCell<DebugMidiOutInner>>);
 
 impl Conductor for DebugConductor2 {
-    fn init(&mut self, _context: &mut Context) -> Vec<Instruction> {
-        vec![]
+    fn init(&mut self, context: &mut Context) -> Vec<Instruction> {
+        vec![context.start()]
     }
 
     fn update(&mut self, context: &mut Context) -> Vec<Instruction> {
@@ -98,8 +98,8 @@ struct DebugConductor3 {
 }
 
 impl Conductor for DebugConductor3 {
-    fn init(&mut self, _context: &mut Context) -> Vec<Instruction> {
-        vec![]
+    fn init(&mut self, context: &mut Context) -> Vec<Instruction> {
+        vec![context.start()]
     }
 
     fn update(&mut self, context: &mut Context) -> Vec<Instruction> {
