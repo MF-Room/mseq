@@ -41,6 +41,7 @@ mod track;
 
 use alloc::collections::vec_deque::VecDeque;
 // Interface
+use alloc::vec::Vec;
 use bpm::Bpm;
 pub use conductor::Conductor;
 pub use midi::*;
@@ -159,14 +160,21 @@ impl Context {
         conductor: &mut impl Conductor,
         controller: &mut MidiController<impl MidiOut>,
     ) {
-        if self.on_pause {
-            conductor.update(self);
-        } else {
+        let instructions = if self.on_pause {
             conductor
                 .update(self)
                 .into_iter()
-                .for_each(|instruction| controller.execute(instruction));
-        }
+                .filter(|instruction| {
+                    *instruction == Instruction::Start || *instruction == Instruction::Continue
+                })
+                .collect::<Vec<_>>()
+        } else {
+            conductor.update(self)
+        };
+
+        instructions
+            .into_iter()
+            .for_each(|instruction| controller.execute(instruction));
     }
 
     /// MIDI logic called after the clock tick.

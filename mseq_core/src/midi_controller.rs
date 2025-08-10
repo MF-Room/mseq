@@ -27,6 +27,7 @@ impl Hash for NotePlay {
 /// Represents instructions that can be interpreted and processed by the [`MidiController`].
 ///
 /// These instructions are used to generate and send MIDI messages.
+#[derive(PartialEq)]
 pub enum Instruction {
     /// Plays a note for a specified duration on a given MIDI channel.
     PlayNote {
