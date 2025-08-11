@@ -13,7 +13,8 @@ struct DebugConductor1(Rc<RefCell<DebugMidiOutInner>>);
 
 impl Conductor for DebugConductor1 {
     fn init(&mut self, context: &mut Context) -> Vec<Instruction> {
-        vec![context.start()]
+        context.start();
+        vec![]
     }
 
     fn update(&mut self, context: &mut Context) -> Vec<Instruction> {
@@ -52,7 +53,8 @@ struct DebugConductor2(Rc<RefCell<DebugMidiOutInner>>);
 
 impl Conductor for DebugConductor2 {
     fn init(&mut self, context: &mut Context) -> Vec<Instruction> {
-        vec![context.start()]
+        context.start();
+        vec![]
     }
 
     fn update(&mut self, context: &mut Context) -> Vec<Instruction> {
@@ -99,7 +101,8 @@ struct DebugConductor3 {
 
 impl Conductor for DebugConductor3 {
     fn init(&mut self, context: &mut Context) -> Vec<Instruction> {
-        vec![context.start()]
+        context.start();
+        vec![]
     }
 
     fn update(&mut self, context: &mut Context) -> Vec<Instruction> {

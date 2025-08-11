@@ -12,7 +12,8 @@ struct DebugInputConductor {
 
 impl Conductor for DebugInputConductor {
     fn init(&mut self, context: &mut Context) -> Vec<Instruction> {
-        vec![context.start()]
+        context.start();
+        vec![]
     }
 
     fn update(&mut self, context: &mut Context) -> Vec<Instruction> {

@@ -162,3 +162,16 @@ impl MidiMessage {
         }
     }
 }
+
+/// Performs a linear conversion from `[0.0, 1.0]` to [0, 127]. If `v` is smaller than `0.0` return
+/// 0. If `v` is greater than `1.0` return 127. The main purpose of this function is to be used with
+/// MIDI control changes (CC).
+pub fn param_value(v: f32) -> u8 {
+    if v < -1.0 {
+        return 0;
+    }
+    if v > 1.0 {
+        return 127;
+    }
+    63 + (v * 63.0) as u8
+}
