@@ -193,6 +193,5 @@ pub fn test_conductor<T: MidiOut>(
         // No sleep between each cycle because we're testing
         ctx.process_post_tick(&mut midi_controller);
     }
-    midi_controller.stop_all_notes();
-    midi_controller.stop();
+    midi_controller.finish();
 }

@@ -109,8 +109,7 @@ fn test_conductor_with_input<T: MidiOut>(
         // Simulate input handling
         ctx.handle_input(&mut conductor, &mut midi_controller, &mut input_queue);
     }
-    midi_controller.stop_all_notes();
-    midi_controller.stop();
+    midi_controller.finish();
 }
 
 #[test]
