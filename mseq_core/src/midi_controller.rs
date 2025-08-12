@@ -27,7 +27,7 @@ impl Hash for NotePlay {
 /// Represents instructions that can be interpreted and processed by the [`MidiController`].
 ///
 /// These instructions are used to generate and send MIDI messages.
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub enum Instruction {
     /// Plays a note for a specified duration on a given MIDI channel.
     PlayNote {
@@ -228,6 +228,7 @@ impl<T: MidiOut> MidiController<T> {
         self.play_note_set.entry(step).or_default().push(note_play);
     }
 
+    /// This function directly sends a MIDI message
     fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) {
         if !is_valid_channel(channel_id) {
             return;
@@ -237,12 +238,14 @@ impl<T: MidiOut> MidiController<T> {
         }
     }
 
+    /// This function directly sends a MIDI message
     pub(crate) fn send_clock(&mut self) {
         if let Err(e) = self.midi_out.send_clock() {
             error!("MIDI: {e}");
         }
     }
 
+    /// This function directly sends a MIDI message
     fn start(&mut self) {
         self.step = 0;
         if let Err(e) = self.midi_out.send_start() {
@@ -252,8 +255,8 @@ impl<T: MidiOut> MidiController<T> {
 
     /// This function is not intended to be called directly by the user.
     ///
-    /// It exists to facilitate code reuse across different environments and platforms.
-    pub fn send_continue(&mut self) {
+    /// This function directly sends a MIDI message
+    fn send_continue(&mut self) {
         if let Err(e) = self.midi_out.send_continue() {
             error!("MIDI: {e}");
         }
@@ -291,8 +294,8 @@ impl<T: MidiOut> MidiController<T> {
 
     /// This function is not intended to be called directly by the user.
     ///
-    /// It exists to facilitate code reuse across different environments and platforms.
-    pub fn stop_all_notes(&mut self) {
+    /// This function directly sends MIDI messages
+    pub(crate) fn stop_all_notes(&mut self) {
         self.start_note_set.iter().for_each(|n| {
             if let Err(e) = self
                 .midi_out
@@ -301,6 +304,7 @@ impl<T: MidiOut> MidiController<T> {
                 error!("MIDI: {e}");
             }
         });
+        self.start_note_set.clear();
 
         self.play_note_set.values().for_each(|notes| {
             for n in notes {
@@ -317,8 +321,8 @@ impl<T: MidiOut> MidiController<T> {
 
     /// This function is not intended to be called directly by the user.
     ///
-    /// It exists to facilitate code reuse across different environments and platforms.
-    pub fn stop(&mut self) {
+    /// This function directly send a MIDI message
+    pub(crate) fn stop(&mut self) {
         if let Err(e) = self.midi_out.send_stop() {
             error!("MIDI: {e}");
         }
@@ -328,5 +332,16 @@ impl<T: MidiOut> MidiController<T> {
         if let Err(e) = self.midi_out.send_message(message) {
             error!("MIDI: {e}");
         }
+    }
+
+    /// Cleans up the sequencer before it is terminated.
+    /// Ensures all notes are turned off and sends a MIDI stop message.
+    ///
+    /// Intended for internal use only; not meant to be called directly by the user.
+    ///
+    /// Used internally to enable platform-independent cleanup.
+    pub fn finish(&mut self) {
+        self.stop_all_notes();
+        self.stop();
     }
 }

@@ -58,7 +58,7 @@ impl MidiNote {
 /// Represents a parsed MIDI instruction.
 ///
 /// This enum defines all supported MIDI messages used for input handling.
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub enum MidiMessage {
     /// Note Off event. This message is sent when a note is released.
     NoteOff {

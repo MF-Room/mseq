@@ -143,7 +143,6 @@ impl Context {
             self.step += 1;
             controller.update(self.step);
         } else if self.pause {
-            controller.stop();
             self.pause = false;
         }
     }

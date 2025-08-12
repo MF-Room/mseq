@@ -80,9 +80,8 @@ fn run_no_input(
         clock.tick(&Duration::from_micros(ctx.get_period_us()));
         ctx.process_post_tick(&mut controller);
     }
-    controller.stop_all_notes();
+    controller.finish();
     clock.tick(&Duration::from_micros(ctx.get_period_us()));
-    controller.stop();
 
     Ok(())
 }
@@ -114,9 +113,8 @@ fn run_master(
     }
     let mut r = run.lock().unwrap();
     let (_, ref mut controller, ref mut ctx) = *r;
-    controller.stop_all_notes();
+    controller.finish();
     clock.tick(&Duration::from_micros(ctx.get_period_us()));
-    controller.stop();
     Ok(())
 }
 
