@@ -48,18 +48,18 @@ pub fn run(
         let cond_var = Arc::new(Condvar::new());
         let run_consumer = run.clone();
         let cond_var_consumer = cond_var.clone();
-        let midi_in = connect(params.clone(), cond_var)?;
+        let midi_in = connect(params, cond_var)?;
         thread::spawn(move || {
             loop {
                 let r = run_consumer.lock().unwrap();
                 let mut r = cond_var_consumer.wait(r).unwrap();
                 let (ref mut conductor, ref mut controller, ref mut ctx) = *r;
-                let mut queue = midi_in.queue.lock().unwrap();
+                let mut queue = midi_in.queue.message.lock().unwrap();
                 ctx.handle_input(conductor, controller, &mut *queue);
             }
         });
-        if params.slave {
-            run_slave(run)
+        if let Some((queue, cond_var)) = midi_in.queue.slave_system {
+            run_slave(run, queue, cond_var)
         } else {
             run_master(run)
         }
@@ -120,6 +120,40 @@ fn run_master(
 
 fn run_slave(
     run: Arc<Mutex<(impl Conductor, MidiController<impl MidiOut>, Context)>>,
+    sys_queue: Arc<Mutex<InputQueue>>,
+    sys_cond_var: Arc<Condvar>,
 ) -> Result<(), MSeqError> {
-    todo!();
+    {
+        let mut r = run.lock().unwrap();
+        let (ref mut conductor, ref mut controller, ref mut ctx) = *r;
+        ctx.init(conductor, controller);
+    }
+    let clock = Clock::new();
+
+    loop {
+        {
+            let mut r = run.lock().unwrap();
+            let (ref mut conductor, ref mut controller, ref mut ctx) = *r;
+            ctx.process_pre_tick(conductor, controller);
+        }
+
+        // Check the slave system queue
+        loop {
+            let r = sys_queue.lock().unwrap();
+            let mut r = sys_cond_var.wait(r).unwrap();
+            todo!("Exit the loop when we receive a sys message and handle it accordingly")
+        }
+
+        let mut r = run.lock().unwrap();
+        let (_, ref mut controller, ref mut ctx) = *r;
+        ctx.process_post_tick(controller);
+        if !ctx.is_running() {
+            break;
+        }
+    }
+    let mut r = run.lock().unwrap();
+    let (_, ref mut controller, ref mut ctx) = *r;
+    controller.finish();
+    clock.tick(&Duration::from_micros(ctx.get_period_us()));
+    Ok(())
 }

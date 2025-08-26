@@ -1,10 +1,7 @@
 use midir::{Ignore, MidiInput, MidiOutput};
-use mseq_core::{InputQueue, MidiController, MidiMessage, MidiOut};
+use mseq_core::{InputQueue, MidiMessage, MidiOut};
 use promptly::{ReadlineError, prompt_default};
-use std::{
-    collections::VecDeque,
-    sync::{Arc, Condvar, Mutex},
-};
+use std::sync::{Arc, Condvar, Mutex};
 use thiserror::Error;
 
 const CLOCK: u8 = 0xf8;
@@ -121,11 +118,17 @@ impl MidiOut for StdMidiOut {
     }
 }
 
+type QueueCondvar = (Arc<Mutex<InputQueue>>, Arc<Condvar>);
 /// Struct used to handle the MIDI input. If [`connect`] succeed, an object of type MidiIn
 /// is returned.
-pub struct StdMidiIn {
-    pub connection: midir::MidiInputConnection<(Arc<Mutex<VecDeque<MidiMessage>>>, Arc<Condvar>)>,
-    pub queue: Arc<Mutex<VecDeque<MidiMessage>>>,
+pub(crate) struct StdMidiIn {
+    pub connection: midir::MidiInputConnection<(QueueCondvar, Option<QueueCondvar>)>,
+    pub queue: StdInQueue,
+}
+
+pub(crate) struct StdInQueue {
+    pub message: Arc<Mutex<InputQueue>>,
+    pub slave_system: Option<(Arc<Mutex<InputQueue>>, Arc<Condvar>)>,
 }
 
 /// MIDI input connection parameters.
@@ -148,7 +151,7 @@ pub struct MidiInParam {
 ///
 ///The connection will be kept open as long as the returned MidiInputConnection is kept alive.
 /// TODO update doc
-pub fn connect(params: MidiInParam, cond_var: Arc<Condvar>) -> Result<StdMidiIn, MidiError> {
+pub(crate) fn connect(params: MidiInParam, cond_var: Arc<Condvar>) -> Result<StdMidiIn, MidiError> {
     let mut midi_in = MidiInput::new("in")?;
     midi_in.ignore(params.ignore);
 
@@ -185,30 +188,39 @@ pub fn connect(params: MidiInParam, cond_var: Arc<Condvar>) -> Result<StdMidiIn,
         }
     };
 
-    let queue = Arc::new(Mutex::new(InputQueue::new()));
-    let input = (queue.clone(), cond_var);
-    let conn_in = midi_in.connect(
+    let message_queue = Arc::new(Mutex::new(InputQueue::new()));
+    let message = (message_queue.clone(), cond_var);
+
+    let slave_system = if params.slave {
+        Some((
+            Arc::new(Mutex::new(InputQueue::new())),
+            Arc::new(Condvar::new()),
+        ))
+    } else {
+        None
+    };
+
+    let input = (message, slave_system.clone());
+
+    let connection = midi_in.connect(
         in_port,
         "midir-read-input",
         move |_, message, input| {
             let m = MidiMessage::parse(message);
             if let Some(m) = m {
                 match m {
-                    MidiMessage::Clock => {
-                        todo!()
-                    }
-                    MidiMessage::Start => {
-                        todo!()
-                    }
-                    MidiMessage::Stop => {
-                        todo!()
-                    }
-                    MidiMessage::Continue => {
-                        todo!()
+                    MidiMessage::Clock
+                    | MidiMessage::Start
+                    | MidiMessage::Stop
+                    | MidiMessage::Continue => {
+                        if let Some((q, cv)) = &input.1 {
+                            q.lock().unwrap().push_back(m);
+                            cv.notify_all();
+                        }
                     }
                     _ => {
-                        input.0.lock().unwrap().push_back(m);
-                        input.1.notify_all();
+                        input.0.0.lock().unwrap().push_back(m);
+                        input.0.1.notify_all();
                     }
                 }
             }
@@ -217,7 +229,10 @@ pub fn connect(params: MidiInParam, cond_var: Arc<Condvar>) -> Result<StdMidiIn,
     )?;
 
     Ok(StdMidiIn {
-        connection: conn_in,
-        queue,
+        connection,
+        queue: StdInQueue {
+            message: message_queue,
+            slave_system,
+        },
     })
 }
