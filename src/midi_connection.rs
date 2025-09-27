@@ -119,16 +119,11 @@ impl MidiOut for StdMidiOut {
 }
 
 type QueueCondvar = (Arc<Mutex<InputQueue>>, Arc<Condvar>);
-/// Struct used to handle the MIDI input. If [`connect`] succeed, an object of type MidiIn
-/// is returned.
-pub(crate) struct StdMidiIn {
-    pub connection: midir::MidiInputConnection<(QueueCondvar, Option<QueueCondvar>)>,
-    pub queue: StdInQueue,
-}
 
-pub(crate) struct StdInQueue {
-    pub message: Arc<Mutex<InputQueue>>,
-    pub slave_system: Option<(Arc<Mutex<InputQueue>>, Arc<Condvar>)>,
+pub(crate) struct InQueues {
+    pub message: QueueCondvar,
+    pub slave_system: Option<QueueCondvar>,
+    _connection: midir::MidiInputConnection<(QueueCondvar, Option<QueueCondvar>)>,
 }
 
 /// MIDI input connection parameters.
@@ -151,7 +146,7 @@ pub struct MidiInParam {
 ///
 ///The connection will be kept open as long as the returned MidiInputConnection is kept alive.
 /// TODO update doc
-pub(crate) fn connect(params: MidiInParam, cond_var: Arc<Condvar>) -> Result<StdMidiIn, MidiError> {
+pub(crate) fn connect(params: MidiInParam) -> Result<InQueues, MidiError> {
     let mut midi_in = MidiInput::new("in")?;
     midi_in.ignore(params.ignore);
 
@@ -189,7 +184,7 @@ pub(crate) fn connect(params: MidiInParam, cond_var: Arc<Condvar>) -> Result<Std
     };
 
     let message_queue = Arc::new(Mutex::new(InputQueue::new()));
-    let message = (message_queue.clone(), cond_var);
+    let message = (message_queue.clone(), Arc::new(Condvar::new()));
 
     let slave_system = if params.slave {
         Some((
@@ -200,9 +195,9 @@ pub(crate) fn connect(params: MidiInParam, cond_var: Arc<Condvar>) -> Result<Std
         None
     };
 
-    let input = (message, slave_system.clone());
+    let input = (message.clone(), slave_system.clone());
 
-    let connection = midi_in.connect(
+    let _connection = midi_in.connect(
         in_port,
         "midir-read-input",
         move |_, message, input| {
@@ -228,11 +223,9 @@ pub(crate) fn connect(params: MidiInParam, cond_var: Arc<Condvar>) -> Result<Std
         input,
     )?;
 
-    Ok(StdMidiIn {
-        connection,
-        queue: StdInQueue {
-            message: message_queue,
-            slave_system,
-        },
+    Ok(InQueues {
+        message,
+        slave_system,
+        _connection,
     })
 }

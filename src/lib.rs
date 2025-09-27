@@ -45,21 +45,20 @@ pub fn run(
 
     if let Some(params) = midi_in {
         let run = Arc::new(Mutex::new((conductor, midi_controller, ctx)));
-        let cond_var = Arc::new(Condvar::new());
         let run_consumer = run.clone();
-        let cond_var_consumer = cond_var.clone();
-        let midi_in = connect(params, cond_var)?;
+        let midi_in = connect(params)?;
+        let message = midi_in.message.clone();
         thread::spawn(move || {
             loop {
                 let r = run_consumer.lock().unwrap();
-                let mut r = cond_var_consumer.wait(r).unwrap();
+                let mut r = message.1.wait(r).unwrap();
                 let (ref mut conductor, ref mut controller, ref mut ctx) = *r;
-                let mut queue = midi_in.queue.message.lock().unwrap();
+                let mut queue = message.0.lock().unwrap();
                 ctx.handle_input(conductor, controller, &mut *queue);
             }
         });
-        if let Some((queue, cond_var)) = midi_in.queue.slave_system {
-            run_slave(run, queue, cond_var)
+        if let Some((sys_queue, cond_var)) = midi_in.slave_system {
+            run_slave(run, sys_queue, cond_var)
         } else {
             run_master(run)
         }
@@ -81,8 +80,8 @@ fn run_no_input(
         ctx.process_post_tick(&mut controller);
     }
     controller.finish();
+    // To make sure the midi buffer has time to empty
     clock.tick(&Duration::from_micros(ctx.get_period_us()));
-
     Ok(())
 }
 
@@ -114,6 +113,7 @@ fn run_master(
     let mut r = run.lock().unwrap();
     let (_, ref mut controller, ref mut ctx) = *r;
     controller.finish();
+    // To make sure the midi buffer has time to empty
     clock.tick(&Duration::from_micros(ctx.get_period_us()));
     Ok(())
 }
@@ -128,7 +128,6 @@ fn run_slave(
         let (ref mut conductor, ref mut controller, ref mut ctx) = *r;
         ctx.init(conductor, controller);
     }
-    let clock = Clock::new();
 
     loop {
         {
@@ -137,15 +136,48 @@ fn run_slave(
             ctx.process_pre_tick(conductor, controller);
         }
 
+        enum SysMessage {
+            Start,
+            Stop,
+            Continue,
+        }
         // Check the slave system queue
-        loop {
-            let r = sys_queue.lock().unwrap();
-            let mut r = sys_cond_var.wait(r).unwrap();
-            todo!("Exit the loop when we receive a sys message and handle it accordingly")
+        let mut clock_received = false;
+        let mut sys_message = None;
+
+        while !clock_received {
+            let mut mutex = sys_queue.lock().unwrap();
+            let queue = &mut *mutex;
+
+            while let Some(message) = queue.pop_front() {
+                match message {
+                    MidiMessage::Clock => {
+                        clock_received = true;
+                    }
+                    MidiMessage::Start => {
+                        sys_message = Some(SysMessage::Start);
+                    }
+                    MidiMessage::Stop => {
+                        sys_message = Some(SysMessage::Stop);
+                    }
+                    MidiMessage::Continue => {
+                        sys_message = Some(SysMessage::Continue);
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            let _r = sys_cond_var.wait(mutex).unwrap();
         }
 
         let mut r = run.lock().unwrap();
         let (_, ref mut controller, ref mut ctx) = *r;
+        if let Some(sys_message) = sys_message {
+            match sys_message {
+                SysMessage::Start => ctx.start(),
+                SysMessage::Stop => ctx.pause(),
+                SysMessage::Continue => ctx.resume(),
+            }
+        }
         ctx.process_post_tick(controller);
         if !ctx.is_running() {
             break;
@@ -154,6 +186,8 @@ fn run_slave(
     let mut r = run.lock().unwrap();
     let (_, ref mut controller, ref mut ctx) = *r;
     controller.finish();
+    // To make sure the midi buffer has time to empty
+    let mut clock = Clock::new();
     clock.tick(&Duration::from_micros(ctx.get_period_us()));
     Ok(())
 }
