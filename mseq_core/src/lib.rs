@@ -1,3 +1,5 @@
+//! # mseq_core
+//!
 //! Core framework for building custom MIDI sequencers.
 //!
 //! `mseq_core` provides the foundational traits and utilities needed to implement

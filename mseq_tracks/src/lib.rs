@@ -1,4 +1,4 @@
-//! # `track` – MSeq Track Construction and Loading
+//! # mseq_tracks – MSeq Tracks Construction and Loading
 //!
 //! This crate provides utilities to define, generate, and load different kinds of
 //! sequencer tracks into the MSeq engine. It serves as a bridge between high-level

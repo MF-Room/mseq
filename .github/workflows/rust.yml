@@ -28,7 +28,7 @@ jobs:
         run: cargo test --workspace --all-features
 
       - name: rustfmt
-        run: cargo fmt --workspace -- --check
+        run: cargo fmt --all --check
 
       - name: clippy
         run: cargo clippy --workspace --all-features --tests -- -D warnings

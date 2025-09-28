@@ -134,18 +134,12 @@ pub struct MidiInParam {
     /// MIDI port id used to receive the midi messages. If set to `None`, information about the MIDI ports
     /// will be displayed and the input port will be asked to the user with a prompt.
     pub port: Option<u32>,
+    /// Boolean flag to select the sequencer mode.  
+    /// If set to `true`, the sequencer will run in **slave mode**, synchronizing to external MIDI clock and transport messages.  
+    /// If set to `false`, the sequencer will run in **master mode**, generating its own MIDI clock and transport messages.
     pub slave: bool,
 }
 
-/// Connect to a specified MIDI input port in order to receive messages.
-/// For each (non ignored) incoming MIDI message, the provided callback function will be called.
-///The first parameter contains the actual bytes of the MIDI message.
-///
-///Additional data that should be passed whenever the callback is invoked can be specified by data.
-///Use the empty tuple () if you do not want to pass any additional data.
-///
-///The connection will be kept open as long as the returned MidiInputConnection is kept alive.
-/// TODO update doc
 pub(crate) fn connect(params: MidiInParam) -> Result<InQueues, MidiError> {
     let mut midi_in = MidiInput::new("in")?;
     midi_in.ignore(params.ignore);

@@ -1,4 +1,62 @@
-//! TODO
+//! # mseq
+//!
+//! `mseq` is a lightweight MIDI sequencer framework written in Rust.  
+//! It provides a flexible core for building sequencers that can run in **standalone**, **master**, or
+//! **slave** mode, with synchronization over standard MIDI clock and transport messages.
+//!
+//! ## Overview
+//!
+//! The sequencer is driven by a user-provided [`Conductor`] implementation, which defines how the
+//! sequencer initializes, progresses at each clock tick, and reacts to external MIDI messages.
+//! The core engine manages timing, MIDI input/output, and synchronization.
+//!
+//! - **No input** → runs standalone with its internal clock and transport, generating MIDI clock and
+//!   transport messages but ignoring external MIDI input.
+//! - **Master mode** → runs with its internal clock while also processing incoming MIDI events
+//!   (except for external clock/transport).
+//! - **Slave mode** → synchronizes playback to an external MIDI clock and responds to
+//!   Start/Stop/Continue messages, dynamically adjusting BPM to match the clock source.
+//!
+//! ## Usage
+//!
+//! The entry point of the crate is the [`run`] function:
+//!
+//! ```no_run
+//! use mseq::{run, Conductor, Context, Instruction, MidiInParam, MidiMessage};
+//!
+//! struct MyConductor;
+//!
+//! impl Conductor for MyConductor {
+//!     fn init(&mut self, _ctx: &mut Context) -> Vec<Instruction> {
+//!         // Return setup instructions (e.g., reset all controllers)
+//!         vec![]
+//!     }
+//!
+//!     fn update(&mut self, _ctx: &mut Context) -> Vec<Instruction> {
+//!         // Called each clock tick: return note events or other MIDI instructions
+//!         vec![]
+//!     }
+//!
+//!     fn handle_input(&mut self, input: MidiMessage, _ctx: &Context) -> Vec<Instruction> {
+//!         vec![]
+//!     }
+//! }
+//!
+//! fn main() -> Result<(), mseq::MSeqError> {
+//!     let conductor = MyConductor;
+//!     let out_port = None; // Ask user for output port
+//!     let midi_in = None;  // Run standalone (no input, master clock/transport)
+//!     run(conductor, out_port, midi_in)
+//! }
+//! ```
+//!
+//! ## Features
+//!
+//! - Real-time MIDI clock generation and synchronization
+//! - Master/slave transport control with Start/Stop/Continue handling
+//! - Flexible [`Conductor`] trait for defining sequencer logic
+//! - Easy-to-implement tracks via the [`Track`] trait  
+//! - Thread-safe, minimal core designed for real-time responsiveness
 
 #![warn(missing_docs)]
 
@@ -31,10 +89,31 @@ pub enum MSeqError {
     Track(#[from] TrackError),
 }
 
-/// `mseq` entry point. Run the sequencer by providing a conductor implementation. `port` is the
-/// MIDI port id used to send the midi messages. If set to `None`, information about the MIDI ports
-/// will be displayed and the output port will be asked to the user with a prompt.
-/// TODO update doc
+/// `mseq` entry point.  
+///
+/// This function starts the MIDI sequencer by running the given [`Conductor`] implementation.  
+///
+/// # Parameters
+/// - `conductor`: User-provided implementation of the [`Conductor`] trait, which defines how the
+///   sequencer generates and responds to musical events.
+/// - `out_port`: MIDI output port ID used to send messages.  
+///   If set to `None`, information about available MIDI output ports will be displayed and the user
+///   will be prompted to select one.
+/// - `midi_in`: Optional [`MidiInParam`] specifying how to configure the MIDI input connection.  
+///   If provided, the sequencer can run in either **master mode** (internal clock) or **slave mode**
+///   (synchronized to external MIDI clock and transport messages).
+///
+/// # Behavior
+/// - **No input (`midi_in = None`)** → sequencer runs with its internal clock and transport,  
+///   generating MIDI clock and transport messages, but ignoring any external MIDI input.  
+/// - **Master mode** → sequencer generates its own MIDI clock and transport messages while also
+///   handling incoming MIDI events (except for clock/transport).  
+/// - **Slave mode** → sequencer synchronizes to external MIDI clock, Start/Stop/Continue messages,
+///   and dynamically adjusts BPM to match the external clock source.
+///
+/// # Errors
+/// Returns an [`MSeqError`] if a MIDI port cannot be opened, if MIDI input/output fails, or if track
+/// parsing encounters an error.
 pub fn run(
     conductor: impl Conductor + std::marker::Send + 'static,
     out_port: Option<u32>,
