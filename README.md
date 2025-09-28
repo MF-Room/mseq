@@ -2,7 +2,7 @@
 
 [![doc](https://docs.rs/mseq/badge.svg)](https://docs.rs/mseq) [![crates.io](https://img.shields.io/crates/v/mseq.svg)](https://crates.io/crates/mseq) [![CI/CD](https://github.com/MF-Room/mseq/actions/workflows/rust.yml/badge.svg)](https://github.com/MF-Room/mseq/actions/workflows/rust.yml)
 
-mseq` is a lightweight MIDI sequencer framework written in Rust. It provides a flexible core for building sequencers that can run in **standalone**, **master**, or **slave** mode, with synchronization over standard MIDI clock and transport messages.
+`mseq` is a lightweight MIDI sequencer framework written in Rust. It provides a flexible core for building sequencers that can run in **standalone**, **master**, or **slave** mode, with synchronization over standard MIDI clock and transport messages.
 
 ## Features
 
