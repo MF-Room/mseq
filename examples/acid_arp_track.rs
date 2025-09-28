@@ -7,6 +7,7 @@ struct MyConductor {
 
 impl Conductor for MyConductor {
     fn init(&mut self, context: &mut mseq::Context) -> Vec<Instruction> {
+        context.set_bpm(130);
         // The sequencer is on pause by default
         context.start();
         vec![]

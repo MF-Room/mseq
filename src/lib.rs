@@ -14,6 +14,7 @@ use clock::Clock;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 use std::time::Duration;
+use std::time::Instant;
 
 use thiserror::Error;
 
@@ -54,7 +55,7 @@ pub fn run(
                 let mut r = message.1.wait(r).unwrap();
                 let (ref mut conductor, ref mut controller, ref mut ctx) = *r;
                 let mut queue = message.0.lock().unwrap();
-                ctx.handle_input(conductor, controller, &mut *queue);
+                ctx.handle_input(conductor, controller, &mut queue);
             }
         });
         if let Some((sys_queue, cond_var)) = midi_in.slave_system {
@@ -127,8 +128,14 @@ fn run_slave(
         let mut r = run.lock().unwrap();
         let (ref mut conductor, ref mut controller, ref mut ctx) = *r;
         ctx.init(conductor, controller);
+
+        // We start in pause mode
+        ctx.pause();
     }
 
+    // We use the average duration over 24 clock messages (1 beat) to set the BPM
+    let mut bpm_counter = 0;
+    let mut bmp_time_stamp = Instant::now();
     loop {
         {
             let mut r = run.lock().unwrap();
@@ -136,23 +143,24 @@ fn run_slave(
             ctx.process_pre_tick(conductor, controller);
         }
 
+        // Check the slave system queue
         enum SysMessage {
             Start,
             Stop,
             Continue,
         }
-        // Check the slave system queue
-        let mut clock_received = false;
         let mut sys_message = None;
 
-        while !clock_received {
+        // We quit the loop if we receive clock message
+        loop {
             let mut mutex = sys_queue.lock().unwrap();
             let queue = &mut *mutex;
+            let mut quit_loop = false;
 
             while let Some(message) = queue.pop_front() {
                 match message {
                     MidiMessage::Clock => {
-                        clock_received = true;
+                        quit_loop = true;
                     }
                     MidiMessage::Start => {
                         sys_message = Some(SysMessage::Start);
@@ -166,11 +174,28 @@ fn run_slave(
                     _ => unreachable!(),
                 }
             }
+
+            if quit_loop {
+                break;
+            }
+
             let _r = sys_cond_var.wait(mutex).unwrap();
         }
 
         let mut r = run.lock().unwrap();
         let (_, ref mut controller, ref mut ctx) = *r;
+
+        bpm_counter += 1;
+        if bpm_counter == 24 {
+            bpm_counter = 0;
+            let duration = bmp_time_stamp.elapsed().as_millis();
+            if duration != 0 {
+                let bpm = 60000 / duration;
+                ctx.set_bpm(bpm as u8);
+            }
+            bmp_time_stamp = Instant::now();
+        }
+
         if let Some(sys_message) = sys_message {
             match sys_message {
                 SysMessage::Start => ctx.start(),
