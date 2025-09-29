@@ -1,7 +1,8 @@
-use std::{convert::From, fmt::Display};
+use core::{convert, fmt, hash::Hash};
+use serde::{Deserialize, Serialize};
 
 /// Represents 1 note of the chromatic scale.
-#[derive(Debug, Default, Clone, PartialEq, Copy, serde::Deserialize, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Copy, Eq, Deserialize, Serialize, Hash)]
 pub enum Note {
     #[default]
     /// C
@@ -30,7 +31,7 @@ pub enum Note {
     B,
 }
 
-impl From<Note> for u8 {
+impl convert::From<Note> for u8 {
     fn from(note: Note) -> Self {
         match note {
             Note::C => 0,
@@ -70,8 +71,8 @@ impl From<u8> for Note {
     }
 }
 
-impl Display for Note {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for Note {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let str = match self {
             Note::C => "C",
             Note::CS => "C#",
@@ -86,7 +87,7 @@ impl Display for Note {
             Note::AS => "A#",
             Note::B => "B",
         };
-        write!(f, "{}", str)
+        write!(f, "{str}")
     }
 }
 
@@ -96,7 +97,7 @@ impl Note {
     ///
     /// # Example
     /// ```
-    /// use mseq::Note;
+    /// use mseq_core::Note;
     ///
     /// let note = Note::G;
     /// let octave = 4;
@@ -117,10 +118,6 @@ impl Note {
         let root_m: u8 = root.into();
         let note_m: u8 = note.into();
         let n = (note_m as i8 - root_m as i8).rem_euclid(12);
-        if n > 6 {
-            n - 12
-        } else {
-            n
-        }
+        if n > 6 { n - 12 } else { n }
     }
 }

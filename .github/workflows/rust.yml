@@ -25,10 +25,13 @@ jobs:
           rust-version: stable
 
       - name: cargo test
-        run: cargo test --all-features
+        run: cargo test --workspace --all-features
 
       - name: rustfmt
-        run: cargo fmt --all -- --check
+        run: cargo fmt --all --check
 
       - name: clippy
-        run: cargo clippy --all --all-features --tests -- -D warnings
+        run: cargo clippy --workspace --all-features --tests -- -D warnings
+
+      - name: clippy no_std
+        run: cargo clippy --workspace --no-default-features -- -D warnings

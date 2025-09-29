@@ -1,22 +1,8 @@
-use midir::MidiOutput;
-use promptly::{prompt_default, ReadlineError};
+use midir::{Ignore, MidiInput, MidiOutput};
+use mseq_core::{InputQueue, MidiMessage, MidiOut};
+use promptly::{ReadlineError, prompt_default};
+use std::sync::{Arc, Condvar, Mutex};
 use thiserror::Error;
-
-#[derive(Error, Debug)]
-pub enum MidiError {
-    #[error("Init error: {0}")]
-    Init(#[from] midir::InitError),
-    #[error("Connect error: {0}")]
-    Connect(#[from] midir::ConnectError<MidiOutput>),
-    #[error("Send error: {0}")]
-    Send(#[from] midir::SendError),
-    #[error("Read line [{}: {}]", file!(), line!())]
-    ReadLine(#[from] ReadlineError),
-    #[error("Invalid port number selected")]
-    PortNumber(),
-    #[error("No midi output found")]
-    NoOutput(),
-}
 
 const CLOCK: u8 = 0xf8;
 const START: u8 = 0xfa;
@@ -25,29 +11,31 @@ const STOP: u8 = 0xfc;
 const NOTE_ON: u8 = 0x90;
 const NOTE_OFF: u8 = 0x80;
 const CC: u8 = 0xB0;
+const PC: u8 = 0xC0;
 
-/// This trait should not be implemented in the user code. The purpose of this trait is be able to reuse
-/// the same code with different midi API, using static dispatch.
-pub trait MidiConnection {
-    #[doc(hidden)]
-    fn send_start(&mut self) -> Result<(), MidiError>;
-    #[doc(hidden)]
-    fn send_continue(&mut self) -> Result<(), MidiError>;
-    #[doc(hidden)]
-    fn send_stop(&mut self) -> Result<(), MidiError>;
-    #[doc(hidden)]
-    fn send_clock(&mut self) -> Result<(), MidiError>;
-    #[doc(hidden)]
-    fn send_note_on(&mut self, channel_id: u8, note: u8, velocity: u8) -> Result<(), MidiError>;
-    #[doc(hidden)]
-    fn send_note_off(&mut self, channel_id: u8, note: u8) -> Result<(), MidiError>;
-    #[doc(hidden)]
-    fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) -> Result<(), MidiError>;
+#[derive(Error, Debug)]
+pub enum MidiError {
+    #[error("Init error: {0}")]
+    Init(#[from] midir::InitError),
+    #[error("Connect error: {0}")]
+    OutConnect(#[from] midir::ConnectError<MidiOutput>),
+    #[error("Connect error: {0}")]
+    InConnect(#[from] midir::ConnectError<MidiInput>),
+    #[error("Send error: {0}")]
+    Send(#[from] midir::SendError),
+    #[error("Read line [{}: {}]", file!(), line!())]
+    ReadLine(#[from] ReadlineError),
+    #[error("Invalid port number selected")]
+    PortNumber(),
+    #[error("No midi output found")]
+    NoOutput(),
+    #[error("No midi input found")]
+    NoInput(),
 }
 
-pub struct MidirConnection(midir::MidiOutputConnection);
+pub struct StdMidiOut(midir::MidiOutputConnection);
 
-impl MidirConnection {
+impl StdMidiOut {
     pub(crate) fn new(port: Option<u32>) -> Result<Self, MidiError> {
         let midi_out = MidiOutput::new("out")?;
         let out_ports = midi_out.ports();
@@ -87,7 +75,8 @@ impl MidirConnection {
     }
 }
 
-impl MidiConnection for MidirConnection {
+impl MidiOut for StdMidiOut {
+    type Error = MidiError;
     fn send_start(&mut self) -> Result<(), MidiError> {
         self.0.send(&[START])?;
         Ok(())
@@ -109,17 +98,128 @@ impl MidiConnection for MidirConnection {
     }
 
     fn send_note_on(&mut self, channel_id: u8, note: u8, velocity: u8) -> Result<(), MidiError> {
-        self.0.send(&[NOTE_ON | channel_id, note, velocity])?;
+        self.0.send(&[NOTE_ON | (channel_id - 1), note, velocity])?;
         Ok(())
     }
 
     fn send_note_off(&mut self, channel_id: u8, note: u8) -> Result<(), MidiError> {
-        self.0.send(&[NOTE_OFF | channel_id, note, 0])?;
+        self.0.send(&[NOTE_OFF | (channel_id - 1), note, 0])?;
         Ok(())
     }
 
     fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) -> Result<(), MidiError> {
-        self.0.send(&[CC | channel_id, parameter, value])?;
+        self.0.send(&[CC | (channel_id - 1), parameter, value])?;
         Ok(())
     }
+
+    fn send_pc(&mut self, channel_id: u8, value: u8) -> Result<(), MidiError> {
+        self.0.send(&[PC | (channel_id - 1), value])?;
+        Ok(())
+    }
+}
+
+type QueueCondvar = (Arc<Mutex<InputQueue>>, Arc<Condvar>);
+
+pub(crate) struct InQueues {
+    pub message: QueueCondvar,
+    pub slave_system: Option<QueueCondvar>,
+    _connection: midir::MidiInputConnection<(QueueCondvar, Option<QueueCondvar>)>,
+}
+
+/// MIDI input connection parameters.
+#[derive(Clone)]
+pub struct MidiInParam {
+    /// An enum that is used to specify what kind of MIDI messages should be ignored when receiving messages.
+    pub ignore: Ignore,
+    /// MIDI port id used to receive the midi messages. If set to `None`, information about the MIDI ports
+    /// will be displayed and the input port will be asked to the user with a prompt.
+    pub port: Option<u32>,
+    /// Boolean flag to select the sequencer mode.  
+    /// If set to `true`, the sequencer will run in **slave mode**, synchronizing to external MIDI clock and transport messages.  
+    /// If set to `false`, the sequencer will run in **master mode**, generating its own MIDI clock and transport messages.
+    pub slave: bool,
+}
+
+pub(crate) fn connect(params: MidiInParam) -> Result<InQueues, MidiError> {
+    let mut midi_in = MidiInput::new("in")?;
+    midi_in.ignore(params.ignore);
+
+    // Find port
+    let in_ports = midi_in.ports();
+
+    let in_port = if let Some(p) = params.port {
+        match in_ports.get(p as usize) {
+            None => return Err(MidiError::PortNumber()),
+            Some(x) => x,
+        }
+    } else {
+        match in_ports.len() {
+            0 => return Err(MidiError::NoInput()),
+            1 => {
+                println!(
+                    "Choosing the only available intput port: {}",
+                    midi_in.port_name(&in_ports[0]).unwrap()
+                );
+                &in_ports[0]
+            }
+            _ => {
+                println!("\nAvailable input ports:");
+                for (i, p) in in_ports.iter().enumerate() {
+                    println!("{}: {}", i, midi_in.port_name(p).unwrap());
+                }
+
+                let port_number: usize = prompt_default("Select input port", 0)?;
+                match in_ports.get(port_number) {
+                    None => return Err(MidiError::PortNumber()),
+                    Some(x) => x,
+                }
+            }
+        }
+    };
+
+    let message_queue = Arc::new(Mutex::new(InputQueue::new()));
+    let message = (message_queue.clone(), Arc::new(Condvar::new()));
+
+    let slave_system = if params.slave {
+        Some((
+            Arc::new(Mutex::new(InputQueue::new())),
+            Arc::new(Condvar::new()),
+        ))
+    } else {
+        None
+    };
+
+    let input = (message.clone(), slave_system.clone());
+
+    let _connection = midi_in.connect(
+        in_port,
+        "midir-read-input",
+        move |_, message, input| {
+            let m = MidiMessage::parse(message);
+            if let Some(m) = m {
+                match m {
+                    MidiMessage::Clock
+                    | MidiMessage::Start
+                    | MidiMessage::Stop
+                    | MidiMessage::Continue => {
+                        if let Some((q, cv)) = &input.1 {
+                            q.lock().unwrap().push_back(m);
+                            cv.notify_all();
+                        }
+                    }
+                    _ => {
+                        input.0.0.lock().unwrap().push_back(m);
+                        input.0.1.notify_all();
+                    }
+                }
+            }
+        },
+        input,
+    )?;
+
+    Ok(InQueues {
+        message,
+        slave_system,
+        _connection,
+    })
 }

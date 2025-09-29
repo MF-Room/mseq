@@ -1,4 +1,4 @@
-use mseq::{Conductor, DeteTrack};
+use mseq::{Conductor, DeteTrack, Instruction, Track};
 
 struct MyConductor {
     acid: DeteTrack,
@@ -6,22 +6,25 @@ struct MyConductor {
 }
 
 impl Conductor for MyConductor {
-    fn init(&mut self, context: &mut mseq::Context<impl mseq::MidiConnection>) {
+    fn init(&mut self, context: &mut mseq::Context) -> Vec<Instruction> {
+        context.set_bpm(130);
         // The sequencer is on pause by default
         context.start();
+        vec![]
     }
 
-    fn update(&mut self, context: &mut mseq::Context<impl mseq::MidiConnection>) {
-        // First play acid on channel 0 and then arp on channel 1
-        if context.get_step() < 430 {
-            context.midi.play_track(&mut self.acid);
-        } else {
-            context.midi.play_track(&mut self.arp);
-        }
-
+    fn update(&mut self, context: &mut mseq::Context) -> Vec<Instruction> {
+        let step = context.get_step();
         // Quit after 960 steps
         if context.get_step() == 959 {
             context.quit();
+        }
+
+        // First play acid on channel 0 and then arp on channel 1
+        if step < 430 {
+            self.acid.play_step(step)
+        } else {
+            self.arp.play_step(step)
         }
     }
 }
@@ -30,11 +33,11 @@ fn main() {
     env_logger::init();
 
     let acid =
-        DeteTrack::load_acid_from_file("examples/res/acid_0.csv", mseq::Note::A, 0, "my_acid")
+        mseq_tracks::acid::load_from_file("examples/res/acid_0.csv", mseq::Note::A, 1, "my_acid")
             .unwrap();
-    let arp = DeteTrack::load_arp_from_file(
+    let arp = mseq_tracks::arp::load_from_file(
         "examples/res/arp_0.csv",
-        mseq::ArpDiv::T8,
+        mseq_tracks::arp::ArpDiv::T8,
         mseq::Note::A,
         1,
         "my_arp",
@@ -44,6 +47,7 @@ fn main() {
     if let Err(e) = mseq::run(
         MyConductor { acid, arp },
         // The midi port will be selected at runtime by the user
+        None,
         None,
     ) {
         println!("An error occured: {:?}", e);

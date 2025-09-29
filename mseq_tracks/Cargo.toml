@@ -1,32 +1,29 @@
-[workspace]
-resolver = "2"
-members = ["mseq_core", "mseq_tracks"]
-
 [package]
-name = "mseq"
-version = "2.0.0"
+name = "mseq_tracks"
+version = "0.1.0"
 edition = "2024"
 license = "LGPL-2.1"
 readme = "README.md"
-repository = "https://github.com/MF-Room/mseq"
+repository = "https://github.com/MF-Room/mseq_tracks"
 authors = ["Julien Eudine <julien@eudine.fr>", "Marius Debussche <marius.debussche@gmail.com>"]
 description = "Library for developing MIDI Sequencers."
 keywords = ["midi", "music", "sequencer"]
 categories = ["multimedia"]
 
 [dependencies]
-mseq_core = { path = "mseq_core" }
-mseq_tracks = { path = "mseq_tracks" }
-spin_sleep = "1.2.1"
+mseq_core = { path = "../mseq_core" }
 thiserror = "2.0.12"
 midir = "0.9.1"
-promptly = "0.3.1"
 serde = {version = "1.0.208", features = ["derive"] }
 csv = {version = "1.3.0"}
+midly = "0.5.3"
 fs-err = "2.11.0"
 log = "0.4.27"
+hashbrown = "0.15.2"
+toml = "0.8.22"
 itertools = "0.14.0"
 
-[dev-dependencies]
-env_logger = "0.11.5"
-rand = "0.8.5"
+[features]
+default = ["std"]
+std = []
+

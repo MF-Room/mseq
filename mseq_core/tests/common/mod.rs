@@ -1,22 +1,17 @@
-use crate::clock::Clock;
-use crate::Conductor;
-use crate::Context;
-use crate::MidiConnection;
-use crate::MidiController;
-use crate::MidiError;
+use mseq_core::MidiOut;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::Instant;
 
-pub(super) struct DebugMidiConnectionInner {
+pub struct DebugMidiOutInner {
     pub notes_on: HashMap<(u8, u8), u8>,
     pub start_timestamp: Instant,
 }
 
-pub(super) struct DebugMidiConnection(pub Rc<RefCell<DebugMidiConnectionInner>>);
+pub struct DebugMidiOut(pub Rc<RefCell<DebugMidiOutInner>>);
 
-impl DebugMidiConnection {
+impl DebugMidiOut {
     fn print_elapsed(&self, message: &str) {
         println!(
             "[{}]\t{message}",
@@ -24,28 +19,29 @@ impl DebugMidiConnection {
         )
     }
 }
-impl MidiConnection for DebugMidiConnection {
-    fn send_start(&mut self) -> Result<(), MidiError> {
+impl MidiOut for DebugMidiOut {
+    type Error = String;
+    fn send_start(&mut self) -> Result<(), String> {
         self.print_elapsed("Start");
         Ok(())
     }
 
-    fn send_continue(&mut self) -> Result<(), MidiError> {
+    fn send_continue(&mut self) -> Result<(), String> {
         self.print_elapsed("Continue");
         Ok(())
     }
 
-    fn send_stop(&mut self) -> Result<(), MidiError> {
+    fn send_stop(&mut self) -> Result<(), String> {
         self.print_elapsed("Stop");
         Ok(())
     }
 
-    fn send_clock(&mut self) -> Result<(), MidiError> {
+    fn send_clock(&mut self) -> Result<(), String> {
         self.print_elapsed("Clock");
         Ok(())
     }
 
-    fn send_note_on(&mut self, channel_id: u8, note: u8, velocity: u8) -> Result<(), MidiError> {
+    fn send_note_on(&mut self, channel_id: u8, note: u8, velocity: u8) -> Result<(), String> {
         let message = format!("On\tchn:{}\tnte:{}\tvel:{}", channel_id, note, velocity);
         self.print_elapsed(&message);
         self.0
@@ -55,7 +51,7 @@ impl MidiConnection for DebugMidiConnection {
         Ok(())
     }
 
-    fn send_note_off(&mut self, channel_id: u8, note: u8) -> Result<(), MidiError> {
+    fn send_note_off(&mut self, channel_id: u8, note: u8) -> Result<(), String> {
         let message = format!("Off\tchn:{}\tnte:{}", channel_id, note);
         self.print_elapsed(&message);
         let mut inner = self.0.borrow_mut();
@@ -64,25 +60,15 @@ impl MidiConnection for DebugMidiConnection {
         Ok(())
     }
 
-    fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) -> Result<(), MidiError> {
+    fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) -> Result<(), String> {
         let message = format!("Cc\tchn:{}\tprm:{}\tval:{}", channel_id, parameter, value);
         self.print_elapsed(&message);
         Ok(())
     }
-}
 
-pub(super) fn test_conductor<T: MidiConnection>(
-    mut conductor: impl Conductor,
-    midi: MidiController<T>,
-) {
-    let mut ctx = Context {
-        midi,
-        clock: Clock::new(120),
-        step: 0,
-        running: true,
-        on_pause: false,
-        pause: false,
-    };
-    conductor.init(&mut ctx);
-    ctx.run(conductor);
+    fn send_pc(&mut self, channel: u8, value: u8) -> Result<(), String> {
+        let message = format!("Pc\tchn:{}\tval:{}", channel, value);
+        self.print_elapsed(&message);
+        Ok(())
+    }
 }
