@@ -12,7 +12,7 @@ impl Track for MyTrack {
         if step % 8 == 0 {
             // Choose a random note
             let note = MidiNote {
-                note: thread_rng().sample(Uniform::new(0u8, 255u8)).into(),
+                note: thread_rng().sample(Uniform::new(0u8, 11u8)).into(),
                 octave: 4,
                 vel: 127,
             };

@@ -1,10 +1,11 @@
 use crate::TrackError;
 use crate::arp::ArpDiv;
 use crate::{acid, arp, div, midi};
+use itertools::Itertools;
 use mseq_core::Note;
 use mseq_core::{DeteTrack, MidiNote};
 use serde::Deserialize;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Default, Deserialize)]
 struct Acid {
@@ -59,7 +60,7 @@ struct Index {
 /// See this [`example`] for a sample index file structure.
 ///
 /// [`example`]: https://github.com/MF-Room/mseq/tree/main/mseq_tracks/tests/res/index.toml
-pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Vec<(DeteTrack, String)>, TrackError> {
+pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Vec<(DeteTrack, PathBuf)>, TrackError> {
     let toml_str = std::fs::read_to_string(&path)?;
     let base_dir = path.as_ref().parent().expect("Base path has no parent");
     let index: Index = toml::from_str(&toml_str)?;
@@ -72,10 +73,9 @@ pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Vec<(DeteTrack, String)
         .map(|a| {
             let relative_path = Path::new(&a.file);
             let path = base_dir.join(relative_path);
-            acid::load_from_file(path.clone(), a.root, a.channel, &a.name)
-                .map(|t| (t, path.to_string_lossy().into()))
+            acid::load_from_file(path.clone(), a.root, a.channel, &a.name).map(|t| (t, path))
         })
-        .collect::<Result<Vec<(DeteTrack, String)>, _>>()?;
+        .try_collect()?;
 
     let mut arp_tracks = index
         .arp
@@ -84,10 +84,9 @@ pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Vec<(DeteTrack, String)
         .map(|a| {
             let relative_path = Path::new(&a.file);
             let path = base_dir.join(relative_path);
-            arp::load_from_file(path.clone(), a.div, a.root, a.channel, &a.name)
-                .map(|t| (t, path.to_string_lossy().into()))
+            arp::load_from_file(path.clone(), a.div, a.root, a.channel, &a.name).map(|t| (t, path))
         })
-        .collect::<Result<Vec<(DeteTrack, String)>, _>>()?;
+        .try_collect()?;
 
     let mut div_tracks = index
         .div
@@ -101,10 +100,9 @@ pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Vec<(DeteTrack, String)
                 octave: a.octave,
                 vel: a.vel,
             };
-            div::load_from_file(path.clone(), midi_note, a.channel, &a.name)
-                .map(|t| (t, path.to_string_lossy().into()))
+            div::load_from_file(path.clone(), midi_note, a.channel, &a.name).map(|t| (t, path))
         })
-        .collect::<Result<Vec<(DeteTrack, String)>, _>>()?;
+        .try_collect()?;
 
     let mut midi_tracks = index
         .midi
@@ -113,10 +111,9 @@ pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Vec<(DeteTrack, String)
         .map(|a| {
             let relative_path = Path::new(&a.file);
             let path = base_dir.join(relative_path);
-            midi::load_from_file(path.clone(), a.root, a.channel, &a.name)
-                .map(|t| (t, path.to_string_lossy().into()))
+            midi::load_from_file(path.clone(), a.root, a.channel, &a.name).map(|t| (t, path))
         })
-        .collect::<Result<Vec<(DeteTrack, String)>, _>>()?;
+        .try_collect()?;
 
     tracks.append(&mut acid_tracks);
     tracks.append(&mut arp_tracks);
