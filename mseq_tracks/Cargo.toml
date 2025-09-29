@@ -11,7 +11,7 @@ keywords = ["midi", "music", "sequencer"]
 categories = ["multimedia"]
 
 [dependencies]
-mseq_core = { path = "../mseq_core" }
+mseq_core = { path = "../mseq_core", version = "0.1.0" }
 thiserror = "2.0.12"
 midir = "0.9.1"
 serde = {version = "1.0.208", features = ["derive"] }
