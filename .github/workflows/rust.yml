@@ -24,6 +24,9 @@ jobs:
         with:
           rust-version: stable
 
+      - name: Add rustfmt and clippy
+        run: rustup component add rustfmt clippy
+
       - name: cargo test
         run: cargo test --workspace --all-features
 
