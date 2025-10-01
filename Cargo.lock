@@ -505,7 +505,7 @@ dependencies = [
 
 [[package]]
 name = "mseq"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "csv",
  "env_logger",
