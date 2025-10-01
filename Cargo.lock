@@ -56,9 +56,9 @@ dependencies = [
 
 [[package]]
 name = "anstyle"
-version = "1.0.11"
+version = "1.0.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "862ed96ca487e809f1c8e5a8447f6ee2cf102f846893800b20cebdf541fc6bbd"
+checksum = "5192cca8006f1fd4f7237516f40fa183bb07f8fbdfedaa0036de5ea9b0b45e78"
 
 [[package]]
 name = "anstyle-parse"
@@ -513,28 +513,40 @@ dependencies = [
  "itertools",
  "log",
  "midir",
- "mseq_core",
- "mseq_tracks",
+ "mseq_core 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mseq_tracks 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "promptly",
  "rand",
  "serde",
  "spin_sleep",
- "thiserror 2.0.16",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
 name = "mseq_core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "hashbrown 0.15.5",
  "log",
  "serde",
- "thiserror 2.0.16",
+ "thiserror 2.0.17",
+]
+
+[[package]]
+name = "mseq_core"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9faec187b9e1819be0a05cfff821037da96bbb1c5a028b221cc985bf4e4041c8"
+dependencies = [
+ "hashbrown 0.15.5",
+ "log",
+ "serde",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
 name = "mseq_tracks"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "csv",
  "fs-err",
@@ -543,9 +555,28 @@ dependencies = [
  "log",
  "midir",
  "midly",
- "mseq_core",
+ "mseq_core 0.1.1",
  "serde",
- "thiserror 2.0.16",
+ "thiserror 2.0.17",
+ "toml",
+]
+
+[[package]]
+name = "mseq_tracks"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c4f04975821cad95340aca8a36b60bc95d0aed94f36608dc58a1bcd3ec20dc1"
+dependencies = [
+ "csv",
+ "fs-err",
+ "hashbrown 0.15.5",
+ "itertools",
+ "log",
+ "midir",
+ "midly",
+ "mseq_core 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde",
+ "thiserror 2.0.17",
  "toml",
 ]
 
@@ -644,9 +675,9 @@ dependencies = [
 
 [[package]]
 name = "quote"
-version = "1.0.40"
+version = "1.0.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1885c039570dc00dcb4ff087a89e185fd56bae234ddc7f056a945bf36467248d"
+checksum = "ce25767e7b499d1b604768e7cde645d14cc8584231ea6b295e9c9eb22c02e1d1"
 dependencies = [
  "proc-macro2",
 ]
@@ -894,11 +925,11 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "2.0.16"
+version = "2.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3467d614147380f2e4e374161426ff399c91084acd2363eaf549172b3d5e60c0"
+checksum = "f63587ca0f12b72a0600bcba1d40081f830876000bb46dd2337a3051618f4fc8"
 dependencies = [
- "thiserror-impl 2.0.16",
+ "thiserror-impl 2.0.17",
 ]
 
 [[package]]
@@ -914,9 +945,9 @@ dependencies = [
 
 [[package]]
 name = "thiserror-impl"
-version = "2.0.16"
+version = "2.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c5e1be1c48b9172ee610da68fd9cd2770e7a4056cb3fc98710ee6906f0c7960"
+checksum = "3ff15c8ecd7de3849db632e14d18d2571fa09dfc5ed93479bc4485c7a517c913"
 dependencies = [
  "proc-macro2",
  "quote",
