@@ -15,7 +15,7 @@ pub enum Timing {
     Rest,
 }
 
-/// Trig used to create acid tracks with [`DeteTrack::new_acid`]. Each Trig represents one sixteenth
+/// Trig used to create acid tracks with [`new`]. Each Trig represents one sixteenth
 /// step. `AcidTrig` provides a similar interface to the original [`Roland TB-303`] with some slight
 /// modifications.
 ///

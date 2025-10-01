@@ -6,7 +6,7 @@ use std::io::Read;
 use mseq_core::{DeteTrack, MidiNote};
 
 #[derive(Debug, serde::Deserialize)]
-/// Struct used in [`DeteTrack::new_clock_div`] to generate a track with a pattern based on
+/// Struct used in [`new`] to generate a track with a pattern based on
 /// clock divisions.
 pub struct ClockDiv {
     /// Note triggered every `div` clock messages
