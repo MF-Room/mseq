@@ -75,4 +75,4 @@ fn main() -> Result<(), mseq::MSeqError> {
 ```
 
 ## Examples
-You can find ready-to-run examples in the [examples](https://github.com/MF-Room/mseq/tree/main/examples) directory. directory. They demonstrate various usage patterns, from simple standalone sequencers to multi-track setups.
+You can find ready-to-run examples in the [examples](https://github.com/MF-Room/mseq/tree/main/examples) directory. They demonstrate various usage patterns, from simple standalone sequencers to multi-track setups.

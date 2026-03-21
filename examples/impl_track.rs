@@ -9,7 +9,7 @@ struct MyTrack {
 impl Track for MyTrack {
     fn play_step(&mut self, step: u32) -> Vec<Instruction> {
         // Midi channel id to send the note to
-        if step % 8 == 0 {
+        if step.is_multiple_of(8) {
             // Choose a random note
             let note = MidiNote {
                 note: thread_rng().sample(Uniform::new(0u8, 11u8)).into(),

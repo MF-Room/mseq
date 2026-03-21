@@ -16,7 +16,7 @@ impl Conductor for MyConductor {
         }
 
         let mut ins = vec![];
-        if step % 24 == 0 {
+        if step.is_multiple_of(24) {
             println!("BPM: {}", context.get_bpm());
 
             // Simple 4 on the floor
