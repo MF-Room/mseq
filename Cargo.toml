@@ -15,8 +15,8 @@ keywords = ["midi", "music", "sequencer"]
 categories = ["multimedia"]
 
 [dependencies]
-mseq_core = "0.1.1"
-mseq_tracks = "0.2.0"
+mseq_core = "0.1.2"
+mseq_tracks = "0.2.1"
 spin_sleep = "1.2.1"
 thiserror = "2.0.18"
 midir = "0.9.1"
