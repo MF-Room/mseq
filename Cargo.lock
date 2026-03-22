@@ -329,12 +329,6 @@ checksum = "5baebc0774151f905a1a2cc41989300b1e6fbb29aff0ceffa1064fdd3088d582"
 
 [[package]]
 name = "foldhash"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
-
-[[package]]
-name = "foldhash"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
@@ -361,24 +355,13 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.15.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9229cfe53dfd69f0609a49f65461bd93001ea1ef889cd5529dd176593f5338a1"
-dependencies = [
- "allocator-api2",
- "equivalent",
- "foldhash 0.1.5",
-]
-
-[[package]]
-name = "hashbrown"
 version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
 dependencies = [
  "allocator-api2",
  "equivalent",
- "foldhash 0.2.0",
+ "foldhash",
 ]
 
 [[package]]
@@ -388,7 +371,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7714e70437a7dc3ac8eb7e6f8df75fd8eb422675fc7678aff7364301092b1017"
 dependencies = [
  "equivalent",
- "hashbrown 0.16.1",
+ "hashbrown",
 ]
 
 [[package]]
@@ -523,8 +506,8 @@ dependencies = [
  "itertools",
  "log",
  "midir",
- "mseq_core 0.1.1",
- "mseq_tracks 0.2.0",
+ "mseq_core 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mseq_tracks 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "promptly",
  "rand",
  "serde",
@@ -534,11 +517,9 @@ dependencies = [
 
 [[package]]
 name = "mseq_core"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9faec187b9e1819be0a05cfff821037da96bbb1c5a028b221cc985bf4e4041c8"
+version = "0.1.2"
 dependencies = [
- "hashbrown 0.15.5",
+ "hashbrown",
  "log",
  "serde",
  "thiserror 2.0.18",
@@ -547,30 +528,13 @@ dependencies = [
 [[package]]
 name = "mseq_core"
 version = "0.1.2"
-dependencies = [
- "hashbrown 0.16.1",
- "log",
- "serde",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "mseq_tracks"
-version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8ea33e437ac16c3c0aab46dc0ee0f7caf2f13da814c686d1cbe40648032c91f"
+checksum = "07e439b99e6ddc7055f6dbf997a786d2468f8a15e70d1c676a8821b97efdf34b"
 dependencies = [
- "csv",
- "fs-err",
- "hashbrown 0.16.1",
- "itertools",
+ "hashbrown",
  "log",
- "midir",
- "midly",
- "mseq_core 0.1.1",
  "serde",
  "thiserror 2.0.18",
- "toml",
 ]
 
 [[package]]
@@ -579,12 +543,31 @@ version = "0.2.1"
 dependencies = [
  "csv",
  "fs-err",
- "hashbrown 0.16.1",
+ "hashbrown",
  "itertools",
  "log",
  "midir",
  "midly",
- "mseq_core 0.1.2",
+ "mseq_core 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde",
+ "thiserror 2.0.18",
+ "toml",
+]
+
+[[package]]
+name = "mseq_tracks"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72424a55c8644fa3e27d631a427b2387927424dcee9ac8116c0438a6bff1f5cb"
+dependencies = [
+ "csv",
+ "fs-err",
+ "hashbrown",
+ "itertools",
+ "log",
+ "midir",
+ "midly",
+ "mseq_core 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde",
  "thiserror 2.0.18",
  "toml",

@@ -4,9 +4,10 @@ use mseq_tracks::div::{self, ClockDiv};
 #[test]
 fn div_track_basic_pattern() {
     // Create a simple division pattern: trigger every 12 clocks for 48 clocks
-    let pattern = vec![
-        ClockDiv { div: 12, duration: 48 },
-    ];
+    let pattern = vec![ClockDiv {
+        div: 12,
+        duration: 48,
+    }];
 
     let note = MidiNote::new(Note::C, 3, 100);
     let track = div::new(pattern, note, 1, "test_div_basic");
@@ -48,8 +49,14 @@ fn div_track_basic_pattern() {
 fn div_track_multiple_patterns() {
     // Create a pattern with multiple clock divisions
     let pattern = vec![
-        ClockDiv { div: 6, duration: 24 },   // 24/6 = 4 triggers at 0,6,12,18
-        ClockDiv { div: 12, duration: 24 },  // 24/12 = 2 triggers at 24,36
+        ClockDiv {
+            div: 6,
+            duration: 24,
+        }, // 24/6 = 4 triggers at 0,6,12,18
+        ClockDiv {
+            div: 12,
+            duration: 24,
+        }, // 24/12 = 2 triggers at 24,36
     ];
 
     let note = MidiNote::new(Note::E, 2, 80);
@@ -97,9 +104,10 @@ fn div_track_multiple_patterns() {
 #[test]
 fn div_track_edge_cases() {
     // Test edge case: div equals duration (only one trigger)
-    let pattern = vec![
-        ClockDiv { div: 24, duration: 24 },
-    ];
+    let pattern = vec![ClockDiv {
+        div: 24,
+        duration: 24,
+    }];
 
     let note = MidiNote::new(Note::G, 4, 60);
     let track = div::new(pattern, note, 1, "test_div_edge");
@@ -119,9 +127,18 @@ fn div_track_edge_cases() {
 fn div_track_complex_pattern() {
     // Test a more complex pattern similar to the example in res/div.csv
     let pattern = vec![
-        ClockDiv { div: 12, duration: 48 },  // 4 triggers
-        ClockDiv { div: 6, duration: 48 },    // 8 triggers
-        ClockDiv { div: 24, duration: 48 },   // 2 triggers
+        ClockDiv {
+            div: 12,
+            duration: 48,
+        }, // 4 triggers
+        ClockDiv {
+            div: 6,
+            duration: 48,
+        }, // 8 triggers
+        ClockDiv {
+            div: 24,
+            duration: 48,
+        }, // 2 triggers
     ];
 
     let note = MidiNote::new(Note::A, 3, 100);

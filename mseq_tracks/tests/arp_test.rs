@@ -53,7 +53,7 @@ fn arp_track_different_divisions() {
     // T4 division (quarter notes) - 24 ticks per step
     let track_t4 = arp::new(pattern.clone(), ArpDiv::T4, Note::A, 1, "test_arp_t4");
     assert_eq!(track_t4.get_name(), "test_arp_t4");
-    
+
     let notes_t4 = track_t4.get_notes_start_at_step(0);
     assert_eq!(notes_t4.len(), 1);
     assert_eq!(notes_t4[0].1, 12); // T4 division: factor/2 = 24/2 = 12 ticks duration
@@ -61,7 +61,7 @@ fn arp_track_different_divisions() {
     // T8 division (eighth notes) - 12 ticks per step
     let track_t8 = arp::new(pattern.clone(), ArpDiv::T8, Note::A, 1, "test_arp_t8");
     assert_eq!(track_t8.get_name(), "test_arp_t8");
-    
+
     let notes_t8 = track_t8.get_notes_start_at_step(0);
     assert_eq!(notes_t8.len(), 1);
     assert_eq!(notes_t8[0].1, 6); // T8 division: factor/2 = 12/2 = 6 ticks duration
@@ -69,7 +69,7 @@ fn arp_track_different_divisions() {
     // T16 division (sixteenth notes) - 6 ticks per step
     let track_t16 = arp::new(pattern, ArpDiv::T16, Note::A, 1, "test_arp_t16");
     assert_eq!(track_t16.get_name(), "test_arp_t16");
-    
+
     let notes_t16 = track_t16.get_notes_start_at_step(0);
     assert_eq!(notes_t16.len(), 1);
     assert_eq!(notes_t16[0].1, 3); // T16 division: factor/2 = 6/2 = 3 ticks duration
@@ -78,9 +78,7 @@ fn arp_track_different_divisions() {
 #[test]
 fn arp_track_single_note() {
     // Test with single note pattern
-    let pattern = vec![
-        MidiNote::new(Note::F, 4, 80),
-    ];
+    let pattern = vec![MidiNote::new(Note::F, 4, 80)];
 
     let track = arp::new(pattern, ArpDiv::T16, Note::C, 1, "test_arp_single");
 
