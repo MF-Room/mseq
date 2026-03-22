@@ -27,6 +27,9 @@ jobs:
       - name: Add rustfmt and clippy
         run: rustup component add rustfmt clippy
 
+      - name: cargo check --all-targets
+        run: cargo check --workspace --all-targets --all-features
+
       - name: cargo test
         run: cargo test --workspace --all-features
 
