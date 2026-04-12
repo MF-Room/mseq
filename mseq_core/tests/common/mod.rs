@@ -71,4 +71,10 @@ impl MidiOut for DebugMidiOut {
         self.print_elapsed(&message);
         Ok(())
     }
+
+    fn send_pitch_bend(&mut self, channel: u8, value: u16) -> Result<(), String> {
+        let message = format!("PitchBend\tchn:{}\tval:{}", channel, value);
+        self.print_elapsed(&message);
+        Ok(())
+    }
 }
