@@ -12,6 +12,7 @@ const NOTE_ON: u8 = 0x90;
 const NOTE_OFF: u8 = 0x80;
 const CC: u8 = 0xB0;
 const PC: u8 = 0xC0;
+const PITCH_BEND: u8 = 0xE0;
 
 #[derive(Error, Debug)]
 pub enum MidiError {
@@ -114,6 +115,14 @@ impl MidiOut for StdMidiOut {
 
     fn send_pc(&mut self, channel_id: u8, value: u8) -> Result<(), MidiError> {
         self.0.send(&[PC | (channel_id - 1), value])?;
+        Ok(())
+    }
+    fn send_pitch_bend(&mut self, channel_id: u8, value: u16) -> Result<(), Self::Error> {
+        self.0.send(&[
+            PITCH_BEND | (channel_id - 1),
+            value as u8,
+            (value >> 7) as u8,
+        ])?;
         Ok(())
     }
 }
