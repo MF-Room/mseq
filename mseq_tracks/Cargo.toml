@@ -1,6 +1,6 @@
 [package]
 name = "mseq_tracks"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2024"
 license = "LGPL-2.1"
 readme = "README.md"
@@ -11,7 +11,7 @@ keywords = ["midi", "music", "sequencer"]
 categories = ["multimedia"]
 
 [dependencies]
-mseq_core = "0.1.2"
+mseq_core = "0.1.3"
 thiserror = "2.0.18"
 midir = "0.9.1"
 serde = {version = "1.0.208", features = ["derive"] }
