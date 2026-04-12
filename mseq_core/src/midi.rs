@@ -9,6 +9,7 @@ const NOTE_ON: u8 = 0x90;
 const NOTE_OFF: u8 = 0x80;
 const CC: u8 = 0xB0;
 const PC: u8 = 0xC0;
+const PITCH_BEND: u8 = 0xE0;
 
 pub(crate) fn is_valid_channel(channel: u8) -> bool {
     (1..=16).contains(&channel)
@@ -90,6 +91,13 @@ pub enum MidiMessage {
         /// The controller value (0–127).
         value: u8,
     },
+    /// A MIDI Pitch Bend message.
+    PitchBend {
+        /// MIDI channel (1-16).
+        channel: u8,
+        /// The pitch bend value (0–16383).
+        value: u16,
+    },
     /// Timing Clock. Sent 24 times per quarter note when synchronisation is required.
     ///
     /// Intercepted internally for transport synchronization.
@@ -151,6 +159,10 @@ impl MidiMessage {
                         channel,
                         controller: bytes[1],
                         value: bytes[2],
+                    }),
+                    PITCH_BEND => Some(MidiMessage::PitchBend {
+                        channel,
+                        value: ((bytes[2] as u16) << 7) | (bytes[1] as u16),
                     }),
                     _ => None,
                 }

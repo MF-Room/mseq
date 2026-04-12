@@ -21,6 +21,7 @@ pub trait MidiOut {
                 value,
             } => self.send_cc(channel, controller, value),
             MidiMessage::PC { channel, value } => self.send_pc(channel, value),
+            MidiMessage::PitchBend { channel, value } => self.send_pitch_bend(channel, value),
             MidiMessage::Clock => self.send_clock(),
             MidiMessage::Start => self.send_start(),
             MidiMessage::Continue => self.send_continue(),
@@ -43,4 +44,6 @@ pub trait MidiOut {
     fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) -> Result<(), Self::Error>;
     /// Send MIDI pc message.
     fn send_pc(&mut self, channel_id: u8, value: u8) -> Result<(), Self::Error>;
+    /// Send MIDI pitch bend message.
+    fn send_pitch_bend(&mut self, channel_id: u8, value: u16) -> Result<(), Self::Error>;
 }
