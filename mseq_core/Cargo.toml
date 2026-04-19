@@ -1,6 +1,6 @@
 [package]
 name = "mseq_core"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2024"
 license = "LGPL-2.1"
 readme = "README.md"
@@ -13,5 +13,5 @@ categories = ["multimedia"]
 [dependencies]
 serde = {version = "1.0.208", default-features = false, features = ["derive", "alloc"] }
 thiserror = { version="2.0.18", default-features = false }
-hashbrown = "0.16.1"
+hashbrown = "0.17.0"
 log = "0.4.29"
