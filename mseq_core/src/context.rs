@@ -152,6 +152,11 @@ impl Context {
         self.running
     }
 
+    /// Returns `true` if the sequencer is currently paused, `false` otherwise.
+    pub fn is_paused(&self) -> bool {
+        self.on_pause
+    }
+
     /// Internal MIDI input handler.
     ///
     /// This function is not intended to be called directly by users.  
@@ -164,9 +169,16 @@ impl Context {
         controller: &mut MidiController<impl MidiOut>,
         input_queue: &mut InputQueue,
     ) {
-        input_queue
-            .drain(..)
-            .flat_map(|message| conductor.handle_input(message, self))
-            .for_each(|instruction| controller.execute(instruction));
+        if self.is_paused() {
+            input_queue
+                .drain(..)
+                .flat_map(|message| conductor.handle_input(message, self))
+                .for_each(drop);
+        } else {
+            input_queue
+                .drain(..)
+                .flat_map(|message| conductor.handle_input(message, self))
+                .for_each(|instruction| controller.execute(instruction));
+        }
     }
 }
