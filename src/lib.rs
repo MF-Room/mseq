@@ -268,8 +268,7 @@ fn run_slave(
         if bpm_counter == 24 {
             bpm_counter = 0;
             let duration = bmp_time_stamp.elapsed().as_millis();
-            if duration != 0 {
-                let bpm = 60000 / duration;
+            if let Some(bpm) = 60000_u128.checked_div(duration) {
                 ctx.set_bpm(bpm as u8);
             }
             bmp_time_stamp = Instant::now();

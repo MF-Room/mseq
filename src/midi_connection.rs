@@ -1,3 +1,4 @@
+use log::{debug, trace};
 use midir::{Ignore, MidiInput, MidiOutput};
 use mseq_core::{InputQueue, MidiMessage, MidiOut};
 use promptly::{ReadlineError, prompt_default};
@@ -79,45 +80,54 @@ impl StdMidiOut {
 impl MidiOut for StdMidiOut {
     type Error = MidiError;
     fn send_start(&mut self) -> Result<(), MidiError> {
+        debug!("SendStart");
         self.0.send(&[START])?;
         Ok(())
     }
 
     fn send_continue(&mut self) -> Result<(), MidiError> {
+        debug!("SendContinue");
         self.0.send(&[CONTINUE])?;
         Ok(())
     }
 
     fn send_stop(&mut self) -> Result<(), MidiError> {
+        debug!("SendStop");
         self.0.send(&[STOP])?;
         Ok(())
     }
 
     fn send_clock(&mut self) -> Result<(), MidiError> {
+        trace!("SendClock");
         self.0.send(&[CLOCK])?;
         Ok(())
     }
 
     fn send_note_on(&mut self, channel_id: u8, note: u8, velocity: u8) -> Result<(), MidiError> {
+        debug!("NoteOn[channel_id: {channel_id}, note: {note}, v: {velocity}]",);
         self.0.send(&[NOTE_ON | (channel_id - 1), note, velocity])?;
         Ok(())
     }
 
     fn send_note_off(&mut self, channel_id: u8, note: u8) -> Result<(), MidiError> {
+        debug!("NoteOff[{channel_id}, n: {note}]");
         self.0.send(&[NOTE_OFF | (channel_id - 1), note, 0])?;
         Ok(())
     }
 
     fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) -> Result<(), MidiError> {
+        debug!("SendCC[channel_id: {channel_id}, parameter: {parameter}, value: {value}]");
         self.0.send(&[CC | (channel_id - 1), parameter, value])?;
         Ok(())
     }
 
     fn send_pc(&mut self, channel_id: u8, value: u8) -> Result<(), MidiError> {
+        debug!("SendPC[channel_id: {channel_id}, value: {value}]");
         self.0.send(&[PC | (channel_id - 1), value])?;
         Ok(())
     }
     fn send_pitch_bend(&mut self, channel_id: u8, value: u16) -> Result<(), Self::Error> {
+        debug!("SendPitchBend[channel_id: {channel_id}, value: {value}]");
         self.0.send(&[
             PITCH_BEND | (channel_id - 1),
             value as u8,
