@@ -63,6 +63,13 @@ pub enum Instruction {
         /// The controller value (0–127).
         value: u8,
     },
+    /// Sends a MIDI Pitch Bend message.
+    SendPitchBend {
+        /// MIDI channel (1–16).
+        channel_id: u8,
+        /// The pitch bend value (0–16,383).
+        value: u16,
+    },
     /// Stops all currently playing notes.
     StopAllNotes,
     /// Sends a raw MIDI message directly.
@@ -171,6 +178,9 @@ impl<T: MidiOut> MidiController<T> {
                 parameter,
                 value,
             } => self.send_cc(channel_id, parameter, value),
+            Instruction::SendPitchBend { channel_id, value } => {
+                self.send_pitch_bend(channel_id, value)
+            }
             Instruction::StopAllNotes => self.stop_all_notes(),
             Instruction::Continue => self.send_continue(),
             Instruction::Start => self.start(),
@@ -228,7 +238,7 @@ impl<T: MidiOut> MidiController<T> {
         self.play_note_set.entry(step).or_default().push(note_play);
     }
 
-    /// This function directly sends a MIDI message
+    /// This function directly sends a MIDI message.
     fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) {
         if !is_valid_channel(channel_id) {
             return;
@@ -238,14 +248,24 @@ impl<T: MidiOut> MidiController<T> {
         }
     }
 
-    /// This function directly sends a MIDI message
+    /// This function directly sends a MIDI message.
+    fn send_pitch_bend(&mut self, channel_id: u8, value: u16) {
+        if !is_valid_channel(channel_id) {
+            return;
+        }
+        if let Err(e) = self.midi_out.send_pitch_bend(channel_id, value) {
+            error!("MIDI: {e}");
+        }
+    }
+
+    /// This function directly sends a MIDI message.
     pub(crate) fn send_clock(&mut self) {
         if let Err(e) = self.midi_out.send_clock() {
             error!("MIDI: {e}");
         }
     }
 
-    /// This function directly sends a MIDI message
+    /// This function directly sends a MIDI message.
     fn start(&mut self) {
         self.step = 0;
         if let Err(e) = self.midi_out.send_start() {
@@ -255,7 +275,7 @@ impl<T: MidiOut> MidiController<T> {
 
     /// This function is not intended to be called directly by the user.
     ///
-    /// This function directly sends a MIDI message
+    /// This function directly sends a MIDI message.
     fn send_continue(&mut self) {
         if let Err(e) = self.midi_out.send_continue() {
             error!("MIDI: {e}");
@@ -294,7 +314,7 @@ impl<T: MidiOut> MidiController<T> {
 
     /// This function is not intended to be called directly by the user.
     ///
-    /// This function directly sends MIDI messages
+    /// This function directly sends MIDI messages.
     pub(crate) fn stop_all_notes(&mut self) {
         self.start_note_set.iter().for_each(|n| {
             if let Err(e) = self
@@ -321,7 +341,7 @@ impl<T: MidiOut> MidiController<T> {
 
     /// This function is not intended to be called directly by the user.
     ///
-    /// This function directly send a MIDI message
+    /// This function directly send a MIDI message.
     pub(crate) fn stop(&mut self) {
         if let Err(e) = self.midi_out.send_stop() {
             error!("MIDI: {e}");

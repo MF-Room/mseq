@@ -105,33 +105,36 @@ impl MidiOut for StdMidiOut {
 
     fn send_note_on(&mut self, channel_id: u8, note: u8, velocity: u8) -> Result<(), MidiError> {
         debug!("NoteOn[channel_id: {channel_id}, note: {note}, v: {velocity}]",);
-        self.0.send(&[NOTE_ON | (channel_id - 1), note, velocity])?;
+        self.0
+            .send(&[NOTE_ON | (channel_id - 1), note & 0x7F, velocity & 0x7F])?;
         Ok(())
     }
 
     fn send_note_off(&mut self, channel_id: u8, note: u8) -> Result<(), MidiError> {
         debug!("NoteOff[{channel_id}, n: {note}]");
-        self.0.send(&[NOTE_OFF | (channel_id - 1), note, 0])?;
+        self.0
+            .send(&[NOTE_OFF | (channel_id - 1), note & 0x7F, 0])?;
         Ok(())
     }
 
     fn send_cc(&mut self, channel_id: u8, parameter: u8, value: u8) -> Result<(), MidiError> {
         debug!("SendCC[channel_id: {channel_id}, parameter: {parameter}, value: {value}]");
-        self.0.send(&[CC | (channel_id - 1), parameter, value])?;
+        self.0
+            .send(&[CC | (channel_id - 1), parameter & 0x7F, value & 0x7F])?;
         Ok(())
     }
 
     fn send_pc(&mut self, channel_id: u8, value: u8) -> Result<(), MidiError> {
         debug!("SendPC[channel_id: {channel_id}, value: {value}]");
-        self.0.send(&[PC | (channel_id - 1), value])?;
+        self.0.send(&[PC | (channel_id - 1), value & 0x7F])?;
         Ok(())
     }
     fn send_pitch_bend(&mut self, channel_id: u8, value: u16) -> Result<(), Self::Error> {
         debug!("SendPitchBend[channel_id: {channel_id}, value: {value}]");
         self.0.send(&[
             PITCH_BEND | (channel_id - 1),
-            value as u8,
-            (value >> 7) as u8,
+            (value & 0x7F) as u8,
+            ((value >> 7) & 0x7F) as u8,
         ])?;
         Ok(())
     }
