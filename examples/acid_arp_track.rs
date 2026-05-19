@@ -16,8 +16,9 @@ impl Conductor for MyConductor {
     fn update(&mut self, context: &mut mseq::Context) -> Vec<Instruction> {
         let step = context.get_step();
         // Quit after 960 steps
-        if context.get_step() == 959 {
+        if step == 959 {
             context.quit();
+            return vec![];
         }
 
         // First play acid on channel 0 and then arp on channel 1

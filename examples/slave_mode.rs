@@ -13,6 +13,7 @@ impl Conductor for MyConductor {
         let step = context.get_step();
         if context.get_step() == 959 {
             context.quit();
+            return vec![];
         }
 
         let mut ins = vec![];
