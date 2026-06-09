@@ -40,6 +40,13 @@ pub trait Conductor {
     /// The returned `Vec<Instruction>` is passed directly to the MIDI controller or output backend,
     /// allowing the conductor to immediately produce output in response to the input.
     ///
+    /// # Parameters
+    ///
+    /// - `input_id`: 0-based index identifying which MIDI input produced the message. It matches the
+    ///   position of the corresponding input in the list of inputs passed to the runtime. When a single
+    ///   input is used, this is always `0`.
+    /// - `input`: The received [`MidiMessage`].
+    ///
     /// # Intercepted Messages
     ///
     /// Depending on the platform-specific implementation, certain MIDI messages such as
@@ -49,7 +56,12 @@ pub trait Conductor {
     /// # Returns
     ///
     /// A `Vec<Instruction>` to be sent to the MIDI output immediately.
-    fn handle_input(&mut self, _input: MidiMessage, _context: &Context) -> Vec<Instruction> {
+    fn handle_input(
+        &mut self,
+        _input_id: usize,
+        _input: MidiMessage,
+        _context: &Context,
+    ) -> Vec<Instruction> {
         vec![]
     }
 }

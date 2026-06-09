@@ -142,7 +142,7 @@ impl MidiOut for StdMidiOut {
 
 type QueueCondvar = (Arc<Mutex<InputQueue>>, Arc<Condvar>);
 
-pub(crate) struct InQueues {
+pub(crate) struct InConnection {
     pub message: QueueCondvar,
     pub slave_system: Option<QueueCondvar>,
     _connection: midir::MidiInputConnection<(QueueCondvar, Option<QueueCondvar>)>,
@@ -155,14 +155,25 @@ pub struct MidiInParam {
     pub ignore: Ignore,
     /// MIDI port id used to receive the midi messages. If set to `None`, information about the MIDI ports
     /// will be displayed and the input port will be asked to the user with a prompt.
+    ///
+    /// When using several inputs, prefer specifying explicit port ids: with multiple inputs left to
+    /// `None`, the user is prompted once per input, and if a single port is available every such input
+    /// would auto-bind to that same port.
     pub port: Option<u32>,
-    /// Boolean flag to select the sequencer mode.  
-    /// If set to `true`, the sequencer will run in **slave mode**, synchronizing to external MIDI clock and transport messages.  
+    /// Boolean flag to select the sequencer mode.
+    /// If set to `true`, the sequencer will run in **slave mode**, synchronizing to external MIDI clock and transport messages.
     /// If set to `false`, the sequencer will run in **master mode**, generating its own MIDI clock and transport messages.
+    ///
+    /// When several inputs set this flag, only the first one (by position) is used as the clock and
+    /// transport source; the others are treated as message-only inputs.
     pub slave: bool,
 }
 
-pub(crate) fn connect(params: MidiInParam) -> Result<InQueues, MidiError> {
+pub(crate) fn connect(
+    input_id: usize,
+    params: MidiInParam,
+    is_slave: bool,
+) -> Result<InConnection, MidiError> {
     let mut midi_in = MidiInput::new("in")?;
     midi_in.ignore(params.ignore);
 
@@ -190,7 +201,8 @@ pub(crate) fn connect(params: MidiInParam) -> Result<InQueues, MidiError> {
                     println!("{}: {}", i, midi_in.port_name(p).unwrap());
                 }
 
-                let port_number: usize = prompt_default("Select input port", 0)?;
+                let port_number: usize =
+                    prompt_default(format!("Select input port for input {input_id}"), 0)?;
                 match in_ports.get(port_number) {
                     None => return Err(MidiError::PortNumber()),
                     Some(x) => x,
@@ -202,7 +214,7 @@ pub(crate) fn connect(params: MidiInParam) -> Result<InQueues, MidiError> {
     let message_queue = Arc::new(Mutex::new(InputQueue::new()));
     let message = (message_queue.clone(), Arc::new(Condvar::new()));
 
-    let slave_system = if params.slave {
+    let slave_system = if is_slave {
         Some((
             Arc::new(Mutex::new(InputQueue::new())),
             Arc::new(Condvar::new()),
@@ -239,7 +251,7 @@ pub(crate) fn connect(params: MidiInParam) -> Result<InQueues, MidiError> {
         input,
     )?;
 
-    Ok(InQueues {
+    Ok(InConnection {
         message,
         slave_system,
         _connection,

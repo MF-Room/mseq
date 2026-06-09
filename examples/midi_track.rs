@@ -35,7 +35,7 @@ fn main() {
         MyConductor { track },
         // The midi port will be selected at runtime by the user
         None,
-        None,
+        Vec::new(),
     ) {
         println!("An error occured: {:?}", e);
     }

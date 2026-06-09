@@ -37,15 +37,15 @@
 //!         vec![]
 //!     }
 //!
-//!     fn handle_input(&mut self, input: MidiMessage, _ctx: &Context) -> Vec<Instruction> {
+//!     fn handle_input(&mut self, _input_id: usize, input: MidiMessage, _ctx: &Context) -> Vec<Instruction> {
 //!         vec![]
 //!     }
 //! }
 //!
 //! fn main() -> Result<(), mseq::MSeqError> {
 //!     let conductor = MyConductor;
-//!     let out_port = None; // Ask user for output port
-//!     let midi_in = None;  // Run standalone (no input, master clock/transport)
+//!     let out_port = None;        // Ask user for output port
+//!     let midi_in = Vec::new();   // Run standalone (no input, master clock/transport)
 //!     run(conductor, out_port, midi_in)
 //! }
 //! ```
@@ -99,17 +99,19 @@ pub enum MSeqError {
 /// - `out_port`: MIDI output port ID used to send messages.  
 ///   If set to `None`, information about available MIDI output ports will be displayed and the user
 ///   will be prompted to select one.
-/// - `midi_in`: Optional [`MidiInParam`] specifying how to configure the MIDI input connection.  
-///   If provided, the sequencer can run in either **master mode** (internal clock) or **slave mode**
-///   (synchronized to external MIDI clock and transport messages).
+/// - `midi_in`: List of [`MidiInParam`], one per MIDI input to open. Each input gets its own queue,
+///   and the input's 0-based position in this list is passed to [`Conductor::handle_input`] as the
+///   `input_id`. An empty list runs the sequencer standalone (no input).
+///   At most one input acts as the clock/transport source: the first one with `slave` set to `true`.
 ///
 /// # Behavior
-/// - **No input (`midi_in = None`)** → sequencer runs with its internal clock and transport,  
-///   generating MIDI clock and transport messages, but ignoring any external MIDI input.  
-/// - **Master mode** → sequencer generates its own MIDI clock and transport messages while also
-///   handling incoming MIDI events (except for clock/transport).  
-/// - **Slave mode** → sequencer synchronizes to external MIDI clock, Start/Stop/Continue messages,
-///   and dynamically adjusts BPM to match the external clock source.
+/// - **No input (`midi_in` empty)** → sequencer runs with its internal clock and transport,
+///   generating MIDI clock and transport messages, but ignoring any external MIDI input.
+/// - **Master mode** (no input marked `slave`) → sequencer generates its own MIDI clock and transport
+///   messages while also handling incoming MIDI events (except for clock/transport).
+/// - **Slave mode** (the first `slave` input) → sequencer synchronizes to that input's MIDI clock,
+///   Start/Stop/Continue messages, and dynamically adjusts BPM to match the external clock source.
+///   The remaining inputs are handled as message-only inputs.
 ///
 /// # Errors
 /// Returns an [`MSeqError`] if a MIDI port cannot be opened, if MIDI input/output fails, or if track
@@ -117,33 +119,48 @@ pub enum MSeqError {
 pub fn run(
     conductor: impl Conductor + std::marker::Send + 'static,
     out_port: Option<u32>,
-    midi_in: Option<MidiInParam>,
+    midi_in: Vec<MidiInParam>,
 ) -> Result<(), MSeqError> {
     let midi_out = StdMidiOut::new(out_port)?;
     let midi_controller = MidiController::new(midi_out);
     let ctx = Context::default();
 
-    if let Some(params) = midi_in {
-        let run = Arc::new(Mutex::new((conductor, midi_controller, ctx)));
+    if midi_in.is_empty() {
+        return run_no_input(ctx, midi_controller, conductor);
+    }
+
+    // At most one input is the clock/transport source: the first one marked as slave.
+    let slave_idx = midi_in.iter().position(|p| p.slave);
+
+    let run = Arc::new(Mutex::new((conductor, midi_controller, ctx)));
+
+    // Connect every input, keeping the connections alive for the whole run.
+    let connections = midi_in
+        .into_iter()
+        .enumerate()
+        .map(|(input_id, params)| connect(input_id, params, Some(input_id) == slave_idx))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    // Spawn one consumer thread per input, each draining its own queue.
+    for (input_id, conn) in connections.iter().enumerate() {
         let run_consumer = run.clone();
-        let midi_in = connect(params)?;
-        let message = midi_in.message.clone();
+        let message = conn.message.clone();
         thread::spawn(move || {
             loop {
                 let r = run_consumer.lock().unwrap();
                 let mut r = message.1.wait(r).unwrap();
                 let (ref mut conductor, ref mut controller, ref mut ctx) = *r;
                 let mut queue = message.0.lock().unwrap();
-                ctx.handle_input(conductor, controller, &mut queue);
+                ctx.handle_input(input_id, conductor, controller, &mut queue);
             }
         });
-        if let Some((sys_queue, cond_var)) = midi_in.slave_system {
-            run_slave(run, sys_queue, cond_var)
-        } else {
-            run_master(run)
-        }
+    }
+
+    let slave_system = connections.iter().find_map(|c| c.slave_system.clone());
+    if let Some((sys_queue, cond_var)) = slave_system {
+        run_slave(run, sys_queue, cond_var)
     } else {
-        run_no_input(ctx, midi_controller, conductor)
+        run_master(run)
     }
 }
 

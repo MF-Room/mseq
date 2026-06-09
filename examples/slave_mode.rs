@@ -49,7 +49,7 @@ fn main() {
         MyConductor {},
         // The midi port will be selected at runtime by the user
         None,
-        Some(midi_in_param),
+        vec![midi_in_param],
     ) {
         println!("An error occured: {:?}", e);
     }

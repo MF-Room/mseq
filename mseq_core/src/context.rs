@@ -165,6 +165,7 @@ impl Context {
     /// `handle_input` is used internally to enable code reuse across platforms and unify MIDI input processing.
     pub fn handle_input(
         &mut self,
+        input_id: usize,
         conductor: &mut impl Conductor,
         controller: &mut MidiController<impl MidiOut>,
         input_queue: &mut InputQueue,
@@ -172,12 +173,12 @@ impl Context {
         if self.is_paused() {
             input_queue
                 .drain(..)
-                .flat_map(|message| conductor.handle_input(message, self))
+                .flat_map(|message| conductor.handle_input(input_id, message, self))
                 .for_each(drop);
         } else {
             input_queue
                 .drain(..)
-                .flat_map(|message| conductor.handle_input(message, self))
+                .flat_map(|message| conductor.handle_input(input_id, message, self))
                 .for_each(|instruction| controller.execute(instruction));
         }
     }
