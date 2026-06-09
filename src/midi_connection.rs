@@ -231,20 +231,16 @@ pub(crate) fn connect(
         move |_, message, input| {
             let m = MidiMessage::parse(message);
             if let Some(m) = m {
-                match m {
-                    MidiMessage::Clock
-                    | MidiMessage::Start
-                    | MidiMessage::Stop
-                    | MidiMessage::Continue => {
-                        if let Some((q, cv)) = &input.1 {
-                            q.lock().unwrap().push_back(m);
-                            cv.notify_all();
-                        }
+                if m.is_transport() {
+                    // Transport messages are only consumed from the slave clock source;
+                    // for any other input they are dropped.
+                    if let Some((q, cv)) = &input.1 {
+                        q.lock().unwrap().push_back(m);
+                        cv.notify_all();
                     }
-                    _ => {
-                        input.0.0.lock().unwrap().push_back(m);
-                        input.0.1.notify_all();
-                    }
+                } else {
+                    input.0.0.lock().unwrap().push_back(m);
+                    input.0.1.notify_all();
                 }
             }
         },
