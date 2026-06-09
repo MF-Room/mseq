@@ -131,6 +131,14 @@ pub fn run(
 
     // At most one input is the clock/transport source: the first one marked as slave.
     let slave_idx = midi_in.iter().position(|p| p.slave);
+    let slave_count = midi_in.iter().filter(|p| p.slave).count();
+    if slave_count > 1 {
+        log::warn!(
+            "{slave_count} MIDI inputs are marked as slave, but a single clock/transport source is \
+             supported: using input {} as the clock source, the others are treated as message-only inputs.",
+            slave_idx.unwrap()
+        );
+    }
 
     let run = Arc::new(Mutex::new((conductor, midi_controller, ctx)));
 

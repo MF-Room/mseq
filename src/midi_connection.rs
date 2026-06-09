@@ -165,7 +165,7 @@ pub struct MidiInParam {
     /// If set to `false`, the sequencer will run in **master mode**, generating its own MIDI clock and transport messages.
     ///
     /// When several inputs set this flag, only the first one (by position) is used as the clock and
-    /// transport source; the others are treated as message-only inputs.
+    /// transport source; the others are treated as message-only inputs and a warning is logged.
     pub slave: bool,
 }
 
