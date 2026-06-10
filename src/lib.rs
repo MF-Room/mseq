@@ -253,30 +253,37 @@ fn run_slave(
             Stop,
             Continue,
         }
-        let mut sys_message = None;
-
-        // We quit the loop if we receive clock message
+        // Wait for the next clock message, but apply any transport message
+        // (Start / Stop / Continue) as soon as it arrives so pause/start/resume take
+        // effect immediately, even if the master stops sending clock on stop.
         loop {
             let mut mutex = sys_queue.lock().unwrap();
-            let queue = &mut *mutex;
             let mut quit_loop = false;
+            let mut transport = vec![];
 
-            while let Some(message) = queue.pop_front() {
+            while let Some(message) = mutex.pop_front() {
                 match message {
-                    MidiMessage::Clock => {
-                        quit_loop = true;
-                    }
-                    MidiMessage::Start => {
-                        sys_message = Some(SysMessage::Start);
-                    }
-                    MidiMessage::Stop => {
-                        sys_message = Some(SysMessage::Stop);
-                    }
-                    MidiMessage::Continue => {
-                        sys_message = Some(SysMessage::Continue);
-                    }
+                    MidiMessage::Clock => quit_loop = true,
+                    MidiMessage::Start => transport.push(SysMessage::Start),
+                    MidiMessage::Stop => transport.push(SysMessage::Stop),
+                    MidiMessage::Continue => transport.push(SysMessage::Continue),
                     _ => unreachable!(),
                 }
+            }
+
+            // Apply and emit transport changes now. sys_queue is held across the run
+            // lock here; this is the only place these locks nest, so no deadlock.
+            if !transport.is_empty() {
+                let mut r = run.lock().unwrap();
+                let (_, ref mut controller, ref mut ctx) = *r;
+                for message in transport {
+                    match message {
+                        SysMessage::Start => ctx.start(),
+                        SysMessage::Stop => ctx.pause(),
+                        SysMessage::Continue => ctx.resume(),
+                    }
+                }
+                ctx.flush_sys_instructions(controller);
             }
 
             if quit_loop {
@@ -304,13 +311,6 @@ fn run_slave(
             bmp_time_stamp = Instant::now();
         }
 
-        if let Some(sys_message) = sys_message {
-            match sys_message {
-                SysMessage::Start => ctx.start(),
-                SysMessage::Stop => ctx.pause(),
-                SysMessage::Continue => ctx.resume(),
-            }
-        }
         ctx.process_post_tick(controller);
         if !ctx.is_running() {
             break;

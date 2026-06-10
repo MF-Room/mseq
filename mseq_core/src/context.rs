@@ -120,9 +120,7 @@ impl Context {
         conductor: &mut impl Conductor,
         controller: &mut MidiController<impl MidiOut>,
     ) {
-        core::mem::take(&mut self.sys_instructions)
-            .into_iter()
-            .for_each(|instruction| controller.execute(instruction));
+        self.flush_sys_instructions(controller);
 
         if self.on_pause {
             conductor.update(self);
@@ -132,6 +130,17 @@ impl Context {
                 .into_iter()
                 .for_each(|instruction| controller.execute(instruction));
         };
+    }
+
+    /// Immediately sends the pending system instructions (Start / Stop / Continue /
+    /// StopAllNotes) queued by [`start`](Self::start), [`pause`](Self::pause) and
+    /// [`resume`](Self::resume). The slave loop calls this so transport changes take
+    /// effect right away instead of waiting for the next external clock tick.
+    /// This function is not intended to be called directly by users.
+    pub fn flush_sys_instructions(&mut self, controller: &mut MidiController<impl MidiOut>) {
+        core::mem::take(&mut self.sys_instructions)
+            .into_iter()
+            .for_each(|instruction| controller.execute(instruction));
     }
 
     /// MIDI logic called after the clock tick.
