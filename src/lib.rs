@@ -293,7 +293,12 @@ fn run_slave(
         if bpm_counter == 24 {
             bpm_counter = 0;
             let duration = bmp_time_stamp.elapsed().as_millis();
-            if let Some(bpm) = 60000_u128.checked_div(duration) {
+            // 24 MIDI clocks make one beat; bpm = 60000ms / beat_duration. Ignore
+            // out-of-range readings (e.g. the long idle window before Start, or a
+            // stalled clock) so we never feed 0 to set_bpm and keep the last valid bpm.
+            if let Some(bpm) = 60000_u128.checked_div(duration)
+                && (1..=255).contains(&bpm)
+            {
                 ctx.set_bpm(bpm as u8);
             }
             bmp_time_stamp = Instant::now();
