@@ -11,6 +11,7 @@
 
 - Real-time MIDI clock generation and synchronization  
 - Master/slave transport control with Start/Stop/Continue handling  
+- Multiple MIDI inputs, each with its own queue and an `input_id` for routing  
 - Flexible [`Conductor`] trait for defining sequencer logic  
 - Easy-to-implement tracks via the [`Track`] trait  
 - Thread-safe, minimal core designed for real-time responsiveness  
@@ -30,7 +31,15 @@ A `Conductor` defines how your sequencer behaves:
 
 - [`Conductor::init`] → called once at startup to initialize state and produce initial [`Instruction`]s (e.g., send program changes or reset messages).  
 - [`Conductor::update`] → called at every clock tick to advance the sequencer state and emit the instructions for that tick (e.g., note on/off events).  
-- [`Conductor::handle_input`] → called when a new [`MidiMessage`] arrives, allowing the conductor to react to external inputs in real time.  
+- [`Conductor::handle_input`] → called when a new [`MidiMessage`] arrives, allowing the conductor to react to external inputs in real time. The `input_id` argument (0-based, matching the input's position in the list passed to [`run`]) identifies which input the message came from.  
+
+## MIDI Inputs
+
+[`run`] accepts a `Vec<MidiInParam>`, opening one MIDI input per entry. Each input gets its own queue and is identified by its 0-based position in the list, which is forwarded to [`Conductor::handle_input`] as `input_id`.
+
+- An empty `Vec` runs the sequencer standalone (no input).  
+- At most one input acts as the clock/transport source: the first one with `slave` set to `true`. Any other `slave` inputs are treated as message-only inputs (a warning is logged).  
+- With multiple inputs, prefer setting an explicit `port` on each `MidiInParam` rather than leaving it as `None`.  
 
 ## Tracks
 
@@ -64,15 +73,15 @@ impl Conductor for MyConductor {
         vec![]
     }
 
-    fn handle_input(&mut self, input: MidiMessage, _ctx: &Context) -> Vec<Instruction> {
+    fn handle_input(&mut self, _input_id: usize, _input: MidiMessage, _ctx: &Context) -> Vec<Instruction> {
         vec![]
     }
 }
 
 fn main() -> Result<(), mseq::MSeqError> {
     let conductor = MyConductor;
-    let out_port = None;
-    let midi_in = None;
+    let out_port = None;        // Ask the user for the output port
+    let midi_in = Vec::new();   // Run standalone (no MIDI input)
     run(conductor, out_port, midi_in)
 }
 ```
