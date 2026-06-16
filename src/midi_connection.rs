@@ -140,12 +140,33 @@ impl MidiOut for StdMidiOut {
     }
 }
 
-type QueueCondvar = (Arc<Mutex<InputQueue>>, Arc<Condvar>);
+/// A MIDI message queue paired with the condvar the producer (the midir input
+/// callback) notifies on every push, so a consumer can park until work arrives.
+#[derive(Clone)]
+pub(crate) struct NotifyQueue {
+    pub queue: Arc<Mutex<InputQueue>>,
+    pub condvar: Arc<Condvar>,
+}
+
+impl NotifyQueue {
+    fn new() -> Self {
+        Self {
+            queue: Arc::new(Mutex::new(InputQueue::new())),
+            condvar: Arc::new(Condvar::new()),
+        }
+    }
+
+    /// Push a message and wake the waiting consumer.
+    fn push(&self, message: MidiMessage) {
+        self.queue.lock().unwrap().push_back(message);
+        self.condvar.notify_all();
+    }
+}
 
 pub(crate) struct InConnection {
-    pub message: QueueCondvar,
-    pub slave_system: Option<QueueCondvar>,
-    _connection: midir::MidiInputConnection<(QueueCondvar, Option<QueueCondvar>)>,
+    pub message: NotifyQueue,
+    pub slave_system: Option<NotifyQueue>,
+    _connection: midir::MidiInputConnection<(NotifyQueue, Option<NotifyQueue>)>,
 }
 
 /// MIDI input connection parameters.
@@ -211,14 +232,9 @@ pub(crate) fn connect(
         }
     };
 
-    let message_queue = Arc::new(Mutex::new(InputQueue::new()));
-    let message = (message_queue.clone(), Arc::new(Condvar::new()));
-
+    let message = NotifyQueue::new();
     let slave_system = if is_slave {
-        Some((
-            Arc::new(Mutex::new(InputQueue::new())),
-            Arc::new(Condvar::new()),
-        ))
+        Some(NotifyQueue::new())
     } else {
         None
     };
@@ -234,13 +250,11 @@ pub(crate) fn connect(
                 if m.is_transport() {
                     // Transport messages are only consumed from the slave clock source;
                     // for any other input they are dropped.
-                    if let Some((q, cv)) = &input.1 {
-                        q.lock().unwrap().push_back(m);
-                        cv.notify_all();
+                    if let Some(slave) = &input.1 {
+                        slave.push(m);
                     }
                 } else {
-                    input.0.0.lock().unwrap().push_back(m);
-                    input.0.1.notify_all();
+                    input.0.push(m);
                 }
             }
         },

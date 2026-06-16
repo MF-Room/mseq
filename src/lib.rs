@@ -69,7 +69,7 @@ pub use mseq_core::*;
 pub use mseq_tracks::*;
 
 use clock::Clock;
-use std::sync::{Arc, Condvar, Mutex};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use std::time::Instant;
@@ -152,21 +152,28 @@ pub fn run(
     // Spawn one consumer thread per input, each draining its own queue.
     for (input_id, conn) in connections.iter().enumerate() {
         let run_consumer = run.clone();
-        let message = conn.message.clone();
+        let channel = conn.message.clone();
         thread::spawn(move || {
             loop {
-                let r = run_consumer.lock().unwrap();
-                let mut r = message.1.wait(r).unwrap();
+                // Wait for messages, then swap them out so the callback isn't blocked
+                // while we process.
+                let mut pending = {
+                    let mut queue = channel.queue.lock().unwrap();
+                    while queue.is_empty() {
+                        queue = channel.condvar.wait(queue).unwrap();
+                    }
+                    core::mem::take(&mut *queue)
+                };
+                let mut r = run_consumer.lock().unwrap();
                 let (ref mut conductor, ref mut controller, ref mut ctx) = *r;
-                let mut queue = message.0.lock().unwrap();
-                ctx.handle_input(input_id, conductor, controller, &mut queue);
+                ctx.handle_input(input_id, conductor, controller, &mut pending);
             }
         });
     }
 
     let slave_system = connections.iter().find_map(|c| c.slave_system.clone());
-    if let Some((sys_queue, cond_var)) = slave_system {
-        run_slave(run, sys_queue, cond_var)
+    if let Some(slave) = slave_system {
+        run_slave(run, slave)
     } else {
         run_master(run)
     }
@@ -225,8 +232,7 @@ fn run_master(
 
 fn run_slave(
     run: Arc<Mutex<(impl Conductor, MidiController<impl MidiOut>, Context)>>,
-    sys_queue: Arc<Mutex<InputQueue>>,
-    sys_cond_var: Arc<Condvar>,
+    slave: NotifyQueue,
 ) -> Result<(), MSeqError> {
     {
         let mut r = run.lock().unwrap();
@@ -237,7 +243,7 @@ fn run_slave(
         ctx.pause();
     }
 
-    // We use the average duration over 24 clock messages (1 beat) to set the BPM
+    // Derive BPM from the duration of 24 clocks (1 beat).
     let mut bpm_counter = 0;
     let mut bmp_time_stamp = Instant::now();
     loop {
@@ -247,32 +253,33 @@ fn run_slave(
             ctx.process_pre_tick(conductor, controller);
         }
 
-        // Check the slave system queue
         enum SysMessage {
             Start,
             Stop,
             Continue,
         }
-        // Wait for the next clock message, but apply any transport message
-        // (Start / Stop / Continue) as soon as it arrives so pause/start/resume take
-        // effect immediately, even if the master stops sending clock on stop.
+        // Wait for the next clock, but apply transport messages immediately so
+        // pause/start/resume work even when the master stops clock on stop.
         loop {
-            let mut mutex = sys_queue.lock().unwrap();
             let mut quit_loop = false;
             let mut transport = vec![];
-
-            while let Some(message) = mutex.pop_front() {
-                match message {
-                    MidiMessage::Clock => quit_loop = true,
-                    MidiMessage::Start => transport.push(SysMessage::Start),
-                    MidiMessage::Stop => transport.push(SysMessage::Stop),
-                    MidiMessage::Continue => transport.push(SysMessage::Continue),
-                    _ => unreachable!(),
+            {
+                let mut mutex = slave.queue.lock().unwrap();
+                while mutex.is_empty() {
+                    mutex = slave.condvar.wait(mutex).unwrap();
+                }
+                while let Some(message) = mutex.pop_front() {
+                    match message {
+                        MidiMessage::Clock => quit_loop = true,
+                        MidiMessage::Start => transport.push(SysMessage::Start),
+                        MidiMessage::Stop => transport.push(SysMessage::Stop),
+                        MidiMessage::Continue => transport.push(SysMessage::Continue),
+                        _ => unreachable!(),
+                    }
                 }
             }
 
-            // Apply and emit transport changes now. sys_queue is held across the run
-            // lock here; this is the only place these locks nest, so no deadlock.
+            // Apply transport with sys_queue released, so the callback isn't blocked.
             if !transport.is_empty() {
                 let mut r = run.lock().unwrap();
                 let (_, ref mut controller, ref mut ctx) = *r;
@@ -289,8 +296,6 @@ fn run_slave(
             if quit_loop {
                 break;
             }
-
-            let _r = sys_cond_var.wait(mutex).unwrap();
         }
 
         let mut r = run.lock().unwrap();
@@ -300,9 +305,8 @@ fn run_slave(
         if bpm_counter == 24 {
             bpm_counter = 0;
             let duration = bmp_time_stamp.elapsed().as_millis();
-            // 24 MIDI clocks make one beat; bpm = 60000ms / beat_duration. Ignore
-            // out-of-range readings (e.g. the long idle window before Start, or a
-            // stalled clock) so we never feed 0 to set_bpm and keep the last valid bpm.
+            // bpm = 60000ms / beat (24 clocks); skip out-of-range readings so a
+            // stalled or pre-Start clock keeps the last valid bpm.
             if let Some(bpm) = 60000_u128.checked_div(duration)
                 && (1..=255).contains(&bpm)
             {

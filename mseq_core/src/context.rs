@@ -24,7 +24,6 @@ pub struct Context {
     step: u32,
     running: bool,
     on_pause: bool,
-    pause: bool,
     sys_instructions: Vec<Instruction>,
 }
 
@@ -40,7 +39,6 @@ impl Default for Context {
             step: 0,
             running: true,
             on_pause: true,
-            pause: false,
             sys_instructions: vec![],
         }
     }
@@ -71,7 +69,6 @@ impl Context {
     /// Pauses the sequencer and send a MIDI stop message.
     pub fn pause(&mut self) {
         self.on_pause = true;
-        self.pause = true;
         self.sys_instructions.push(Instruction::StopAllNotes);
         self.sys_instructions.push(Instruction::Stop);
     }
@@ -151,8 +148,6 @@ impl Context {
         if !self.on_pause {
             self.step += 1;
             controller.update(self.step);
-        } else if self.pause {
-            self.pause = false;
         }
     }
 
