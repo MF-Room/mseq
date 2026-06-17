@@ -67,6 +67,10 @@ impl Context {
     }
 
     /// Pauses the sequencer and send a MIDI stop message.
+    ///
+    /// While paused, the step counter stops advancing, so step-driven tracks hold
+    /// their position. [`Conductor::update`] is still called every tick and its
+    /// returned instructions are still sent; pausing does not drop them.
     pub fn pause(&mut self) {
         self.on_pause = true;
         self.sys_instructions.push(Instruction::StopAllNotes);
@@ -119,14 +123,10 @@ impl Context {
     ) {
         self.flush_sys_instructions(controller);
 
-        if self.on_pause {
-            conductor.update(self);
-        } else {
-            conductor
-                .update(self)
-                .into_iter()
-                .for_each(|instruction| controller.execute(instruction));
-        };
+        conductor
+            .update(self)
+            .into_iter()
+            .for_each(|instruction| controller.execute(instruction));
     }
 
     /// Immediately sends the pending system instructions (Start / Stop / Continue /
@@ -174,16 +174,9 @@ impl Context {
         controller: &mut MidiController<impl MidiOut>,
         input_queue: &mut InputQueue,
     ) {
-        if self.is_paused() {
-            input_queue
-                .drain(..)
-                .flat_map(|message| conductor.handle_input(input_id, message, self))
-                .for_each(drop);
-        } else {
-            input_queue
-                .drain(..)
-                .flat_map(|message| conductor.handle_input(input_id, message, self))
-                .for_each(|instruction| controller.execute(instruction));
-        }
+        input_queue
+            .drain(..)
+            .flat_map(|message| conductor.handle_input(input_id, message, self))
+            .for_each(|instruction| controller.execute(instruction));
     }
 }

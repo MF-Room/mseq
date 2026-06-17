@@ -26,6 +26,13 @@ pub trait Conductor {
     /// This method is responsible for progressing the sequencer and producing
     /// the set of instructions that should be executed at the current tick (e.g., sending MIDI events).
     ///
+    /// `update` is called on every tick regardless of pause state, and the returned
+    /// instructions are always sent to the MIDI output. Pausing (via
+    /// [`Context::pause`]) only stops the step counter from advancing (so
+    /// step-driven tracks hold their position); it does not silence the
+    /// instructions returned here. Use [`Context::is_paused`] if you want to alter
+    /// behavior while paused.
+    ///
     /// # Returns
     ///
     /// A `Vec<Instruction>` containing the actions to be passed to the MIDI controller
@@ -38,7 +45,9 @@ pub trait Conductor {
     /// It allows the conductor to react to external inputs by updating internal state or triggering events.
     ///
     /// The returned `Vec<Instruction>` is passed directly to the MIDI controller or output backend,
-    /// allowing the conductor to immediately produce output in response to the input.
+    /// allowing the conductor to immediately produce output in response to the input. This happens
+    /// regardless of pause state; pausing does not drop these instructions. Use
+    /// [`Context::is_paused`] if you want to alter behavior while paused.
     ///
     /// # Parameters
     ///
