@@ -1,7 +1,24 @@
-use alloc::vec;
 use alloc::vec::Vec;
 
 use crate::{Context, MidiMessage, midi_controller::Instruction};
+
+/// Output of [`Conductor::handle_input`].
+///
+/// Carries two independent channels:
+/// - `instructions` are handed to the MIDI controller, where notes are buffered and
+///   step-scheduled. They are executed only while the sequencer is running and are
+///   dropped while paused.
+/// - `messages` are forwarded directly to the MIDI output, bypassing the controller's
+///   note buffering. They are always sent, including while paused.
+#[derive(Default)]
+pub struct InputResponse {
+    /// Instructions processed by the MIDI controller (buffered / step-scheduled).
+    /// Executed only while the sequencer is running; dropped while paused.
+    pub instructions: Vec<Instruction>,
+    /// MIDI messages forwarded directly to the output, bypassing the controller.
+    /// Always sent, including while paused.
+    pub messages: Vec<MidiMessage>,
+}
 
 /// Entry point for user-defined sequencer behavior.
 ///
@@ -26,12 +43,9 @@ pub trait Conductor {
     /// This method is responsible for progressing the sequencer and producing
     /// the set of instructions that should be executed at the current tick (e.g., sending MIDI events).
     ///
-    /// `update` is called on every tick regardless of pause state, and the returned
-    /// instructions are always sent to the MIDI output. Pausing (via
-    /// [`Context::pause`]) only stops the step counter from advancing (so
-    /// step-driven tracks hold their position); it does not silence the
-    /// instructions returned here. Use [`Context::is_paused`] if you want to alter
-    /// behavior while paused.
+    /// `update` is called on every tick, but while paused (via [`Context::pause`])
+    /// the returned instructions are dropped rather than sent to the MIDI output.
+    /// Use [`Context::is_paused`] if you want to alter behavior while paused.
     ///
     /// # Returns
     ///
@@ -44,10 +58,14 @@ pub trait Conductor {
     /// This method is called whenever a new [`MidiMessage`] is received.
     /// It allows the conductor to react to external inputs by updating internal state or triggering events.
     ///
-    /// The returned `Vec<Instruction>` is passed directly to the MIDI controller or output backend,
-    /// allowing the conductor to immediately produce output in response to the input. This happens
-    /// regardless of pause state; pausing does not drop these instructions. Use
-    /// [`Context::is_paused`] if you want to alter behavior while paused.
+    /// The returned [`InputResponse`] carries two channels:
+    ///
+    /// - `instructions` are passed to the MIDI controller (buffered / step-scheduled).
+    ///   They are executed only while the sequencer is running and are dropped while paused.
+    /// - `messages` are forwarded directly to the MIDI output, bypassing the controller.
+    ///   They are always sent, including while paused.
+    ///
+    /// Use [`Context::is_paused`] if you want to alter behavior while paused.
     ///
     /// # Parameters
     ///
@@ -70,7 +88,7 @@ pub trait Conductor {
         _input_id: usize,
         _input: MidiMessage,
         _context: &Context,
-    ) -> Vec<Instruction> {
-        vec![]
+    ) -> InputResponse {
+        InputResponse::default()
     }
 }

@@ -22,7 +22,7 @@
 //! The entry point of the crate is the [`run`] function:
 //!
 //! ```no_run
-//! use mseq::{run, Conductor, Context, Instruction, MidiInParam, MidiMessage};
+//! use mseq::{run, Conductor, Context, InputResponse, Instruction, MidiInParam, MidiMessage};
 //!
 //! struct MyConductor;
 //!
@@ -37,8 +37,10 @@
 //!         vec![]
 //!     }
 //!
-//!     fn handle_input(&mut self, _input_id: usize, input: MidiMessage, _ctx: &Context) -> Vec<Instruction> {
-//!         vec![]
+//!     fn handle_input(&mut self, _input_id: usize, _input: MidiMessage, _ctx: &Context) -> InputResponse {
+//!         // `instructions` go through the controller (only while running);
+//!         // `messages` are forwarded directly (always, even while paused).
+//!         InputResponse::default()
 //!     }
 //! }
 //!

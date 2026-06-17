@@ -31,7 +31,7 @@ A `Conductor` defines how your sequencer behaves:
 
 - [`Conductor::init`] → called once at startup to initialize state and produce initial [`Instruction`]s (e.g., send program changes or reset messages).  
 - [`Conductor::update`] → called at every clock tick to advance the sequencer state and emit the instructions for that tick (e.g., note on/off events).  
-- [`Conductor::handle_input`] → called when a new [`MidiMessage`] arrives, allowing the conductor to react to external inputs in real time. The `input_id` argument (0-based, matching the input's position in the list passed to [`run`]) identifies which input the message came from.  
+- [`Conductor::handle_input`] → called when a new [`MidiMessage`] arrives, allowing the conductor to react to external inputs in real time. The `input_id` argument (0-based, matching the input's position in the list passed to [`run`]) identifies which input the message came from. It returns an [`InputResponse`] with two channels: `instructions` are processed by the controller (only while running), while `messages` are forwarded directly to the MIDI output, bypassing the controller, and are sent even while paused.  
 
 ## MIDI Inputs
 
@@ -60,7 +60,7 @@ This makes it easy to implement custom track types, from simple step sequencers 
 The entry point of the crate is the [`run`] function:
 
 ```rust
-use mseq::{run, Conductor, Context, Instruction, MidiMessage};
+use mseq::{run, Conductor, Context, InputResponse, Instruction, MidiMessage};
 
 struct MyConductor;
 
@@ -73,8 +73,10 @@ impl Conductor for MyConductor {
         vec![]
     }
 
-    fn handle_input(&mut self, _input_id: usize, _input: MidiMessage, _ctx: &Context) -> Vec<Instruction> {
-        vec![]
+    fn handle_input(&mut self, _input_id: usize, _input: MidiMessage, _ctx: &Context) -> InputResponse {
+        // `instructions` go through the controller (only while running);
+        // `messages` are forwarded directly (always, even while paused).
+        InputResponse::default()
     }
 }
 

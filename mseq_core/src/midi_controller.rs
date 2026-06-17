@@ -348,7 +348,11 @@ impl<T: MidiOut> MidiController<T> {
         }
     }
 
-    fn send_message(&mut self, message: MidiMessage) {
+    /// Forwards a [`MidiMessage`] straight to the MIDI output, bypassing the
+    /// controller's note buffering and step scheduling.
+    ///
+    /// This function is not intended to be called directly by the user.
+    pub(crate) fn send_message(&mut self, message: MidiMessage) {
         if let Err(e) = self.midi_out.send_message(message) {
             error!("MIDI: {e}");
         }

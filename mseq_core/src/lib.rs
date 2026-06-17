@@ -42,7 +42,7 @@ mod midi_out;
 mod note;
 mod track;
 
-pub use conductor::Conductor;
+pub use conductor::{Conductor, InputResponse};
 pub use context::*;
 pub use midi::*;
 pub use midi_controller::*;

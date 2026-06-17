@@ -34,9 +34,9 @@ impl Conductor for RecordingConductor {
         input_id: usize,
         input: MidiMessage,
         _context: &Context,
-    ) -> Vec<Instruction> {
+    ) -> InputResponse {
         self.received.borrow_mut().push((input_id, input));
-        vec![]
+        InputResponse::default()
     }
 }
 

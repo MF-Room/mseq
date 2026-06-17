@@ -1,4 +1,5 @@
 use crate::Conductor;
+use crate::InputResponse;
 use crate::Instruction;
 use crate::MidiController;
 use crate::MidiMessage;
@@ -69,8 +70,10 @@ impl Context {
     /// Pauses the sequencer and send a MIDI stop message.
     ///
     /// While paused, the step counter stops advancing, so step-driven tracks hold
-    /// their position. [`Conductor::update`] is still called every tick and its
-    /// returned instructions are still sent; pausing does not drop them.
+    /// their position. [`Conductor::update`] is still called every tick but its
+    /// returned instructions are dropped, and the instructions returned by
+    /// [`Conductor::handle_input`] are dropped too. The direct messages returned by
+    /// [`Conductor::handle_input`] are still forwarded.
     pub fn pause(&mut self) {
         self.on_pause = true;
         self.sys_instructions.push(Instruction::StopAllNotes);
@@ -123,10 +126,14 @@ impl Context {
     ) {
         self.flush_sys_instructions(controller);
 
-        conductor
-            .update(self)
-            .into_iter()
-            .for_each(|instruction| controller.execute(instruction));
+        if self.on_pause {
+            conductor.update(self);
+        } else {
+            conductor
+                .update(self)
+                .into_iter()
+                .for_each(|instruction| controller.execute(instruction));
+        }
     }
 
     /// Immediately sends the pending system instructions (Start / Stop / Continue /
@@ -174,9 +181,22 @@ impl Context {
         controller: &mut MidiController<impl MidiOut>,
         input_queue: &mut InputQueue,
     ) {
-        input_queue
-            .drain(..)
-            .flat_map(|message| conductor.handle_input(input_id, message, self))
-            .for_each(|instruction| controller.execute(instruction));
+        let paused = self.is_paused();
+        for message in input_queue.drain(..) {
+            let InputResponse {
+                instructions,
+                messages,
+            } = conductor.handle_input(input_id, message, self);
+            // Messages are forwarded directly, even while paused.
+            for m in messages {
+                controller.send_message(m);
+            }
+            // Instructions go through the controller only while running.
+            if !paused {
+                for instruction in instructions {
+                    controller.execute(instruction);
+                }
+            }
+        }
     }
 }
