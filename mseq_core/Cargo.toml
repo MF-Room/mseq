@@ -1,6 +1,6 @@
 [package]
 name = "mseq_core"
-version = "0.1.6"
+version = "1.0.0"
 edition = "2024"
 license = "LGPL-2.1"
 readme = "README.md"
@@ -11,7 +11,7 @@ keywords = ["midi", "music", "sequencer"]
 categories = ["multimedia"]
 
 [dependencies]
-serde = {version = "1.0.208", default-features = false, features = ["derive", "alloc"] }
+serde = {version = "1.0.228", default-features = false, features = ["derive", "alloc"] }
 thiserror = { version="2.0.18", default-features = false }
-hashbrown = "0.17.0"
-log = "0.4.29"
+hashbrown = "0.17.1"
+log = "0.4.33"

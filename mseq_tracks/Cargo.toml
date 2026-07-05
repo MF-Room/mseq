@@ -1,6 +1,6 @@
 [package]
 name = "mseq_tracks"
-version = "0.2.5"
+version = "1.0.0"
 edition = "2024"
 license = "LGPL-2.1"
 readme = "README.md"
@@ -11,17 +11,17 @@ keywords = ["midi", "music", "sequencer"]
 categories = ["multimedia"]
 
 [dependencies]
-mseq_core = { version = "0.1.6", path = "../mseq_core" }
+mseq_core = { version = "1.0.0", path = "../mseq_core" }
 thiserror = "2.0.18"
 midir = "0.11.0"
-serde = {version = "1.0.208", features = ["derive"] }
+serde = {version = "1.0.228", features = ["derive"] }
 csv = {version = "1.4.0"}
 midly = "0.5.3"
-fs-err = "3.3.0"
-log = "0.4.29"
-hashbrown = "0.17"
+fs-err = "3.3.1"
+log = "0.4.33"
+hashbrown = "0.17.1"
 toml = "1.1.2"
-itertools = "0.14.0"
+itertools = "0.15.0"
 
 [features]
 default = ["std"]
