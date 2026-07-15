@@ -130,10 +130,15 @@ pub fn run(
         let message = midi_in.message.clone();
         thread::spawn(move || {
             loop {
-                let r = run_consumer.lock().unwrap();
-                let mut r = message.1.wait(r).unwrap();
+                let queue = message.0.lock().unwrap();
+                let mut queue = message
+                    .1
+                    .wait_while(queue, |q| q.is_empty())
+                    .unwrap()
+                    .drain(..)
+                    .collect();
+                let mut r = run_consumer.lock().unwrap();
                 let (ref mut conductor, ref mut controller, ref mut ctx) = *r;
-                let mut queue = message.0.lock().unwrap();
                 ctx.handle_input(conductor, controller, &mut queue);
             }
         });
