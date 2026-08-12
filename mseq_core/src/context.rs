@@ -1,5 +1,4 @@
 use crate::Conductor;
-use crate::InputResponse;
 use crate::Instruction;
 use crate::MidiController;
 use crate::MidiMessage;
@@ -72,8 +71,9 @@ impl Context {
     /// While paused, the step counter stops advancing, so step-driven tracks hold
     /// their position. [`Conductor::update`] is still called every tick but its
     /// returned instructions are dropped, and the instructions returned by
-    /// [`Conductor::handle_input`] are dropped too. The direct messages returned by
-    /// [`Conductor::handle_input`] are still forwarded.
+    /// [`Conductor::handle_input`] are dropped too, except for
+    /// [`Instruction::MidiMessage`] instructions which are still forwarded directly
+    /// to the MIDI output.
     pub fn pause(&mut self) {
         self.on_pause = true;
         self.sys_instructions.push(Instruction::StopAllNotes);
@@ -103,7 +103,7 @@ impl Context {
     }
 
     /// MIDI logic called at the initialization.
-    /// This function is not intended to be called directly by users.  
+    /// This function is not intended to be called directly by users.
     /// `init` is used internally to enable code reuse across platforms.
     pub fn init(
         &mut self,
@@ -117,7 +117,7 @@ impl Context {
     }
 
     /// MIDI logic called before the clock tick.
-    /// This function is not intended to be called directly by users.  
+    /// This function is not intended to be called directly by users.
     /// `process_pre_tick` is used internally to enable code reuse across platforms.
     pub fn process_pre_tick(
         &mut self,
@@ -148,7 +148,7 @@ impl Context {
     }
 
     /// MIDI logic called after the clock tick.
-    /// This function is not intended to be called directly by users.  
+    /// This function is not intended to be called directly by users.
     /// `process_post_tick` is used internally to enable code reuse across platforms.
     pub fn process_post_tick(&mut self, controller: &mut MidiController<impl MidiOut>) {
         controller.send_clock();
@@ -170,7 +170,7 @@ impl Context {
 
     /// Internal MIDI input handler.
     ///
-    /// This function is not intended to be called directly by users.  
+    /// This function is not intended to be called directly by users.
     /// Instead, users should implement [`Conductor::handle_input`] for their custom input handler logic.
     ///
     /// `handle_input` is used internally to enable code reuse across platforms and unify MIDI input processing.
@@ -179,24 +179,16 @@ impl Context {
         input_id: usize,
         conductor: &mut impl Conductor,
         controller: &mut MidiController<impl MidiOut>,
-        input_queue: &mut InputQueue,
+        input_queue: InputQueue,
     ) {
         let paused = self.is_paused();
-        for message in input_queue.drain(..) {
-            let InputResponse {
-                instructions,
-                messages,
-            } = conductor.handle_input(input_id, message, self);
-            // Messages are forwarded directly, even while paused.
-            for m in messages {
-                controller.send_message(m);
-            }
-            // Instructions go through the controller only while running.
-            if !paused {
-                for instruction in instructions {
+        input_queue
+            .into_iter()
+            .flat_map(|input| conductor.handle_input(input_id, input, self))
+            .for_each(|instruction| {
+                if !paused || matches!(instruction, Instruction::MidiMessage { .. }) {
                     controller.execute(instruction);
                 }
-            }
-        }
+            });
     }
 }

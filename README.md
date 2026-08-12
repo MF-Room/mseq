@@ -9,37 +9,37 @@
 
 ## Features
 
-- Real-time MIDI clock generation and synchronization  
-- Master/slave transport control with Start/Stop/Continue handling  
-- Multiple MIDI inputs, each with its own queue and an `input_id` for routing  
-- Flexible [`Conductor`] trait for defining sequencer logic  
-- Easy-to-implement tracks via the [`Track`] trait  
-- Thread-safe, minimal core designed for real-time responsiveness  
-- Step-based deterministic tracks with [`DeteTrack`]  
+- Real-time MIDI clock generation and synchronization
+- Master/slave transport control with Start/Stop/Continue handling
+- Multiple MIDI inputs, each with its own queue and an `input_id` for routing
+- Flexible [`Conductor`] trait for defining sequencer logic
+- Easy-to-implement tracks via the [`Track`] trait
+- Thread-safe, minimal core designed for real-time responsiveness
+- Step-based deterministic tracks with [`DeteTrack`]
 
 ## Overview
 
 The sequencer is driven by a user-provided [`Conductor`] implementation, which defines how the sequencer initializes, progresses at each clock tick, and reacts to external MIDI messages.
 
-- **No input** → runs standalone with its internal clock and transport, generating MIDI clock and transport messages but ignoring external MIDI input.  
-- **Master mode** → runs with its internal clock while also processing incoming MIDI events (except for external clock/transport).  
-- **Slave mode** → synchronizes playback to an external MIDI clock and responds to Start/Stop/Continue messages, dynamically adjusting BPM to match the clock source.  
+- **No input** → runs standalone with its internal clock and transport, generating MIDI clock and transport messages but ignoring external MIDI input.
+- **Master mode** → runs with its internal clock while also processing incoming MIDI events (except for external clock/transport).
+- **Slave mode** → synchronizes playback to an external MIDI clock and responds to Start/Stop/Continue messages, dynamically adjusting BPM to match the clock source.
 
 ## Conductor Trait
 
 A `Conductor` defines how your sequencer behaves:
 
-- [`Conductor::init`] → called once at startup to initialize state and produce initial [`Instruction`]s (e.g., send program changes or reset messages).  
-- [`Conductor::update`] → called at every clock tick to advance the sequencer state and emit the instructions for that tick (e.g., note on/off events).  
-- [`Conductor::handle_input`] → called when a new [`MidiMessage`] arrives, allowing the conductor to react to external inputs in real time. The `input_id` argument (0-based, matching the input's position in the list passed to [`run`]) identifies which input the message came from. It returns an [`InputResponse`] with two channels: `instructions` are processed by the controller (only while running), while `messages` are forwarded directly to the MIDI output, bypassing the controller, and are sent even while paused.  
+- [`Conductor::init`] → called once at startup to initialize state and produce initial [`Instruction`]s (e.g., send program changes or reset messages).
+- [`Conductor::update`] → called at every clock tick to advance the sequencer state and emit the instructions for that tick (e.g., note on/off events).
+- [`Conductor::handle_input`] → called when a new [`MidiMessage`] arrives, allowing the conductor to react to external inputs in real time. The `input_id` argument (0-based, matching the input's position in the list passed to [`run`]) identifies which input the message came from. It returns a `Vec<Instruction>` processed by the controller: `Instruction::MidiMessage` instructions are forwarded to the output even while paused, while all other instructions are executed only while running.
 
 ## MIDI Inputs
 
 [`run`] accepts a `Vec<MidiInParam>`, opening one MIDI input per entry. Each input gets its own queue and is identified by its 0-based position in the list, which is forwarded to [`Conductor::handle_input`] as `input_id`.
 
-- An empty `Vec` runs the sequencer standalone (no input).  
-- At most one input acts as the clock/transport source: the first one with `slave` set to `true`. Any other `slave` inputs are treated as message-only inputs (a warning is logged).  
-- With multiple inputs, prefer setting an explicit `port` on each `MidiInParam` rather than leaving it as `None`.  
+- An empty `Vec` runs the sequencer standalone (no input).
+- At most one input acts as the clock/transport source: the first one with `slave` set to `true`. Any other `slave` inputs are treated as message-only inputs (a warning is logged).
+- With multiple inputs, prefer setting an explicit `port` on each `MidiInParam` rather than leaving it as `None`.
 
 ## Tracks
 
@@ -60,7 +60,7 @@ This makes it easy to implement custom track types, from simple step sequencers 
 The entry point of the crate is the [`run`] function:
 
 ```rust
-use mseq::{run, Conductor, Context, InputResponse, Instruction, MidiMessage};
+use mseq::{run, Conductor, Context, Instruction, MidiMessage};
 
 struct MyConductor;
 
@@ -73,10 +73,8 @@ impl Conductor for MyConductor {
         vec![]
     }
 
-    fn handle_input(&mut self, _input_id: usize, _input: MidiMessage, _ctx: &Context) -> InputResponse {
-        // `instructions` go through the controller (only while running);
-        // `messages` are forwarded directly (always, even while paused).
-        InputResponse::default()
+    fn handle_input(&mut self, _input_id: usize, _input: MidiMessage, _ctx: &Context) -> Vec<Instruction> {
+        vec![]
     }
 }
 

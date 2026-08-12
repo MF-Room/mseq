@@ -34,9 +34,9 @@ impl Conductor for RecordingConductor {
         input_id: usize,
         input: MidiMessage,
         _context: &Context,
-    ) -> InputResponse {
+    ) -> Vec<Instruction> {
         self.received.borrow_mut().push((input_id, input));
-        InputResponse::default()
+        vec![]
     }
 }
 
@@ -156,7 +156,12 @@ fn test_slave_multi_input() {
 
     // Now deliver every input's channel messages, as the per-input consumer threads do.
     for (input_id, queue) in message_queues.iter_mut().enumerate() {
-        ctx.handle_input(input_id, &mut conductor, &mut controller, queue);
+        ctx.handle_input(
+            input_id,
+            &mut conductor,
+            &mut controller,
+            std::mem::take(queue),
+        );
     }
 
     // The conductor only ever saw input 1's channel message: no transport message

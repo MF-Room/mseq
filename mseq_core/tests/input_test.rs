@@ -64,7 +64,7 @@ impl Conductor for DebugInputConductor {
         input_id: usize,
         input: mseq_core::MidiMessage,
         _context: &Context,
-    ) -> InputResponse {
+    ) -> Vec<Instruction> {
         // Transpose by an input-dependent amount to prove that `input_id` is
         // correctly forwarded and that each input is handled independently. The
         // transposed note is forwarded directly via the `messages` channel.
@@ -84,10 +84,10 @@ impl Conductor for DebugInputConductor {
             }
             _ => vec![],
         };
-        InputResponse {
-            messages,
-            ..Default::default()
-        }
+        messages
+            .into_iter()
+            .map(|midi_message| Instruction::MidiMessage { midi_message })
+            .collect()
     }
 }
 
@@ -133,7 +133,12 @@ fn test_conductor_with_input<T: MidiOut>(
 
         // Simulate input handling, one input (and its queue) at a time
         for (input_id, queue) in input_queues.iter_mut().enumerate() {
-            ctx.handle_input(input_id, &mut conductor, &mut midi_controller, queue);
+            ctx.handle_input(
+                input_id,
+                &mut conductor,
+                &mut midi_controller,
+                std::mem::take(queue),
+            );
         }
     }
     midi_controller.finish();
@@ -182,24 +187,24 @@ impl Conductor for DualChannelConductor {
         _input_id: usize,
         _input: MidiMessage,
         _context: &Context,
-    ) -> InputResponse {
-        InputResponse {
-            instructions: vec![Instruction::MidiMessage {
+    ) -> Vec<Instruction> {
+        vec![
+            Instruction::MidiMessage {
                 midi_message: MidiMessage::NoteOn {
                     channel: 1,
-                    note: INSTR_NOTE,
+                    note: MSG_NOTE,
                 },
-            }],
-            messages: vec![MidiMessage::NoteOn {
-                channel: 1,
-                note: MSG_NOTE,
-            }],
-        }
+            },
+            Instruction::StartNote {
+                midi_note: INSTR_NOTE,
+                channel_id: 1,
+            },
+        ]
     }
 }
 
-/// While paused, `handle_input` forwards the `messages` channel directly but drops
-/// the `instructions` channel; once running, both reach the output.
+/// While paused, `handle_input` forwards all `Instruction::MidiMessage`s but drops
+/// other `Instruction`s; once running, both reach the output.
 #[test]
 fn test_handle_input_pause_forwarding() {
     let debug_conn = Rc::new(RefCell::new(DebugMidiOutInner {
@@ -218,13 +223,20 @@ fn test_handle_input_pause_forwarding() {
         channel: 1,
         note: MidiNote::new(Note::C, 4, 100),
     });
-    ctx.handle_input(0, &mut conductor, &mut controller, &mut queue);
+    ctx.handle_input(
+        0,
+        &mut conductor,
+        &mut controller,
+        std::mem::take(&mut queue),
+    );
+
+    controller.update(1);
 
     {
         let inner = debug_conn.borrow();
-        // The direct message was forwarded even while paused...
+        // The midi message was forwarded even while paused...
         assert!(inner.notes_on.contains_key(&(1, MSG_NOTE.midi_value())));
-        // ...but the instruction was dropped.
+        // ...but the other instruction was dropped.
         assert!(!inner.notes_on.contains_key(&(1, INSTR_NOTE.midi_value())));
     }
 
@@ -235,7 +247,13 @@ fn test_handle_input_pause_forwarding() {
         channel: 1,
         note: MidiNote::new(Note::C, 4, 100),
     });
-    ctx.handle_input(0, &mut conductor, &mut controller, &mut queue);
+    ctx.handle_input(
+        0,
+        &mut conductor,
+        &mut controller,
+        std::mem::take(&mut queue),
+    );
+    controller.update(2);
     assert!(
         debug_conn
             .borrow()

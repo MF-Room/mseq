@@ -282,7 +282,23 @@ impl<T: MidiOut> MidiController<T> {
         }
     }
 
+    /// Advance the controller to `next_step`, flushing the pending note off/on
+    /// messages for the current step.
+    ///
+    /// This is an internal entry point driven by [`Context`](crate::Context);
+    /// it is only made `pub` for integration tests via the internal
+    /// `test-internals` feature and is not part of the public API.
+    #[cfg(feature = "test-internals")]
+    pub fn update(&mut self, next_step: u32) {
+        self.update_internal(next_step)
+    }
+
+    #[cfg(not(feature = "test-internals"))]
     pub(crate) fn update(&mut self, next_step: u32) {
+        self.update_internal(next_step)
+    }
+
+    fn update_internal(&mut self, next_step: u32) {
         // First send the off signal to every note that end this step.
         let notes = self.play_note_set.remove(&self.step);
         if let Some(notes_off) = notes {
@@ -352,7 +368,7 @@ impl<T: MidiOut> MidiController<T> {
     /// controller's note buffering and step scheduling.
     ///
     /// This function is not intended to be called directly by the user.
-    pub(crate) fn send_message(&mut self, message: MidiMessage) {
+    fn send_message(&mut self, message: MidiMessage) {
         if let Err(e) = self.midi_out.send_message(message) {
             error!("MIDI: {e}");
         }

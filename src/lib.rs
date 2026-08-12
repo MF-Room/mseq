@@ -1,6 +1,6 @@
 //! # mseq
 //!
-//! `mseq` is a lightweight MIDI sequencer framework written in Rust.  
+//! `mseq` is a lightweight MIDI sequencer framework written in Rust.
 //! It provides a flexible core for building sequencers that can run in **standalone**, **master**, or
 //! **slave** mode, with synchronization over standard MIDI clock and transport messages.
 //!
@@ -22,7 +22,7 @@
 //! The entry point of the crate is the [`run`] function:
 //!
 //! ```no_run
-//! use mseq::{run, Conductor, Context, InputResponse, Instruction, MidiInParam, MidiMessage};
+//! use mseq::{run, Conductor, Context, Instruction, MidiInParam, MidiMessage};
 //!
 //! struct MyConductor;
 //!
@@ -37,10 +37,8 @@
 //!         vec![]
 //!     }
 //!
-//!     fn handle_input(&mut self, _input_id: usize, _input: MidiMessage, _ctx: &Context) -> InputResponse {
-//!         // `instructions` go through the controller (only while running);
-//!         // `messages` are forwarded directly (always, even while paused).
-//!         InputResponse::default()
+//!     fn handle_input(&mut self, _input_id: usize, _input: MidiMessage, _ctx: &Context) -> Vec<Instruction> {
+//!         vec![]
 //!     }
 //! }
 //!
@@ -57,7 +55,7 @@
 //! - Real-time MIDI clock generation and synchronization
 //! - Master/slave transport control with Start/Stop/Continue handling
 //! - Flexible [`Conductor`] trait for defining sequencer logic
-//! - Easy-to-implement tracks via the [`Track`] trait  
+//! - Easy-to-implement tracks via the [`Track`] trait
 //! - Thread-safe, minimal core designed for real-time responsiveness
 
 #![warn(missing_docs)]
@@ -91,14 +89,14 @@ pub enum MSeqError {
     Track(#[from] TrackError),
 }
 
-/// `mseq` entry point.  
+/// `mseq` entry point.
 ///
-/// This function starts the MIDI sequencer by running the given [`Conductor`] implementation.  
+/// This function starts the MIDI sequencer by running the given [`Conductor`] implementation.
 ///
 /// # Parameters
 /// - `conductor`: User-provided implementation of the [`Conductor`] trait, which defines how the
 ///   sequencer generates and responds to musical events.
-/// - `out_port`: MIDI output port ID used to send messages.  
+/// - `out_port`: MIDI output port ID used to send messages.
 ///   If set to `None`, information about available MIDI output ports will be displayed and the user
 ///   will be prompted to select one.
 /// - `midi_in`: List of [`MidiInParam`], one per MIDI input to open. Each input gets its own queue,
@@ -159,7 +157,7 @@ pub fn run(
             loop {
                 // Wait for messages, then swap them out so the callback isn't blocked
                 // while we process.
-                let mut pending = {
+                let pending = {
                     let mut queue = channel.queue.lock().unwrap();
                     while queue.is_empty() {
                         queue = channel.condvar.wait(queue).unwrap();
@@ -168,7 +166,7 @@ pub fn run(
                 };
                 let mut r = run_consumer.lock().unwrap();
                 let (ref mut conductor, ref mut controller, ref mut ctx) = *r;
-                ctx.handle_input(input_id, conductor, controller, &mut pending);
+                ctx.handle_input(input_id, conductor, controller, pending);
             }
         });
     }
