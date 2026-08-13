@@ -273,8 +273,6 @@ impl<T: MidiOut> MidiController<T> {
         }
     }
 
-    /// This function is not intended to be called directly by the user.
-    ///
     /// This function directly sends a MIDI message.
     fn send_continue(&mut self) {
         if let Err(e) = self.midi_out.send_continue() {
@@ -328,8 +326,6 @@ impl<T: MidiOut> MidiController<T> {
         self.step = next_step;
     }
 
-    /// This function is not intended to be called directly by the user.
-    ///
     /// This function directly sends MIDI messages.
     pub(crate) fn stop_all_notes(&mut self) {
         self.start_note_set.iter().for_each(|n| {
@@ -355,8 +351,6 @@ impl<T: MidiOut> MidiController<T> {
         self.play_note_set.clear();
     }
 
-    /// This function is not intended to be called directly by the user.
-    ///
     /// This function directly send a MIDI message.
     pub(crate) fn stop(&mut self) {
         if let Err(e) = self.midi_out.send_stop() {
@@ -366,8 +360,6 @@ impl<T: MidiOut> MidiController<T> {
 
     /// Forwards a [`MidiMessage`] straight to the MIDI output, bypassing the
     /// controller's note buffering and step scheduling.
-    ///
-    /// This function is not intended to be called directly by the user.
     fn send_message(&mut self, message: MidiMessage) {
         if let Err(e) = self.midi_out.send_message(message) {
             error!("MIDI: {e}");

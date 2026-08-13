@@ -133,7 +133,7 @@ impl MidiMessage {
 
     /// Parses a byte slice into a `MidiMessage` struct.
     ///
-    /// This function is not intended to be called directly by end users.  
+    /// This function is not intended to be called directly by end users.
     /// It is used internally to ensure consistent MIDI message parsing logic across platforms.
     ///
     /// Returns `Some(MidiMessage)` if the byte slice represents a known and valid MIDI message,

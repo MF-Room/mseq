@@ -46,7 +46,7 @@ pub enum TrackError {
     #[cfg(feature = "std")]
     #[error("Failed to read file: {0}")]
     Io(#[from] std::io::Error),
-    /// MIDI parsing error from `midly
+    /// MIDI parsing error from `midly`
     #[cfg(feature = "std")]
     #[error("Midly error: {0}")]
     Midly(#[from] midly::Error),
