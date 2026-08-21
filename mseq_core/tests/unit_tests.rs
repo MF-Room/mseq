@@ -182,6 +182,25 @@ fn dete_track_transpose() {
     test_conductor(conductor, midi);
 }
 
+#[test]
+fn dete_track_zero_len() {
+    // A track of length 0 must stay silent instead of panicking.
+    let mut track = DeteTrack::default();
+    assert!(track.play_step(0).is_empty());
+    assert!(track.play_step(7).is_empty());
+    assert!(track.get_notes_start_at_step(0).is_empty());
+
+    let mut track = DeteTrack::new(
+        0,
+        vec![(MidiNote::new(Note::A, 4, 89), 0, 12)],
+        Note::A,
+        1,
+        "test_zero_len",
+    );
+    assert!(track.play_step(0).is_empty());
+    assert!(track.get_notes_start_at_step(3).is_empty());
+}
+
 pub fn test_conductor<T: MidiOut>(
     mut conductor: impl Conductor,
     mut midi_controller: MidiController<T>,

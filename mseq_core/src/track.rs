@@ -1,6 +1,7 @@
 use crate::MidiNote;
 use crate::midi_controller::Instruction;
 use crate::note::Note;
+use log::warn;
 use serde::{Deserialize, Serialize};
 
 use alloc::string::{String, ToString};
@@ -29,6 +30,8 @@ pub trait Track {
 /// `DeteTrack` implements the [`Track`] trait by playing a fixed pattern
 /// in a continuous loop. Each call to `play_step` produces the same
 /// sequence of instructions based on the step index modulo the pattern length.
+///
+/// A track with a length of 0 plays nothing and logs a warning.
 #[derive(Default, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct DeteTrack {
     len: u32,
@@ -42,6 +45,10 @@ pub struct DeteTrack {
 
 impl Track for DeteTrack {
     fn play_step(&mut self, step: u32) -> Vec<Instruction> {
+        if self.len == 0 {
+            warn!("Track {} has a length of 0, no note is played", self.name);
+            return vec![];
+        }
         let cur_step = step % self.len;
         self.notes
             .iter()
@@ -96,6 +103,10 @@ impl DeteTrack {
     /// Returns the all `(note, length)`, that start at `step`. Transposition and start step are
     /// taken into account.
     pub fn get_notes_start_at_step(&self, step: u32) -> Vec<(MidiNote, u32)> {
+        if self.len == 0 {
+            warn!("Track {} has a length of 0, no note is played", self.name);
+            return vec![];
+        }
         let mut notes = vec![];
         let cur_step = step % self.len;
         for n in &self.notes {
