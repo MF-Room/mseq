@@ -22,22 +22,27 @@
 //! The entry point of the crate is the [`run`] function:
 //!
 //! ```no_run
-//! use mseq::{run, Conductor, Context, Instruction, MidiInParam, MidiMessage};
+//! use mseq::{run, Conductor, Context, Instruction, MidiNote, Note};
 //!
 //! struct MyConductor;
 //!
 //! impl Conductor for MyConductor {
-//!     fn init(&mut self, _ctx: &mut Context) -> Vec<Instruction> {
-//!         // Return setup instructions (e.g., reset all controllers)
+//!     fn init(&mut self, ctx: &mut Context) -> Vec<Instruction> {
+//!         ctx.set_bpm(120);
+//!         // The sequencer starts paused: nothing plays until you call start().
+//!         ctx.start();
 //!         vec![]
 //!     }
 //!
-//!     fn update(&mut self, _ctx: &mut Context) -> Vec<Instruction> {
-//!         // Called each clock tick: return note events or other MIDI instructions
-//!         vec![]
-//!     }
-//!
-//!     fn handle_input(&mut self, _input_id: usize, _input: MidiMessage, _ctx: &Context) -> Vec<Instruction> {
+//!     fn update(&mut self, ctx: &mut Context) -> Vec<Instruction> {
+//!         // update() runs on every MIDI clock pulse, so there are 24 steps per quarter note.
+//!         if ctx.get_step() % 24 == 0 {
+//!             return vec![Instruction::PlayNote {
+//!                 midi_note: MidiNote::new(Note::C, 4, 100),
+//!                 len: 12,
+//!                 channel_id: 1,
+//!             }];
+//!         }
 //!         vec![]
 //!     }
 //! }
@@ -49,6 +54,11 @@
 //!     run(conductor, out_port, midi_in)
 //! }
 //! ```
+//!
+//! ## Architecture
+//!
+//! See the [schematic](https://github.com/MF-Room/mseq/blob/main/README.md#architecture)
+//! of what you implement and what the engine does with it.
 //!
 //! ## Features
 //!
