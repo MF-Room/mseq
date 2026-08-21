@@ -10,7 +10,7 @@ license = "LGPL-2.1"
 readme = "README.md"
 repository = "https://github.com/MF-Room/mseq"
 authors = ["Julien Eudine <julien@eudine.fr>", "Marius Debussche <marius.debussche@gmail.com>"]
-description = "Library for developing MIDI Sequencers."
+description = "Framework for building MIDI sequencers, with clock and transport synchronization."
 keywords = ["midi", "music", "sequencer"]
 categories = ["multimedia"]
 
