@@ -26,6 +26,10 @@ pub trait Conductor {
     /// This method is responsible for progressing the sequencer and producing
     /// the set of instructions that should be executed at the current tick (e.g., sending MIDI events).
     ///
+    /// `update` is called on every tick, but while paused (via [`Context::pause`])
+    /// the returned instructions are dropped rather than sent to the MIDI output.
+    /// Use [`Context::is_paused`] if you want to alter behavior while paused.
+    ///
     /// # Returns
     ///
     /// A `Vec<Instruction>` containing the actions to be passed to the MIDI controller
@@ -37,8 +41,14 @@ pub trait Conductor {
     /// This method is called whenever a new [`MidiMessage`] is received.
     /// It allows the conductor to react to external inputs by updating internal state or triggering events.
     ///
-    /// The returned `Vec<Instruction>` is passed directly to the MIDI controller or output backend,
-    /// allowing the conductor to immediately produce output in response to the input.
+    /// Use [`Context::is_paused`] if you want to alter behavior while paused.
+    ///
+    /// # Parameters
+    ///
+    /// - `input_id`: 0-based index identifying which MIDI input produced the message. It matches the
+    ///   position of the corresponding input in the list of inputs passed to the runtime. When a single
+    ///   input is used, this is always `0`.
+    /// - `input`: The received [`MidiMessage`].
     ///
     /// # Intercepted Messages
     ///
@@ -48,8 +58,16 @@ pub trait Conductor {
     ///
     /// # Returns
     ///
-    /// A `Vec<Instruction>` to be sent to the MIDI output immediately.
-    fn handle_input(&mut self, _input: MidiMessage, _context: &Context) -> Vec<Instruction> {
+    /// A `Vec<Instruction>` processed by the MIDI controller. [`Instruction::MidiMessage`]
+    /// instructions are forwarded to the MIDI output even while the sequencer is paused;
+    /// all other instructions are executed only while the sequencer is running and are
+    /// dropped while paused.
+    fn handle_input(
+        &mut self,
+        _input_id: usize,
+        _input: MidiMessage,
+        _context: &Context,
+    ) -> Vec<Instruction> {
         vec![]
     }
 }

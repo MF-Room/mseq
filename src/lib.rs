@@ -1,6 +1,6 @@
 //! # mseq
 //!
-//! `mseq` is a lightweight MIDI sequencer framework written in Rust.  
+//! `mseq` is a lightweight MIDI sequencer framework written in Rust.
 //! It provides a flexible core for building sequencers that can run in **standalone**, **master**, or
 //! **slave** mode, with synchronization over standard MIDI clock and transport messages.
 //!
@@ -22,40 +22,50 @@
 //! The entry point of the crate is the [`run`] function:
 //!
 //! ```no_run
-//! use mseq::{run, Conductor, Context, Instruction, MidiInParam, MidiMessage};
+//! use mseq::{run, Conductor, Context, Instruction, MidiNote, Note};
 //!
 //! struct MyConductor;
 //!
 //! impl Conductor for MyConductor {
-//!     fn init(&mut self, _ctx: &mut Context) -> Vec<Instruction> {
-//!         // Return setup instructions (e.g., reset all controllers)
+//!     fn init(&mut self, ctx: &mut Context) -> Vec<Instruction> {
+//!         ctx.set_bpm(120);
+//!         // The sequencer starts paused: nothing plays until you call start().
+//!         ctx.start();
 //!         vec![]
 //!     }
 //!
-//!     fn update(&mut self, _ctx: &mut Context) -> Vec<Instruction> {
-//!         // Called each clock tick: return note events or other MIDI instructions
-//!         vec![]
-//!     }
-//!
-//!     fn handle_input(&mut self, input: MidiMessage, _ctx: &Context) -> Vec<Instruction> {
+//!     fn update(&mut self, ctx: &mut Context) -> Vec<Instruction> {
+//!         // update() runs on every MIDI clock pulse, so there are 24 steps per quarter note.
+//!         if ctx.get_step() % 24 == 0 {
+//!             return vec![Instruction::PlayNote {
+//!                 midi_note: MidiNote::new(Note::C, 4, 100),
+//!                 len: 12,
+//!                 channel_id: 1,
+//!             }];
+//!         }
 //!         vec![]
 //!     }
 //! }
 //!
 //! fn main() -> Result<(), mseq::MSeqError> {
 //!     let conductor = MyConductor;
-//!     let out_port = None; // Ask user for output port
-//!     let midi_in = None;  // Run standalone (no input, master clock/transport)
+//!     let out_port = None;        // Ask user for output port
+//!     let midi_in = Vec::new();   // Run standalone (no input, master clock/transport)
 //!     run(conductor, out_port, midi_in)
 //! }
 //! ```
+//!
+//! ## Architecture
+//!
+//! See the [schematic](https://github.com/MF-Room/mseq/blob/main/README.md#architecture)
+//! of what you implement and what the engine does with it.
 //!
 //! ## Features
 //!
 //! - Real-time MIDI clock generation and synchronization
 //! - Master/slave transport control with Start/Stop/Continue handling
 //! - Flexible [`Conductor`] trait for defining sequencer logic
-//! - Easy-to-implement tracks via the [`Track`] trait  
+//! - Easy-to-implement tracks via the [`Track`] trait
 //! - Thread-safe, minimal core designed for real-time responsiveness
 
 #![warn(missing_docs)]
@@ -69,7 +79,7 @@ pub use mseq_core::*;
 pub use mseq_tracks::*;
 
 use clock::Clock;
-use std::sync::{Arc, Condvar, Mutex};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use std::time::Instant;
@@ -89,27 +99,29 @@ pub enum MSeqError {
     Track(#[from] TrackError),
 }
 
-/// `mseq` entry point.  
+/// `mseq` entry point.
 ///
-/// This function starts the MIDI sequencer by running the given [`Conductor`] implementation.  
+/// This function starts the MIDI sequencer by running the given [`Conductor`] implementation.
 ///
 /// # Parameters
 /// - `conductor`: User-provided implementation of the [`Conductor`] trait, which defines how the
 ///   sequencer generates and responds to musical events.
-/// - `out_port`: MIDI output port ID used to send messages.  
+/// - `out_port`: MIDI output port ID used to send messages.
 ///   If set to `None`, information about available MIDI output ports will be displayed and the user
 ///   will be prompted to select one.
-/// - `midi_in`: Optional [`MidiInParam`] specifying how to configure the MIDI input connection.  
-///   If provided, the sequencer can run in either **master mode** (internal clock) or **slave mode**
-///   (synchronized to external MIDI clock and transport messages).
+/// - `midi_in`: List of [`MidiInParam`], one per MIDI input to open. Each input gets its own queue,
+///   and the input's 0-based position in this list is passed to [`Conductor::handle_input`] as the
+///   `input_id`. An empty list runs the sequencer standalone (no input).
+///   At most one input acts as the clock/transport source: the first one with `slave` set to `true`.
 ///
 /// # Behavior
-/// - **No input (`midi_in = None`)** → sequencer runs with its internal clock and transport,  
-///   generating MIDI clock and transport messages, but ignoring any external MIDI input.  
-/// - **Master mode** → sequencer generates its own MIDI clock and transport messages while also
-///   handling incoming MIDI events (except for clock/transport).  
-/// - **Slave mode** → sequencer synchronizes to external MIDI clock, Start/Stop/Continue messages,
-///   and dynamically adjusts BPM to match the external clock source.
+/// - **No input (`midi_in` empty)** → sequencer runs with its internal clock and transport,
+///   generating MIDI clock and transport messages, but ignoring any external MIDI input.
+/// - **Master mode** (no input marked `slave`) → sequencer generates its own MIDI clock and transport
+///   messages while also handling incoming MIDI events (except for clock/transport).
+/// - **Slave mode** (the first `slave` input) → sequencer synchronizes to that input's MIDI clock,
+///   Start/Stop/Continue messages, and dynamically adjusts BPM to match the external clock source.
+///   The remaining inputs are handled as message-only inputs.
 ///
 /// # Errors
 /// Returns an [`MSeqError`] if a MIDI port cannot be opened, if MIDI input/output fails, or if track
@@ -117,33 +129,63 @@ pub enum MSeqError {
 pub fn run(
     conductor: impl Conductor + std::marker::Send + 'static,
     out_port: Option<u32>,
-    midi_in: Option<MidiInParam>,
+    midi_in: Vec<MidiInParam>,
 ) -> Result<(), MSeqError> {
     let midi_out = StdMidiOut::new(out_port)?;
     let midi_controller = MidiController::new(midi_out);
     let ctx = Context::default();
 
-    if let Some(params) = midi_in {
-        let run = Arc::new(Mutex::new((conductor, midi_controller, ctx)));
+    if midi_in.is_empty() {
+        return run_no_input(ctx, midi_controller, conductor);
+    }
+
+    // At most one input is the clock/transport source: the first one marked as slave.
+    let slave_idx = midi_in.iter().position(|p| p.slave);
+    let slave_count = midi_in.iter().filter(|p| p.slave).count();
+    if slave_count > 1 {
+        log::warn!(
+            "{slave_count} MIDI inputs are marked as slave, but a single clock/transport source is \
+             supported: using input {} as the clock source, the others are treated as message-only inputs.",
+            slave_idx.unwrap()
+        );
+    }
+
+    let run = Arc::new(Mutex::new((conductor, midi_controller, ctx)));
+
+    // Connect every input, keeping the connections alive for the whole run.
+    let connections = midi_in
+        .into_iter()
+        .enumerate()
+        .map(|(input_id, params)| connect(input_id, params, Some(input_id) == slave_idx))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    // Spawn one consumer thread per input, each draining its own queue.
+    for (input_id, conn) in connections.iter().enumerate() {
         let run_consumer = run.clone();
-        let midi_in = connect(params)?;
-        let message = midi_in.message.clone();
+        let channel = conn.message.clone();
         thread::spawn(move || {
             loop {
-                let r = run_consumer.lock().unwrap();
-                let mut r = message.1.wait(r).unwrap();
+                // Wait for messages, then swap them out so the callback isn't blocked
+                // while we process.
+                let pending = {
+                    let mut queue = channel.queue.lock().unwrap();
+                    while queue.is_empty() {
+                        queue = channel.condvar.wait(queue).unwrap();
+                    }
+                    core::mem::take(&mut *queue)
+                };
+                let mut r = run_consumer.lock().unwrap();
                 let (ref mut conductor, ref mut controller, ref mut ctx) = *r;
-                let mut queue = message.0.lock().unwrap();
-                ctx.handle_input(conductor, controller, &mut queue);
+                ctx.handle_input(input_id, conductor, controller, pending);
             }
         });
-        if let Some((sys_queue, cond_var)) = midi_in.slave_system {
-            run_slave(run, sys_queue, cond_var)
-        } else {
-            run_master(run)
-        }
+    }
+
+    let slave_system = connections.iter().find_map(|c| c.slave_system.clone());
+    if let Some(slave) = slave_system {
+        run_slave(run, slave)
     } else {
-        run_no_input(ctx, midi_controller, conductor)
+        run_master(run)
     }
 }
 
@@ -200,8 +242,7 @@ fn run_master(
 
 fn run_slave(
     run: Arc<Mutex<(impl Conductor, MidiController<impl MidiOut>, Context)>>,
-    sys_queue: Arc<Mutex<InputQueue>>,
-    sys_cond_var: Arc<Condvar>,
+    slave: NotifyQueue,
 ) -> Result<(), MSeqError> {
     {
         let mut r = run.lock().unwrap();
@@ -212,7 +253,7 @@ fn run_slave(
         ctx.pause();
     }
 
-    // We use the average duration over 24 clock messages (1 beat) to set the BPM
+    // Derive BPM from the duration of 24 clocks (1 beat).
     let mut bpm_counter = 0;
     let mut bmp_time_stamp = Instant::now();
     loop {
@@ -222,43 +263,49 @@ fn run_slave(
             ctx.process_pre_tick(conductor, controller);
         }
 
-        // Check the slave system queue
         enum SysMessage {
             Start,
             Stop,
             Continue,
         }
-        let mut sys_message = None;
-
-        // We quit the loop if we receive clock message
+        // Wait for the next clock, but apply transport messages immediately so
+        // pause/start/resume work even when the master stops clock on stop.
         loop {
-            let mut mutex = sys_queue.lock().unwrap();
-            let queue = &mut *mutex;
             let mut quit_loop = false;
-
-            while let Some(message) = queue.pop_front() {
-                match message {
-                    MidiMessage::Clock => {
-                        quit_loop = true;
-                    }
-                    MidiMessage::Start => {
-                        sys_message = Some(SysMessage::Start);
-                    }
-                    MidiMessage::Stop => {
-                        sys_message = Some(SysMessage::Stop);
-                    }
-                    MidiMessage::Continue => {
-                        sys_message = Some(SysMessage::Continue);
-                    }
-                    _ => unreachable!(),
+            let mut transport = vec![];
+            {
+                let mut mutex = slave.queue.lock().unwrap();
+                while mutex.is_empty() {
+                    mutex = slave.condvar.wait(mutex).unwrap();
                 }
+                while let Some(message) = mutex.pop_front() {
+                    match message {
+                        MidiMessage::Clock => quit_loop = true,
+                        MidiMessage::Start => transport.push(SysMessage::Start),
+                        MidiMessage::Stop => transport.push(SysMessage::Stop),
+                        MidiMessage::Continue => transport.push(SysMessage::Continue),
+                        _ => unreachable!(),
+                    }
+                }
+            }
+
+            // Apply transport with sys_queue released, so the callback isn't blocked.
+            if !transport.is_empty() {
+                let mut r = run.lock().unwrap();
+                let (_, ref mut controller, ref mut ctx) = *r;
+                for message in transport {
+                    match message {
+                        SysMessage::Start => ctx.start(),
+                        SysMessage::Stop => ctx.pause(),
+                        SysMessage::Continue => ctx.resume(),
+                    }
+                }
+                ctx.flush_sys_instructions(controller);
             }
 
             if quit_loop {
                 break;
             }
-
-            let _r = sys_cond_var.wait(mutex).unwrap();
         }
 
         let mut r = run.lock().unwrap();
@@ -268,19 +315,16 @@ fn run_slave(
         if bpm_counter == 24 {
             bpm_counter = 0;
             let duration = bmp_time_stamp.elapsed().as_millis();
-            if let Some(bpm) = 60000_u128.checked_div(duration) {
+            // bpm = 60000ms / beat (24 clocks); skip out-of-range readings so a
+            // stalled or pre-Start clock keeps the last valid bpm.
+            if let Some(bpm) = 60000_u128.checked_div(duration)
+                && (1..=255).contains(&bpm)
+            {
                 ctx.set_bpm(bpm as u8);
             }
             bmp_time_stamp = Instant::now();
         }
 
-        if let Some(sys_message) = sys_message {
-            match sys_message {
-                SysMessage::Start => ctx.start(),
-                SysMessage::Stop => ctx.pause(),
-                SysMessage::Continue => ctx.resume(),
-            }
-        }
         ctx.process_post_tick(controller);
         if !ctx.is_running() {
             break;

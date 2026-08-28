@@ -8,18 +8,29 @@
 //! This crate is built with `#![no_std]`, making it suitable for embedded platforms
 //! as well as standard operating systems.
 //!
+//! It is the portable engine only: it has no MIDI I/O and no run loop of its own, so it is always
+//! used through a platform layer. On a desktop OS, use [`mseq`](https://crates.io/crates/mseq),
+//! which wraps this crate and provides both.
+//!
 //! ## Getting Started
 //!
 //! To create a custom sequencer, you typically:
 //!
 //! - Implement the [`Conductor`] trait to define your sequencer's control logic.
+//!   The sequencer starts paused, so call [`Context::start`] from [`Conductor::init`] to get it
+//!   playing.
 //! - Define one or more tracks by either:
 //!   - Implementing the [`Track`] trait for custom behavior.
 //!   - Instantiating [`DeteTrack`] for deterministic, looping patterns.
 //!
+//! ## Architecture
+//!
+//! See the [schematic](https://github.com/MF-Room/mseq/blob/main/mseq_core/README.md#architecture)
+//! of what you implement and what the engine does with it.
+//!
 //! ## Platform Support
 //!
-//! - For OS-based systems, use the [`mseq`](https://crates.io/crates/mseq) crate — a reference implementation of `mseq_core` for standard platforms.
+//! - For OS-based systems, use the [`mseq`](https://crates.io/crates/mseq) crate, a reference implementation of `mseq_core` for standard platforms.
 //! - For embedded development (e.g., STM32F4), see the [`mseq_embedded`](https://github.com/MF-Room/mseq_embedded) repository, which provides an STM32-specific integration of `mseq_core`.
 //!
 //! ## Crate Features

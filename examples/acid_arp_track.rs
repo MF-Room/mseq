@@ -49,7 +49,7 @@ fn main() {
         MyConductor { acid, arp },
         // The midi port will be selected at runtime by the user
         None,
-        None,
+        Vec::new(),
     ) {
         println!("An error occured: {:?}", e);
     }

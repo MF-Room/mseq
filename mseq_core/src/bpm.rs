@@ -17,7 +17,8 @@ impl Bpm {
     }
 
     fn compute_period_us(bpm: u8) -> u64 {
-        60 * 1000000 / 24 / bpm as u64
+        // Guard against a 0 bpm, which would divide by zero.
+        60 * 1000000 / 24 / bpm.max(1) as u64
     }
 
     pub(crate) fn get_period_us(&self) -> u64 {

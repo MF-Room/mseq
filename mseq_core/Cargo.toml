@@ -1,17 +1,26 @@
 [package]
 name = "mseq_core"
-version = "0.1.6"
+version = "1.0.0"
 edition = "2024"
 license = "LGPL-2.1"
 readme = "README.md"
 repository = "https://github.com/MF-Room/mseq/tree/main/mseq_core"
 authors = ["Julien Eudine <julien@eudine.fr>", "Marius Debussche <marius.debussche@gmail.com>"]
-description = "Library for developing MIDI Sequencers."
+description = "Portable no_std core of the mseq MIDI sequencer framework."
 keywords = ["midi", "music", "sequencer"]
 categories = ["multimedia"]
 
+[features]
+# Internal-only feature that widens the visibility of a few crate internals so
+# that integration tests can reach them.
+# Not part of the public API and should not be enabled by consumers.
+test-internals = []
+
 [dependencies]
-serde = {version = "1.0.208", default-features = false, features = ["derive", "alloc"] }
+serde = {version = "1.0.228", default-features = false, features = ["derive", "alloc"] }
 thiserror = { version="2.0.18", default-features = false }
-hashbrown = "0.17.0"
-log = "0.4.29"
+hashbrown = "0.17.1"
+log = "0.4.33"
+
+[dev-dependencies]
+mseq_core = { path = ".", features = ["test-internals"] }

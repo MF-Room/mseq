@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Schematic of the mseq_core user-facing API. Hand-placed coordinates: edit directly. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="125 0 1715 660" width="1715" height="660"
+     font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="20">
+  <defs>
+    <marker id="a" viewBox="0 0 24 18" refX="4" refY="9" overflow="visible"
+            markerWidth="24" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,0 L24,9 L0,18 z" fill="#3c4650"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1860" height="660" fill="#fdfdfd"/>
+
+  <!-- ================= USER CODE ================= -->
+  <rect x="150" y="40" width="750" height="500" rx="16" fill="#eef1f4" stroke="#48525c" stroke-width="3"/>
+  <text x="525" y="72" text-anchor="middle" font-weight="bold" fill="#1b2129">USER CODE</text>
+
+  <!-- Tracks -->
+  <rect x="175" y="180" width="240" height="245" rx="12" fill="#e3f4ec" stroke="#009e73" stroke-width="3"/>
+  <text x="295" y="218" text-anchor="middle" font-weight="bold" fill="#04372a">Tracks</text>
+  <rect x="195" y="232" width="200" height="54" rx="10" fill="#cfe9de" stroke="#009e73" stroke-width="3"/>
+  <text x="295" y="266" text-anchor="middle" font-weight="bold" fill="#04372a">Track::play_step</text>
+  <circle cx="295" cy="308" r="4.5" fill="#48525c"/>
+  <circle cx="295" cy="323" r="4.5" fill="#48525c"/>
+  <circle cx="295" cy="338" r="4.5" fill="#48525c"/>
+  <rect x="195" y="356" width="200" height="54" rx="10" fill="#cfe9de" stroke="#009e73" stroke-width="3"/>
+  <text x="295" y="390" text-anchor="middle" font-weight="bold" fill="#04372a">Track::play_step</text>
+
+  <!-- Conductor -->
+  <rect x="530" y="90" width="340" height="420" rx="12" fill="#e3f4ec" stroke="#009e73" stroke-width="3"/>
+  <text x="700" y="128" text-anchor="middle" font-weight="bold" fill="#04372a">Conductor</text>
+  <rect x="550" y="138" width="300" height="84" rx="10" fill="#cfe9de" stroke="#009e73" stroke-width="3"/>
+  <text x="700" y="174" text-anchor="middle" font-weight="bold" fill="#04372a">init</text>
+  <text x="700" y="202" text-anchor="middle" fill="#04372a">once, at startup</text>
+  <rect x="550" y="248" width="300" height="84" rx="10" fill="#cfe9de" stroke="#009e73" stroke-width="3"/>
+  <text x="700" y="284" text-anchor="middle" font-weight="bold" fill="#04372a">update</text>
+  <text x="700" y="312" text-anchor="middle" fill="#04372a">on every MIDI clock pulse</text>
+  <rect x="550" y="372" width="300" height="110" rx="10" fill="#cfe9de" stroke="#009e73" stroke-width="3"/>
+  <text x="700" y="408" text-anchor="middle" font-weight="bold" fill="#04372a">handle_input</text>
+  <text x="700" y="436" text-anchor="middle" fill="#04372a">on every incoming message</text>
+  <text x="700" y="464" text-anchor="middle" fill="#04372a">channel messages only</text>
+
+  <!-- ================= ENGINE ================= -->
+  <rect x="1040" y="40" width="540" height="500" rx="16" fill="#eef1f4" stroke="#3c4650" stroke-width="3"/>
+  <text x="1310" y="72" text-anchor="middle" font-weight="bold" fill="#1b2129">ENGINE</text>
+
+  <circle cx="1090" cy="293" r="10" fill="#3c4650"/>
+
+  <rect x="1150" y="98" width="400" height="110" rx="10" fill="#fae0cd" stroke="#d55e00" stroke-width="3"/>
+  <text x="1350" y="134" text-anchor="middle" font-weight="bold" fill="#4a2100">Direct forward</text>
+  <text x="1350" y="162" text-anchor="middle" fill="#4a2100">SendCC · SendPitchBend · MidiMessage</text>
+  <text x="1350" y="190" text-anchor="middle" font-weight="bold" fill="#4a2100">sent right away</text>
+
+  <rect x="1150" y="228" width="400" height="110" rx="10" fill="#d8e7f2" stroke="#0072b2" stroke-width="3"/>
+  <text x="1350" y="264" text-anchor="middle" font-weight="bold" fill="#073350">Sequencer</text>
+  <text x="1350" y="292" text-anchor="middle" fill="#073350">PlayNote · StartNote · StopNote</text>
+  <text x="1350" y="320" text-anchor="middle" font-weight="bold" fill="#073350">sent on the step</text>
+
+  <rect x="1150" y="398" width="400" height="92" rx="10" fill="#f3dfe9" stroke="#b3608e" stroke-width="3"/>
+  <text x="1350" y="434" text-anchor="middle" font-weight="bold" fill="#4a1733">Transport</text>
+  <text x="1350" y="462" text-anchor="middle" fill="#4a1733">Clock · Start · Stop · Continue</text>
+
+  <!-- ================= MIDI in / out ================= -->
+  <rect x="170" y="558" width="150" height="56" rx="12" fill="#ffffff" stroke="#48525c" stroke-width="3"/>
+  <text x="245" y="596" text-anchor="middle" font-weight="bold" fill="#1b2129">MIDI IN</text>
+
+  <rect x="1660" y="262" width="160" height="56" rx="12" fill="#ffffff" stroke="#48525c" stroke-width="3"/>
+  <text x="1740" y="300" text-anchor="middle" font-weight="bold" fill="#1b2129">MIDI OUT</text>
+
+  <!-- ================= edges ================= -->
+  <g fill="none" stroke="#3c4650" stroke-width="4" marker-end="url(#a)">
+    <path d="M 850 180 C 915 180, 995 240, 1065 277"/>
+    <path d="M 850 290 C 915 290, 985 292, 1060 293"/>
+    <path d="M 850 428 C 915 428, 995 360, 1066 312"/>
+    <path d="M 1097 286 C 1110 250, 1125 205, 1143 174"/>
+    <path d="M 1099 294 C 1110 292, 1120 289, 1130 287"/>
+    <path d="M 1550 155 C 1605 155, 1632 240, 1650 273"/>
+    <path d="M 1550 283 C 1590 283, 1615 288, 1640 289"/>
+    <path d="M 1550 444 C 1605 444, 1632 355, 1650 319"/>
+    <path d="M 320 586 C 410 586, 465 468, 530 431"/>
+    <path d="M 320 604 C 640 668, 1020 660, 1303 500"/>
+  </g>
+  <g fill="none" stroke="#3c4650" stroke-width="4" stroke-dasharray="10 8" marker-end="url(#a)">
+    <path d="M 415 316 C 465 316, 500 297, 530 294"/>
+    <path d="M 900 508 C 970 508, 1060 484, 1130 466"/>
+  </g>
+  <text x="472" y="272" text-anchor="middle" fill="#1b2129">instructions</text>
+  <text x="965" y="446" text-anchor="middle" fill="#1b2129">start · pause</text>
+  <text x="965" y="474" text-anchor="middle" fill="#1b2129">resume · quit</text>
+</svg>

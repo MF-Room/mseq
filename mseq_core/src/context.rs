@@ -24,7 +24,6 @@ pub struct Context {
     step: u32,
     running: bool,
     on_pause: bool,
-    pause: bool,
     sys_instructions: Vec<Instruction>,
 }
 
@@ -40,7 +39,6 @@ impl Default for Context {
             step: 0,
             running: true,
             on_pause: true,
-            pause: false,
             sys_instructions: vec![],
         }
     }
@@ -69,9 +67,15 @@ impl Context {
     }
 
     /// Pauses the sequencer and send a MIDI stop message.
+    ///
+    /// While paused, the step counter stops advancing, so step-driven tracks hold
+    /// their position. [`Conductor::update`] is still called every tick but its
+    /// returned instructions are dropped, and the instructions returned by
+    /// [`Conductor::handle_input`] are dropped too, except for
+    /// [`Instruction::MidiMessage`] instructions which are still forwarded directly
+    /// to the MIDI output.
     pub fn pause(&mut self) {
         self.on_pause = true;
-        self.pause = true;
         self.sys_instructions.push(Instruction::StopAllNotes);
         self.sys_instructions.push(Instruction::Stop);
     }
@@ -99,7 +103,7 @@ impl Context {
     }
 
     /// MIDI logic called at the initialization.
-    /// This function is not intended to be called directly by users.  
+    /// This function is not intended to be called directly by users.
     /// `init` is used internally to enable code reuse across platforms.
     pub fn init(
         &mut self,
@@ -113,16 +117,14 @@ impl Context {
     }
 
     /// MIDI logic called before the clock tick.
-    /// This function is not intended to be called directly by users.  
+    /// This function is not intended to be called directly by users.
     /// `process_pre_tick` is used internally to enable code reuse across platforms.
     pub fn process_pre_tick(
         &mut self,
         conductor: &mut impl Conductor,
         controller: &mut MidiController<impl MidiOut>,
     ) {
-        core::mem::take(&mut self.sys_instructions)
-            .into_iter()
-            .for_each(|instruction| controller.execute(instruction));
+        self.flush_sys_instructions(controller);
 
         if self.on_pause {
             conductor.update(self);
@@ -131,19 +133,28 @@ impl Context {
                 .update(self)
                 .into_iter()
                 .for_each(|instruction| controller.execute(instruction));
-        };
+        }
+    }
+
+    /// Immediately sends the pending system instructions (Start / Stop / Continue /
+    /// StopAllNotes) queued by [`start`](Self::start), [`pause`](Self::pause) and
+    /// [`resume`](Self::resume). The slave loop calls this so transport changes take
+    /// effect right away instead of waiting for the next external clock tick.
+    /// This function is not intended to be called directly by users.
+    pub fn flush_sys_instructions(&mut self, controller: &mut MidiController<impl MidiOut>) {
+        core::mem::take(&mut self.sys_instructions)
+            .into_iter()
+            .for_each(|instruction| controller.execute(instruction));
     }
 
     /// MIDI logic called after the clock tick.
-    /// This function is not intended to be called directly by users.  
+    /// This function is not intended to be called directly by users.
     /// `process_post_tick` is used internally to enable code reuse across platforms.
     pub fn process_post_tick(&mut self, controller: &mut MidiController<impl MidiOut>) {
         controller.send_clock();
         if !self.on_pause {
             self.step += 1;
             controller.update(self.step);
-        } else if self.pause {
-            self.pause = false;
         }
     }
 
@@ -159,26 +170,25 @@ impl Context {
 
     /// Internal MIDI input handler.
     ///
-    /// This function is not intended to be called directly by users.  
+    /// This function is not intended to be called directly by users.
     /// Instead, users should implement [`Conductor::handle_input`] for their custom input handler logic.
     ///
     /// `handle_input` is used internally to enable code reuse across platforms and unify MIDI input processing.
     pub fn handle_input(
         &mut self,
+        input_id: usize,
         conductor: &mut impl Conductor,
         controller: &mut MidiController<impl MidiOut>,
-        input_queue: &mut InputQueue,
+        input_queue: InputQueue,
     ) {
-        if self.is_paused() {
-            input_queue
-                .drain(..)
-                .flat_map(|message| conductor.handle_input(message, self))
-                .for_each(drop);
-        } else {
-            input_queue
-                .drain(..)
-                .flat_map(|message| conductor.handle_input(message, self))
-                .for_each(|instruction| controller.execute(instruction));
-        }
+        let paused = self.is_paused();
+        input_queue
+            .into_iter()
+            .flat_map(|input| conductor.handle_input(input_id, input, self))
+            .for_each(|instruction| {
+                if !paused || matches!(instruction, Instruction::MidiMessage { .. }) {
+                    controller.execute(instruction);
+                }
+            });
     }
 }

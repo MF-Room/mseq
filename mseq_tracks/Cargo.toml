@@ -1,29 +1,42 @@
 [package]
 name = "mseq_tracks"
-version = "0.2.5"
+version = "1.0.0"
 edition = "2024"
 license = "LGPL-2.1"
 readme = "README.md"
 repository = "https://github.com/MF-Room/mseq/tree/main/mseq_tracks"
 authors = ["Julien Eudine <julien@eudine.fr>", "Marius Debussche <marius.debussche@gmail.com>"]
-description = "Library for developing MIDI Sequencers."
+description = "Track builders and loaders (acid, arp, clock divider, MIDI files) for the mseq sequencer."
 keywords = ["midi", "music", "sequencer"]
 categories = ["multimedia"]
 
 [dependencies]
-mseq_core = "0.1.6"
-thiserror = "2.0.18"
-midir = "0.11.0"
-serde = {version = "1.0.208", features = ["derive"] }
-csv = {version = "1.4.0"}
-midly = "0.5.3"
-fs-err = "3.3.0"
-log = "0.4.29"
-hashbrown = "0.17"
-toml = "1.1.2"
-itertools = "0.14.0"
+mseq_core = { version = "1.0.0", path = "../mseq_core" }
+serde = { version = "1.0.228", default-features = false, features = ["derive", "alloc"] }
+
+# Only used by the file loading code, which the `std` feature gates.
+csv = { version = "1.4.0", optional = true }
+fs-err = { version = "3.3.1", optional = true }
+hashbrown = { version = "0.17.1", optional = true }
+itertools = { version = "0.15.0", optional = true }
+log = { version = "0.4.33", optional = true }
+midly = { version = "0.5.3", optional = true }
+thiserror = { version = "2.0.18", optional = true }
+toml = { version = "1.1.2", optional = true }
 
 [features]
 default = ["std"]
-std = []
+# File loading (`load_from_file`, the `midi` and `index` modules) and the `TrackError` type.
+# Without it the crate is `no_std` and only the in-memory track builders remain.
+std = [
+    "dep:csv",
+    "dep:fs-err",
+    "dep:hashbrown",
+    "dep:itertools",
+    "dep:log",
+    "dep:midly",
+    "dep:thiserror",
+    "dep:toml",
+    "serde/std",
+]
 

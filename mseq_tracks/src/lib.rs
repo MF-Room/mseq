@@ -1,13 +1,18 @@
-//! # mseq_tracks – MSeq Tracks Construction and Loading
+//! # mseq_tracks
 //!
-//! This crate provides utilities to define, generate, and load different kinds of
-//! sequencer tracks into the MSeq engine. It serves as a bridge between high-level
-//! musical concepts (e.g., acid patterns, arpeggios, dividers, MIDI files) and
-//! the internal [`DeteTrack`] representation used by the sequencer.
+//! Track builders and loaders for the [`mseq`](https://crates.io/crates/mseq) sequencer.
+//! This crate turns high level musical descriptions (acid patterns, arpeggios, dividers,
+//! MIDI files) into the [`DeteTrack`] type that the sequencer plays.
+//!
+//! You do not normally depend on it directly: `mseq` re-exports every module below, so
+//! `mseq::acid::load_from_file(..)` works out of the box.
 //!
 //! [`DeteTrack`]: mseq_core::DeteTrack
 
 #![warn(missing_docs)]
+#![cfg_attr(not(feature = "std"), no_std)]
+
+extern crate alloc;
 
 /// The `acid` module provides tools for generating and loading acid-style
 /// tracks into MSeq.
@@ -23,7 +28,6 @@ pub mod div;
 /// The `midi` module provides tools for generating and loading MIDI
 /// tracks into MSeq.
 pub mod midi;
-extern crate alloc;
 
 #[cfg(feature = "std")]
 /// The `index` module provides functionality for loading multiple track types
@@ -46,7 +50,7 @@ pub enum TrackError {
     #[cfg(feature = "std")]
     #[error("Failed to read file: {0}")]
     Io(#[from] std::io::Error),
-    /// MIDI parsing error from `midly
+    /// MIDI parsing error from `midly`
     #[cfg(feature = "std")]
     #[error("Midly error: {0}")]
     Midly(#[from] midly::Error),

@@ -117,9 +117,23 @@ pub enum MidiMessage {
 }
 
 impl MidiMessage {
+    /// Returns `true` for transport/system messages
+    /// ([`MidiMessage::Clock`], [`MidiMessage::Start`], [`MidiMessage::Continue`],
+    /// [`MidiMessage::Stop`]), which drive synchronization in slave mode, and `false`
+    /// for channel messages (note, CC, PC, pitch bend).
+    ///
+    /// In slave mode these messages are intercepted from the clock source input and
+    /// are not forwarded to [`crate::Conductor::handle_input`].
+    pub fn is_transport(&self) -> bool {
+        matches!(
+            self,
+            MidiMessage::Clock | MidiMessage::Start | MidiMessage::Continue | MidiMessage::Stop
+        )
+    }
+
     /// Parses a byte slice into a `MidiMessage` struct.
     ///
-    /// This function is not intended to be called directly by end users.  
+    /// This function is not intended to be called directly by end users.
     /// It is used internally to ensure consistent MIDI message parsing logic across platforms.
     ///
     /// Returns `Some(MidiMessage)` if the byte slice represents a known and valid MIDI message,
