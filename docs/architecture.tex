@@ -1,0 +1,112 @@
+% Schematic of the mseq_core user-facing API, shown in README.md and mseq_core/README.md.
+% architecture.svg is generated from this file: edit this one, then regenerate it with
+%   pdflatex architecture.tex && pdftocairo -svg architecture.pdf architecture.svg
+%
+% Drawn at paper size (narrower than a two-column text width) so it can go into a paper unscaled:
+% scaling would scale the text too. The style follows the KVSpan paper's figures: Times and
+% Inconsolata (its weight matches Times, so all text looks one size), square boxes, straight
+% arrows with elbows, and Okabe-Ito tints with darkened outlines: green for the user code, one
+% colour per engine path, neutral black!4 for MIDI in and out. Frames and box outlines are thin
+% while every connector is black and thicker, so the two are never confused.
+% All text is \footnotesize; box titles are in bold, code identifiers are in \texttt and keep their
+% case, every other text block starts with a capital.
+\documentclass[tikz,border=0pt]{standalone}
+\usepackage{mathptmx}
+\usepackage[T1]{fontenc}
+\usepackage[varqu]{zi4}
+\usetikzlibrary{backgrounds}
+
+\definecolor{cG}{HTML}{009E73}  % user code: Okabe-Ito bluish green
+\definecolor{cA}{HTML}{E69F00}  % direct forward: Okabe-Ito orange
+\definecolor{cB}{HTML}{56B4E9}  % sequencer: Okabe-Ito sky blue
+\definecolor{cC}{HTML}{9467BD}  % transport: purple
+
+\begin{document}
+% Coordinates in cm, y pointing up, origin at the bottom left of the user code frame
+\begin{tikzpicture}[
+    x=1cm, y=1cm, font=\footnotesize,
+    % White background with a margin, so the figure stays readable in GitHub's dark mode
+    show background rectangle, inner frame sep=6pt,
+    background rectangle/.style={fill=white},
+    frame/.style = {draw=black!35, thin},
+    % Boxes are placed by the middle of their left edge, so lines along a row stay straight
+    obj/.style   = {draw=black!60, thin, fill=black!4, align=center, inner sep=1.5pt, anchor=west},
+    ufrm/.style  = {frame, fill=cG!8, draw=cG!70!black},
+    uobj/.style  = {obj, fill=cG!20, draw=cG!70!black},
+    lane/.style  = {obj, minimum width=4.75cm},
+    meth/.style  = {uobj, minimum width=3.3cm},
+    ttl/.style   = {font=\footnotesize\itshape, anchor=south west, inner sep=1pt},
+    tlab/.style  = {anchor=north west, inner sep=2pt},
+    lbl/.style   = {inner sep=1.5pt},
+    link/.style  = {line width=0.8pt},
+    ar/.style    = {link, -latex},
+    call/.style  = {ar, densely dashed},
+    dot/.style   = {circle, fill, inner sep=0pt, minimum size=4pt},
+  ]
+
+  %% ============================== user code
+  \node[ttl] at (0,4) {User code};
+  \draw[frame] (0,0) rectangle (8.45,4);
+
+  % Tracks, centred on update's row
+  \draw[ufrm] (0.15,1.1) rectangle (2.85,3.15);
+  \node[tlab] at (0.15,3.15) {\textbf{Tracks}};
+  \node[uobj, minimum width=2.4cm, minimum height=0.5cm] at (0.3,2.5) {\textbf{\texttt{Track::play\_step}}};
+  \node at (1.5,2) {$\vdots$};
+  \node[uobj, minimum width=2.4cm, minimum height=0.5cm] at (0.3,1.5) {\textbf{\texttt{Track::play\_step}}};
+
+  % Conductor
+  \draw[ufrm] (4.35,0.15) rectangle (7.95,3.85);
+  \node[tlab] at (4.35,3.85) {\textbf{\texttt{Conductor}}};
+  \node[meth, minimum height=0.8cm] (init) at (4.5,3)
+    {\textbf{\texttt{init}}\\Once, at startup};
+  \node[meth, minimum height=0.8cm] (update) at (4.5,2)
+    {\textbf{\texttt{update}}\\On every MIDI clock pulse};
+  \node[meth, minimum height=1.1cm] (input) at (4.5,0.85)
+    {\textbf{\texttt{handle\_input}}\\On every incoming message\\Channel messages only};
+
+  \draw[call] (2.85,2) -- (update.west) node[lbl, pos=0.455, above] {Instructions};
+
+  %% ============================== engine
+  \node[ttl] at (10.25,4) {Engine};
+  \draw[frame] (10.25,0) rectangle (15.3,4);
+
+  \node[lane, minimum height=1.1cm, fill=cA!30, draw=cA!70!black] (fwd) at (10.4,3.3)
+    {\textbf{Direct forward}\\\texttt{SendCC}, \texttt{SendPitchBend}, \texttt{MidiMessage}\\
+     \textit{Sent right away}};
+  \node[lane, minimum height=1.1cm, fill=cB!45, draw=cB!70!black] (seq) at (10.4,2)
+    {\textbf{Sequencer}\\\texttt{PlayNote}, \texttt{StartNote}, \texttt{StopNote}\\
+     \textit{Sent on the step}};
+  \node[lane, minimum height=0.8cm, fill=cC!60, draw=cC!70!black] (tr) at (10.4,0.55)
+    {\textbf{Transport}\\Clock, Start, Stop, Continue};
+
+  % Every callback returns instructions: they merge beside the conductor, then split by kind
+  \node[dot] (merge) at (8.2,2) {};
+  \node[dot] (split) at (9.95,2) {};
+  \draw[link] (init.east) -| (merge);
+  \draw[link] (input.east) -| (merge);
+  \draw[link] (update.east) -- (merge) -- (split);
+  \draw[ar] (split) -- (seq.west);
+  \draw[ar] (split) |- (fwd.west);
+
+  % The callbacks drive the transport through the context
+  \draw[call] (7.95,0.55) -- (tr.west);
+  \node[lbl, align=center, anchor=south] at (9.35,0.6)
+    {\texttt{start}, \texttt{pause},\\\texttt{resume}, \texttt{quit}};
+
+  %% ============================== MIDI in / out
+  \node[obj, minimum height=0.5cm, inner sep=3pt] (out) at (15.85,2) {\textbf{MIDI out}};
+  \node[dot] (join) at (15.6,2) {};
+  \draw[link] (fwd.east) -| (join);
+  \draw[link] (tr.east) -| (join);
+  \draw[link] (seq.east) -- (join);
+  \draw[ar] (join) -- (out.west);
+
+  % Channel messages go to handle_input; in slave mode, clock and transport messages drive the transport
+  \node[obj, minimum height=0.5cm, inner sep=3pt] (in) at (0.15,-0.5) {\textbf{MIDI in}};
+  \node[dot] (fork) at (input.south |- in) {};
+  \draw[link] (in.east) -- (fork);
+  \draw[ar] (fork) -- (input.south);
+  \draw[ar] (fork) -| (tr.south);
+\end{tikzpicture}
+\end{document}
