@@ -39,6 +39,11 @@ jobs:
       - name: clippy no_std
         run: cargo clippy --workspace --no-default-features -- -D warnings
 
+      - name: clippy mseq_core get-size, embedded target
+        run: |
+          rustup target add thumbv7em-none-eabihf
+          cargo clippy -p mseq_core --features get-size --target thumbv7em-none-eabihf -- -D warnings
+
   test_core:
     name: Test mseq_core
     runs-on: ubuntu-latest

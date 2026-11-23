@@ -30,11 +30,6 @@ pub mod div;
 pub mod midi;
 
 #[cfg(feature = "std")]
-/// The `index` module provides functionality for loading multiple track types
-/// into the MSeq sequencer from a unified `.toml` index file.
-pub mod index;
-
-#[cfg(feature = "std")]
 use thiserror::Error;
 
 /// An error type representing issues that may occur when loading or generating
@@ -70,8 +65,4 @@ pub enum TrackError {
     #[cfg(feature = "std")]
     #[error("Unsupported timing specification")]
     BadTiming,
-    /// Error type related to TOML file parsing.
-    #[cfg(feature = "std")]
-    #[error("Failed to deserialize Toml: {0}")]
-    Toml(#[from] toml::de::Error),
 }
