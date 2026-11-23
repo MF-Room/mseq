@@ -214,3 +214,23 @@ pub fn test_conductor<T: MidiOut>(
     }
     midi_controller.finish();
 }
+
+#[test]
+fn bpm_can_be_unknown() {
+    let mut ctx = Context::default();
+    assert_eq!(ctx.get_bpm(), Some(120));
+
+    ctx.set_bpm(140);
+    assert_eq!(ctx.get_bpm(), Some(140));
+    let period_us = ctx.get_period_us();
+    assert_eq!(period_us, 60 * 1_000_000 / 24 / 140);
+
+    // Clearing the BPM keeps the period of the last known one.
+    ctx.clear_bpm();
+    assert_eq!(ctx.get_bpm(), None);
+    assert_eq!(ctx.get_period_us(), period_us);
+
+    ctx.set_bpm(90);
+    assert_eq!(ctx.get_bpm(), Some(90));
+    assert_eq!(ctx.get_period_us(), 60 * 1_000_000 / 24 / 90);
+}

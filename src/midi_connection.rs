@@ -149,7 +149,7 @@ pub(crate) struct NotifyQueue {
 }
 
 impl NotifyQueue {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             queue: Arc::new(Mutex::new(InputQueue::new())),
             condvar: Arc::new(Condvar::new()),
@@ -157,7 +157,7 @@ impl NotifyQueue {
     }
 
     /// Push a message and wake the waiting consumer.
-    fn push(&self, message: MidiMessage) {
+    pub(crate) fn push(&self, message: MidiMessage) {
         self.queue.lock().unwrap().push_back(message);
         self.condvar.notify_all();
     }
