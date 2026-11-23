@@ -783,7 +783,7 @@ dependencies = [
 
 [[package]]
 name = "mseq"
-version = "4.1.0"
+version = "5.0.0"
 dependencies = [
  "csv",
  "env_logger",
@@ -812,7 +812,7 @@ dependencies = [
 
 [[package]]
 name = "mseq_tracks"
-version = "2.0.0"
+version = "3.0.0"
 dependencies = [
  "csv",
  "fs-err",
