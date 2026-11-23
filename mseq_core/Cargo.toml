@@ -1,6 +1,6 @@
 [package]
 name = "mseq_core"
-version = "1.0.0"
+version = "2.0.0"
 edition = "2024"
 license = "LGPL-2.1-only"
 readme = "README.md"
@@ -17,10 +17,9 @@ categories = ["multimedia"]
 test-internals = []
 
 [dependencies]
-serde = {version = "1.0.228", default-features = false, features = ["derive", "alloc"] }
-thiserror = { version="2.0.18", default-features = false }
-hashbrown = "0.17.1"
-log = "0.4.33"
+serde = {version = "1.0.229", default-features = false, features = ["derive", "alloc"] }
+hashbrown = "0.17.2"
+log = "0.4.35"
 
 [dev-dependencies]
 mseq_core = { path = ".", features = ["test-internals"] }
