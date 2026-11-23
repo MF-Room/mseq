@@ -15,7 +15,9 @@
 //! - **Master mode** → runs with its internal clock while also processing incoming MIDI events
 //!   (except for external clock/transport).
 //! - **Slave mode** → synchronizes playback to an external MIDI clock and responds to
-//!   Start/Stop/Continue messages, dynamically adjusting BPM to match the clock source.
+//!   Start/Stop/Continue messages, dynamically adjusting BPM to match the clock source. The BPM
+//!   is unknown (`None`) until the first beat of clock is measured, and again after 500 ms
+//!   without a clock pulse.
 //!
 //! ## Usage
 //!
@@ -121,7 +123,8 @@ pub enum MSeqError {
 ///   messages while also handling incoming MIDI events (except for clock/transport).
 /// - **Slave mode** (the first `slave` input) → sequencer synchronizes to that input's MIDI clock,
 ///   Start/Stop/Continue messages, and dynamically adjusts BPM to match the external clock source.
-///   The remaining inputs are handled as message-only inputs.
+///   [`Context::get_bpm`] returns `None` until the first beat of clock is measured, and again
+///   after 500 ms without a clock pulse. The remaining inputs are handled as message-only inputs.
 ///
 /// # Errors
 /// Returns an [`MSeqError`] if a MIDI port cannot be opened, if MIDI input/output fails, or if track
@@ -251,11 +254,13 @@ fn run_slave(
 
         // We start in pause mode
         ctx.pause();
+        // A BPM set in init is not the master's: it is unknown until a beat is measured.
+        ctx.clear_bpm();
     }
 
-    // Derive BPM from the duration of 24 clocks (1 beat).
-    let mut bpm_counter = 0;
-    let mut bmp_time_stamp = Instant::now();
+    let mut meter = BpmMeter::default();
+    // Time of the last clock, while the external clock is running.
+    let mut last_clock: Option<Instant> = None;
     loop {
         {
             let mut r = run.lock().unwrap();
@@ -270,22 +275,25 @@ fn run_slave(
         }
         // Wait for the next clock, but apply transport messages immediately so
         // pause/start/resume work even when the master stops clock on stop.
-        loop {
+        let clock_time = loop {
             let mut quit_loop = false;
             let mut transport = vec![];
-            {
-                let mut mutex = slave.queue.lock().unwrap();
-                while mutex.is_empty() {
-                    mutex = slave.condvar.wait(mutex).unwrap();
-                }
-                while let Some(message) = mutex.pop_front() {
-                    match message {
-                        MidiMessage::Clock => quit_loop = true,
-                        MidiMessage::Start => transport.push(SysMessage::Start),
-                        MidiMessage::Stop => transport.push(SysMessage::Stop),
-                        MidiMessage::Continue => transport.push(SysMessage::Continue),
-                        _ => unreachable!(),
-                    }
+            let Some(messages) = take_sys_messages(&slave, last_clock.map(|t| t + CLOCK_TIMEOUT))
+            else {
+                // The external clock stopped: the BPM is unknown until it runs for a beat again.
+                last_clock = None;
+                meter.reset();
+                run.lock().unwrap().2.clear_bpm();
+                continue;
+            };
+            let received = Instant::now();
+            for message in messages {
+                match message {
+                    MidiMessage::Clock => quit_loop = true,
+                    MidiMessage::Start => transport.push(SysMessage::Start),
+                    MidiMessage::Stop => transport.push(SysMessage::Stop),
+                    MidiMessage::Continue => transport.push(SysMessage::Continue),
+                    _ => unreachable!(),
                 }
             }
 
@@ -304,25 +312,16 @@ fn run_slave(
             }
 
             if quit_loop {
-                break;
+                break received;
             }
-        }
+        };
 
         let mut r = run.lock().unwrap();
         let (_, ref mut controller, ref mut ctx) = *r;
 
-        bpm_counter += 1;
-        if bpm_counter == 24 {
-            bpm_counter = 0;
-            let duration = bmp_time_stamp.elapsed().as_millis();
-            // bpm = 60000ms / beat (24 clocks); skip out-of-range readings so a
-            // stalled or pre-Start clock keeps the last valid bpm.
-            if let Some(bpm) = 60000_u128.checked_div(duration)
-                && (1..=255).contains(&bpm)
-            {
-                ctx.set_bpm(bpm as u8);
-            }
-            bmp_time_stamp = Instant::now();
+        last_clock = Some(clock_time);
+        if let Some(bpm) = meter.clock(clock_time) {
+            ctx.set_bpm(bpm);
         }
 
         ctx.process_post_tick(controller);
@@ -337,4 +336,175 @@ fn run_slave(
     let mut clock = Clock::new();
     clock.tick(&Duration::from_micros(ctx.get_period_us()));
     Ok(())
+}
+
+/// How long the external clock can stay silent before the slave loop considers it stopped and
+/// the BPM unknown. 500 ms between two clocks is a tempo of 5 BPM, far slower than any music and
+/// far longer than any clock jitter.
+const CLOCK_TIMEOUT: Duration = Duration::from_millis(500);
+
+/// Number of MIDI clocks in a beat (quarter note): the interval the BPM is measured over.
+const CLOCKS_PER_BEAT: u32 = 24;
+
+/// Measures the BPM of an external MIDI clock, from the time one beat takes.
+#[derive(Default)]
+struct BpmMeter {
+    /// Time of the clock that opened the current beat, if one did.
+    start: Option<Instant>,
+    /// Number of clocks received since `start`.
+    clocks: u32,
+}
+
+impl BpmMeter {
+    /// Records a clock received at `now`. Returns the BPM on the clock that ends a beat, if it
+    /// is in range (1 to 255): an out-of-range reading leaves the BPM as it was.
+    fn clock(&mut self, now: Instant) -> Option<u8> {
+        let Some(start) = self.start else {
+            // The first clock only opens the beat.
+            self.start = Some(now);
+            self.clocks = 0;
+            return None;
+        };
+        self.clocks += 1;
+        if self.clocks < CLOCKS_PER_BEAT {
+            return None;
+        }
+        self.start = Some(now);
+        self.clocks = 0;
+        // bpm = 60000 ms / beat
+        let duration = now.duration_since(start).as_millis();
+        60000_u128
+            .checked_div(duration)
+            .and_then(|bpm| u8::try_from(bpm).ok())
+            .filter(|&bpm| bpm >= 1)
+    }
+
+    /// Forgets the current beat: the next clock opens a new one.
+    fn reset(&mut self) {
+        *self = Self::default();
+    }
+}
+
+/// Waits until the slave queue holds messages and takes them all. With a `deadline`, returns
+/// `None` if it passes with nothing queued.
+fn take_sys_messages(slave: &NotifyQueue, deadline: Option<Instant>) -> Option<InputQueue> {
+    let mut queue = slave.queue.lock().unwrap();
+    while queue.is_empty() {
+        match deadline {
+            None => queue = slave.condvar.wait(queue).unwrap(),
+            Some(deadline) => {
+                let remaining = deadline.saturating_duration_since(Instant::now());
+                if remaining.is_zero() {
+                    return None;
+                }
+                queue = slave.condvar.wait_timeout(queue, remaining).unwrap().0;
+            }
+        }
+    }
+    Some(core::mem::take(&mut *queue))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Sends one beat (24 clocks after the first) at `bpm` to `meter`, starting at `start`.
+    /// Returns what each clock returned and the time of the last clock.
+    fn beat(meter: &mut BpmMeter, start: Instant, bpm: u64) -> (Vec<Option<u8>>, Instant) {
+        let period = Duration::from_micros(60_000_000 / 24 / bpm);
+        let readings = (1..=CLOCKS_PER_BEAT)
+            .map(|i| meter.clock(start + period * i))
+            .collect();
+        (readings, start + period * CLOCKS_PER_BEAT)
+    }
+
+    #[test]
+    fn bpm_meter_measures_a_beat() {
+        let mut meter = BpmMeter::default();
+        let t0 = Instant::now();
+        // The first clock only opens the beat.
+        assert_eq!(meter.clock(t0), None);
+        let (readings, t1) = beat(&mut meter, t0, 120);
+        assert!(readings[..23].iter().all(Option::is_none));
+        assert_eq!(readings[23], Some(120));
+
+        // The next beat starts where this one ended.
+        let (readings, _) = beat(&mut meter, t1, 90);
+        assert_eq!(readings[23], Some(90));
+    }
+
+    #[test]
+    fn bpm_meter_ignores_the_wait_before_the_first_clock() {
+        let mut meter = BpmMeter::default();
+        // A meter created at t0 whose first clock only comes 3 s later.
+        let first = Instant::now() + Duration::from_secs(3);
+        assert_eq!(meter.clock(first), None);
+        let (readings, _) = beat(&mut meter, first, 120);
+        assert_eq!(readings[23], Some(120));
+    }
+
+    #[test]
+    fn bpm_meter_reset_restarts_the_beat() {
+        let mut meter = BpmMeter::default();
+        let t0 = Instant::now();
+        let period = Duration::from_micros(60_000_000 / 24 / 120);
+        for i in 0..10 {
+            assert_eq!(meter.clock(t0 + period * i), None);
+        }
+        meter.reset();
+
+        // The clock resumes 2 s later: the gap is not part of the next beat.
+        let resume = t0 + Duration::from_secs(2);
+        assert_eq!(meter.clock(resume), None);
+        let (readings, _) = beat(&mut meter, resume, 120);
+        assert!(readings[..23].iter().all(Option::is_none));
+        assert_eq!(readings[23], Some(120));
+    }
+
+    #[test]
+    fn bpm_meter_skips_out_of_range_readings() {
+        let mut meter = BpmMeter::default();
+        let t0 = Instant::now();
+        assert_eq!(meter.clock(t0), None);
+        // A 200 ms beat is 300 BPM, which does not fit in a u8.
+        let period = Duration::from_millis(200) / CLOCKS_PER_BEAT;
+        let last = (1..=CLOCKS_PER_BEAT)
+            .map(|i| meter.clock(t0 + period * i))
+            .last();
+        assert_eq!(last, Some(None));
+    }
+
+    #[test]
+    fn take_sys_messages_times_out_on_an_empty_queue() {
+        let slave = NotifyQueue::new();
+        let start = Instant::now();
+        let timeout = Duration::from_millis(50);
+        assert!(take_sys_messages(&slave, Some(start + timeout)).is_none());
+        assert!(start.elapsed() >= timeout);
+    }
+
+    #[test]
+    fn take_sys_messages_returns_messages_pushed_before_the_deadline() {
+        let slave = NotifyQueue::new();
+        let producer = slave.clone();
+        let handle = thread::spawn(move || {
+            thread::sleep(Duration::from_millis(20));
+            producer.push(MidiMessage::Clock);
+        });
+        let messages = take_sys_messages(&slave, Some(Instant::now() + Duration::from_secs(5)));
+        handle.join().unwrap();
+        assert_eq!(messages, Some(InputQueue::from([MidiMessage::Clock])));
+    }
+
+    #[test]
+    fn take_sys_messages_without_deadline_returns_queued_messages() {
+        let slave = NotifyQueue::new();
+        slave.push(MidiMessage::Start);
+        slave.push(MidiMessage::Clock);
+        assert_eq!(
+            take_sys_messages(&slave, None),
+            Some(InputQueue::from([MidiMessage::Start, MidiMessage::Clock]))
+        );
+        assert!(slave.queue.lock().unwrap().is_empty());
+    }
 }

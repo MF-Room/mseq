@@ -69,7 +69,7 @@ How the sequencer is clocked depends on the inputs you give to [`run`]:
 
 - **No input** → runs standalone with its internal clock and transport, generating MIDI clock and transport messages but ignoring external MIDI input.
 - **Master mode** → runs with its internal clock while also processing incoming MIDI events (except for external clock/transport).
-- **Slave mode** → synchronizes playback to an external MIDI clock and responds to Start/Stop/Continue messages, dynamically adjusting BPM to match the clock source.
+- **Slave mode** → synchronizes playback to an external MIDI clock and responds to Start/Stop/Continue messages, dynamically adjusting BPM to match the clock source. `ctx.get_bpm()` returns `None` until the first beat of clock is measured, and again after 500 ms without a clock pulse.
 
 ## Tracks
 
@@ -117,6 +117,14 @@ Implementing [`Track`] yourself is just as easy, from simple step sequencers to 
 ## Examples
 
 You can find ready-to-run examples in the [examples](https://github.com/MF-Room/mseq/tree/main/examples) directory. They demonstrate various usage patterns, from simple standalone sequencers to multi-track setups.
+
+## License
+
+Licensed under the GNU Lesser General Public License, version 2.1 only (`LGPL-2.1-only`). See
+[LICENSE](LICENSE).
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in mseq by
+you shall be licensed as LGPL-2.1-only, without any additional terms or conditions.
 
 [`Conductor`]: https://docs.rs/mseq/latest/mseq/trait.Conductor.html
 [`Conductor::init`]: https://docs.rs/mseq/latest/mseq/trait.Conductor.html#tymethod.init

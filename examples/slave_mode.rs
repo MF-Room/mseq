@@ -18,7 +18,11 @@ impl Conductor for MyConductor {
 
         let mut ins = vec![];
         if step.is_multiple_of(24) {
-            println!("BPM: {}", context.get_bpm());
+            // The BPM is unknown until the first beat of external clock has been measured
+            match context.get_bpm() {
+                Some(bpm) => println!("BPM: {bpm}"),
+                None => println!("BPM: unknown"),
+            }
 
             // Simple 4 on the floor
             let note = MidiNote {

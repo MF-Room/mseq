@@ -41,3 +41,11 @@ and a sample index file in
 - `std` (default): file loading and the `TrackError` type. Without it the crate is `no_std`,
   the `midi` and `index` modules disappear, and only the in-memory builders `acid::new`,
   `arp::new` and `div::new` remain.
+
+## License
+
+Licensed under the GNU Lesser General Public License, version 2.1 only (`LGPL-2.1-only`). See
+[LICENSE](https://github.com/MF-Room/mseq/blob/main/mseq_tracks/LICENSE).
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in mseq_tracks by
+you shall be licensed as LGPL-2.1-only, without any additional terms or conditions.

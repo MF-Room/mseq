@@ -50,13 +50,33 @@ impl Context {
         self.bpm.set_bpm(bpm);
     }
 
-    /// Gets the current BPM of the sequencer.
-    pub fn get_bpm(&self) -> u8 {
+    /// Gets the current BPM of the sequencer, or `None` if it is unknown.
+    ///
+    /// Without a slave input, the BPM is always known: it is the one set with
+    /// [`set_bpm`](Self::set_bpm), 120 by default.
+    ///
+    /// In slave mode, the BPM is measured from the external MIDI clock, once per beat
+    /// (24 clocks). It is `None` until the first beat has been measured, and again once the
+    /// external clock stops (the desktop `mseq` crate treats 500 ms without a clock pulse
+    /// as a stop).
+    /// [`Conductor::update`] is only called on a clock pulse, so while the clock is
+    /// stopped a conductor sees `None` in [`Conductor::handle_input`], and in `update`
+    /// during the first beat after the clock resumes.
+    pub fn get_bpm(&self) -> Option<u8> {
         self.bpm.get_bpm()
+    }
+
+    /// Marks the BPM as unknown: [`get_bpm`](Self::get_bpm) returns `None` until the next
+    /// [`set_bpm`](Self::set_bpm). The slave loop calls it before the first beat of external
+    /// clock has been measured and when the external clock stops.
+    /// This function is not intended to be called directly by users.
+    pub fn clear_bpm(&mut self) {
+        self.bpm.clear();
     }
 
     /// Gets the current period (in microsec) of the sequencer.
     /// A period represents the amount of time between each MIDI clock messages.
+    /// While the BPM is unknown, this is the period of the last known BPM.
     pub fn get_period_us(&self) -> u64 {
         self.bpm.get_period_us()
     }

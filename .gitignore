@@ -1,3 +1,7 @@
 /target
-/Cargo.lock
 /.vscode
+/docs/*.aux
+/docs/*.log
+/docs/*.pdf
+# macOS AppleDouble files, from the share the repo is checked out on
+._*
