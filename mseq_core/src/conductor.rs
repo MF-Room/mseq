@@ -9,10 +9,13 @@ use crate::{Context, MidiMessage, midi_controller::Instruction};
 /// is initialized, updated, and how it responds to external inputs. It serves as the
 /// core integration point between the `mseq_core` engine and user-defined sequencing logic.
 ///
-/// This trait provides three key methods:
+/// This trait provides four methods:
 ///
+/// - [`Self::init`] — Called once at startup to set up state.
 /// - [`Self::update`] — Called at each step to update the sequencer logic (e.g., advance position, trigger tracks).
 /// - [`Self::handle_input`] — Called when an external input (e.g., MIDI event) is received.
+/// - [`Self::context_changed`] — Called when the runtime changes the [`Context`] between two
+///   steps (e.g., the external clock stops in slave mode).
 ///
 /// # Example
 ///
@@ -70,4 +73,24 @@ pub trait Conductor {
     ) -> Vec<Instruction> {
         vec![]
     }
+
+    /// Called when the runtime changes the [`Context`] between two steps, so that no
+    /// [`update`](Self::update) sees the change when it happens.
+    ///
+    /// In slave mode, `update` only runs on a pulse of the external clock, so while that clock
+    /// is stopped nothing else would tell the conductor that the transport or the BPM changed.
+    /// Use this method to refresh whatever depends on them, such as a display of
+    /// [`Context::get_bpm`] or [`Context::is_paused`].
+    ///
+    /// The `mseq` runtime calls it in slave mode only, as the context otherwise changes through
+    /// the conductor's own calls:
+    ///
+    /// - right after [`init`](Self::init), once the runtime has paused the sequencer and cleared
+    ///   the BPM (a BPM set in `init` is not the external clock's);
+    /// - after it applies a Start, Stop or Continue message from the external clock source;
+    /// - when the external clock stops (500 ms without a clock pulse) and the BPM becomes
+    ///   unknown.
+    ///
+    /// Does nothing by default.
+    fn context_changed(&mut self, _context: &Context) {}
 }

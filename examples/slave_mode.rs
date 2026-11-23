@@ -39,6 +39,19 @@ impl Conductor for MyConductor {
         }
         ins
     }
+
+    fn context_changed(&mut self, context: &mseq::Context) {
+        // Called between clock pulses, e.g. on Start/Stop or when the external clock stops
+        let transport = if context.is_paused() {
+            "paused"
+        } else {
+            "playing"
+        };
+        match context.get_bpm() {
+            Some(bpm) => println!("Transport: {transport}, BPM: {bpm}"),
+            None => println!("Transport: {transport}, BPM: unknown"),
+        }
+    }
 }
 
 fn main() {

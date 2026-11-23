@@ -47,10 +47,12 @@ fn main() -> Result<(), mseq::MSeqError> {
 
 You implement a [`Conductor`], and optionally one or more [`Track`]s. The engine calls `init` once at
 startup, `update` on every MIDI clock pulse, and `handle_input` whenever a MIDI message comes in.
-Every call receives a `Context` and returns a `Vec<Instruction>`: control changes and raw messages
-are forwarded straight to the output, while notes are played on the step grid with their note-offs
-scheduled for you. Transport (`start`, `pause`, `resume`, `quit`) is driven through the `Context`.
-This is the whole surface you deal with:
+Each of these calls receives a `Context` and returns a `Vec<Instruction>`: control changes and raw
+messages are forwarded straight to the output, while notes are played on the step grid with their
+note-offs scheduled for you. Transport (`start`, `pause`, `resume`, `quit`) is driven through the
+`Context`. In slave mode, the engine also calls `context_changed` when the context changes between
+two clock pulses; it only reads the context and returns nothing. This is the whole surface you deal
+with:
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/MF-Room/mseq/main/docs/architecture.svg"
@@ -64,6 +66,7 @@ A [`Conductor`] defines how your sequencer behaves:
 - [`Conductor::init`] is called once at startup, to set up state and emit initial [`Instruction`]s (program changes, reset messages, and so on). Call `ctx.start()` here to leave the initial pause.
 - [`Conductor::update`] is called at every clock tick, to advance the sequencer and emit the instructions for that tick.
 - [`Conductor::handle_input`] is called when a [`MidiMessage`] arrives, with a 0-based `input_id` telling you which input it came from. While paused, only `Instruction::MidiMessage` is forwarded to the output, and every other instruction is dropped.
+- [`Conductor::context_changed`] is called in slave mode when the runtime changes the context between two clock pulses: right after `init`, on a Start/Stop/Continue, and when the external clock stops and the BPM becomes unknown. `update` only runs on a clock pulse, so use it to refresh whatever shows the transport or the BPM. It does nothing by default.
 
 How the sequencer is clocked depends on the inputs you give to [`run`]:
 
@@ -130,6 +133,7 @@ you shall be licensed as LGPL-2.1-only, without any additional terms or conditio
 [`Conductor::init`]: https://docs.rs/mseq/latest/mseq/trait.Conductor.html#tymethod.init
 [`Conductor::update`]: https://docs.rs/mseq/latest/mseq/trait.Conductor.html#tymethod.update
 [`Conductor::handle_input`]: https://docs.rs/mseq/latest/mseq/trait.Conductor.html#method.handle_input
+[`Conductor::context_changed`]: https://docs.rs/mseq/latest/mseq/trait.Conductor.html#method.context_changed
 [`Track`]: https://docs.rs/mseq/latest/mseq/trait.Track.html
 [`DeteTrack`]: https://docs.rs/mseq/latest/mseq/struct.DeteTrack.html
 [`Instruction`]: https://docs.rs/mseq/latest/mseq/enum.Instruction.html
