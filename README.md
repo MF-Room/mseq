@@ -47,10 +47,12 @@ fn main() -> Result<(), mseq::MSeqError> {
 
 You implement a [`Conductor`], and optionally one or more [`Track`]s. The engine calls `init` once at
 startup, `update` on every MIDI clock pulse, and `handle_input` whenever a MIDI message comes in.
-Every call receives a `Context` and returns a `Vec<Instruction>`: control changes and raw messages
-are forwarded straight to the output, while notes are played on the step grid with their note-offs
-scheduled for you. Transport (`start`, `pause`, `resume`, `quit`) is driven through the `Context`.
-This is the whole surface you deal with:
+Each of these calls receives a `Context` and returns a `Vec<Instruction>`: control changes and raw
+messages are forwarded straight to the output, while notes are played on the step grid with their
+note-offs scheduled for you. Transport (`start`, `pause`, `resume`, `quit`) is driven through the
+`Context`. In slave mode, the engine also calls `context_changed` when the context changes between
+two clock pulses; it only reads the context and returns nothing. This is the whole surface you deal
+with:
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/MF-Room/mseq/main/docs/architecture.svg"

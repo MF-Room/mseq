@@ -50,8 +50,8 @@
   ]
 
   %% ============================== user code
-  \node[ttl] at (0,4) {User code};
-  \draw[frame] (0,0) rectangle (8.6,4);
+  \node[ttl] at (0,5.3) {User code};
+  \draw[frame] (0,0) rectangle (8.6,5.3);
 
   % Tracks, centred on update's row
   \draw[ufrm] (0.15,1.1) rectangle (2.85,3.15);
@@ -61,10 +61,13 @@
   \node[uobj, minimum width=2.4cm, minimum height=0.5cm] at (0.3,1.5) {\textbf{\texttt{Track::play\_step}}};
 
   % Conductor
-  \draw[ufrm] (4.45,0.15) rectangle (8.2,3.85);
-  \node[tlab] at (4.45,3.85) {\textbf{\texttt{Conductor}}};
-  \node[meth, minimum height=0.8cm] (init) at (4.6,3)
+  \draw[ufrm] (4.45,0.15) rectangle (8.2,5.15);
+  \node[tlab] at (4.45,5.15) {\textbf{\texttt{Conductor}}};
+  \node[meth, minimum height=0.8cm] (init) at (4.6,4.3)
     {\textbf{\texttt{init}}\\Once, at startup};
+  % context_changed only reads the context and returns nothing, so it has no connector
+  \node[meth, minimum height=1.1cm] (changed) at (4.6,3.15)
+    {\textbf{\texttt{context\_changed}}\\In slave mode, on a change\\between two clock pulses};
   \node[meth, minimum height=0.8cm] (update) at (4.6,2)
     {\textbf{\texttt{update}}\\On every MIDI clock pulse};
   \node[meth, minimum height=1.1cm] (input) at (4.6,0.85)
@@ -73,10 +76,10 @@
   \draw[call] (2.85,2) -- (update.west) node[lbl, pos=0.457, above] {Instructions};
 
   %% ============================== engine
-  \node[ttl] at (10.35,4) {Engine};
-  \draw[frame] (10.35,0) rectangle (15.35,4);
+  \node[ttl] at (10.35,5.3) {Engine};
+  \draw[frame] (10.35,0) rectangle (15.35,5.3);
 
-  \node[lane, minimum height=1.1cm, fill=cA!30, draw=cA!70!black] (fwd) at (10.5,3.3)
+  \node[lane, minimum height=1.1cm, fill=cA!30, draw=cA!70!black] (fwd) at (10.5,3.9)
     {\textbf{Direct forward}\\\texttt{SendCC}, \texttt{SendPitchBend}, \texttt{MidiMessage}\\
      \textit{Sent right away}};
   \node[lane, minimum height=1.1cm, fill=cB!45, draw=cB!70!black] (seq) at (10.5,2)
@@ -85,7 +88,8 @@
   \node[lane, minimum height=0.8cm, fill=cC!60, draw=cC!70!black] (tr) at (10.5,0.55)
     {\textbf{Transport}\\Clock, Start, Stop, Continue};
 
-  % Every callback returns instructions: they merge beside the conductor, then split by kind
+  % init, update and handle_input return instructions: they merge beside the conductor, then
+  % split by kind
   \node[dot] (merge) at (8.4,2) {};
   \node[dot] (split) at (10.05,2) {};
   \draw[link] (init.east) -| (merge);
