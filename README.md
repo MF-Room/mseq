@@ -118,6 +118,14 @@ Implementing [`Track`] yourself is just as easy, from simple step sequencers to 
 
 You can find ready-to-run examples in the [examples](https://github.com/MF-Room/mseq/tree/main/examples) directory. They demonstrate various usage patterns, from simple standalone sequencers to multi-track setups.
 
+## License
+
+Licensed under the GNU Lesser General Public License, version 2.1 only (`LGPL-2.1-only`). See
+[LICENSE](LICENSE).
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in mseq by
+you shall be licensed as LGPL-2.1-only, without any additional terms or conditions.
+
 [`Conductor`]: https://docs.rs/mseq/latest/mseq/trait.Conductor.html
 [`Conductor::init`]: https://docs.rs/mseq/latest/mseq/trait.Conductor.html#tymethod.init
 [`Conductor::update`]: https://docs.rs/mseq/latest/mseq/trait.Conductor.html#tymethod.update

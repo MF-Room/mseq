@@ -46,3 +46,11 @@ This is the whole surface you deal with:
 - No `std` dependency (`#![no_std]` compatible).
 - Modular and extensible design.
 - Reusable across multiple platforms.
+
+## License
+
+Licensed under the GNU Lesser General Public License, version 2.1 only (`LGPL-2.1-only`). See
+[LICENSE](https://github.com/MF-Room/mseq/blob/main/mseq_core/LICENSE).
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in mseq_core by
+you shall be licensed as LGPL-2.1-only, without any additional terms or conditions.
