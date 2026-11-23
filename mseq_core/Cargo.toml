@@ -11,6 +11,9 @@ keywords = ["midi", "music", "sequencer"]
 categories = ["multimedia"]
 
 [features]
+# Derives get-size2's `GetSize` on `Note`, `MidiNote` and `DeteTrack`, so that they can be kept in
+# a store that measures the values it caches, such as objshelf.
+get-size = ["dep:get-size2"]
 # Internal-only feature that widens the visibility of a few crate internals so
 # that integration tests can reach them.
 # Not part of the public API and should not be enabled by consumers.
@@ -20,6 +23,11 @@ test-internals = []
 serde = {version = "1.0.229", default-features = false, features = ["derive", "alloc"] }
 hashbrown = "0.17.2"
 log = "0.4.35"
+get-size2 = { version = "0.11.1", default-features = false, features = ["alloc", "derive"], optional = true }
+
+# docs.rs builds with the default features only: this documents the GetSize impls too.
+[package.metadata.docs.rs]
+features = ["get-size"]
 
 [dev-dependencies]
 mseq_core = { path = ".", features = ["test-internals"] }

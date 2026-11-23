@@ -38,6 +38,13 @@
 //! - No `std` dependency (`#![no_std]` compatible).
 //! - Modular and extensible design.
 //! - Reusable across multiple platforms.
+//!
+//! ## Feature Flags
+//!
+//! - `get-size` (off by default): derives `GetSize` from
+//!   [`get-size2`](https://crates.io/crates/get-size2) on [`Note`], [`MidiNote`] and
+//!   [`DeteTrack`], so that tracks can be kept in a store that measures the values it caches, such
+//!   as [`objshelf`](https://crates.io/crates/objshelf).
 
 #![warn(missing_docs)]
 #![no_std]

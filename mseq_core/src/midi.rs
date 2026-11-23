@@ -17,6 +17,7 @@ pub(crate) fn is_valid_channel(channel: u8) -> bool {
 
 /// Note that can be sent through a MIDI message.
 #[derive(Default, Clone, Copy, PartialEq, Eq, Debug, Deserialize, Serialize, Hash)]
+#[cfg_attr(feature = "get-size", derive(get_size2::GetSize))]
 pub struct MidiNote {
     /// The chromatic note (A to G)
     pub note: Note,

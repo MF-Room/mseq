@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 /// Represents 1 note of the chromatic scale.
 #[derive(Debug, Default, Clone, PartialEq, Copy, Eq, Deserialize, Serialize, Hash)]
+#[cfg_attr(feature = "get-size", derive(get_size2::GetSize))]
 pub enum Note {
     #[default]
     /// C

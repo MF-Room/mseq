@@ -33,6 +33,7 @@ pub trait Track {
 ///
 /// A track with a length of 0 plays nothing and logs a warning.
 #[derive(Default, Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "get-size", derive(get_size2::GetSize))]
 pub struct DeteTrack {
     len: u32,
     notes: Vec<(MidiNote, u32, u32)>, // (Note, start step, length)
