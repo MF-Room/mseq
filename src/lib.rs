@@ -124,7 +124,9 @@ pub enum MSeqError {
 /// - **Slave mode** (the first `slave` input) → sequencer synchronizes to that input's MIDI clock,
 ///   Start/Stop/Continue messages, and dynamically adjusts BPM to match the external clock source.
 ///   [`Context::get_bpm`] returns `None` until the first beat of clock is measured, and again
-///   after 500 ms without a clock pulse. The remaining inputs are handled as message-only inputs.
+///   after 500 ms without a clock pulse. Changes to the context between two clock pulses are
+///   reported through [`Conductor::context_changed`]. The remaining inputs are handled as
+///   message-only inputs.
 ///
 /// # Errors
 /// Returns an [`MSeqError`] if a MIDI port cannot be opened, if MIDI input/output fails, or if track
@@ -256,6 +258,8 @@ fn run_slave(
         ctx.pause();
         // A BPM set in init is not the master's: it is unknown until a beat is measured.
         ctx.clear_bpm();
+        // Both override what init left in the context.
+        conductor.context_changed(ctx);
     }
 
     let mut meter = BpmMeter::default();
@@ -283,7 +287,11 @@ fn run_slave(
                 // The external clock stopped: the BPM is unknown until it runs for a beat again.
                 last_clock = None;
                 meter.reset();
-                run.lock().unwrap().2.clear_bpm();
+                let mut r = run.lock().unwrap();
+                let (ref mut conductor, _, ref mut ctx) = *r;
+                ctx.clear_bpm();
+                // No update runs until the clock is back, so tell the conductor now.
+                conductor.context_changed(ctx);
                 continue;
             };
             let received = Instant::now();
@@ -300,7 +308,7 @@ fn run_slave(
             // Apply transport with sys_queue released, so the callback isn't blocked.
             if !transport.is_empty() {
                 let mut r = run.lock().unwrap();
-                let (_, ref mut controller, ref mut ctx) = *r;
+                let (ref mut conductor, ref mut controller, ref mut ctx) = *r;
                 for message in transport {
                     match message {
                         SysMessage::Start => ctx.start(),
@@ -309,6 +317,9 @@ fn run_slave(
                     }
                 }
                 ctx.flush_sys_instructions(controller);
+                // A master that stops its clock on stop sends no clock after it, so no update
+                // would see the transport change.
+                conductor.context_changed(ctx);
             }
 
             if quit_loop {
@@ -506,5 +517,126 @@ mod tests {
             Some(InputQueue::from([MidiMessage::Start, MidiMessage::Clock]))
         );
         assert!(slave.queue.lock().unwrap().is_empty());
+    }
+
+    /// A MIDI output that drops everything.
+    struct NullMidiOut;
+
+    impl MidiOut for NullMidiOut {
+        type Error = std::convert::Infallible;
+        fn send_start(&mut self) -> Result<(), Self::Error> {
+            Ok(())
+        }
+        fn send_continue(&mut self) -> Result<(), Self::Error> {
+            Ok(())
+        }
+        fn send_stop(&mut self) -> Result<(), Self::Error> {
+            Ok(())
+        }
+        fn send_clock(&mut self) -> Result<(), Self::Error> {
+            Ok(())
+        }
+        fn send_note_on(&mut self, _: u8, _: u8, _: u8) -> Result<(), Self::Error> {
+            Ok(())
+        }
+        fn send_note_off(&mut self, _: u8, _: u8) -> Result<(), Self::Error> {
+            Ok(())
+        }
+        fn send_cc(&mut self, _: u8, _: u8, _: u8) -> Result<(), Self::Error> {
+            Ok(())
+        }
+        fn send_pc(&mut self, _: u8, _: u8) -> Result<(), Self::Error> {
+            Ok(())
+        }
+        fn send_pitch_bend(&mut self, _: u8, _: u16) -> Result<(), Self::Error> {
+            Ok(())
+        }
+    }
+
+    /// Records `(is_paused, bpm)` on every `context_changed`.
+    #[derive(Default)]
+    struct RecordingConductor {
+        changes: Vec<(bool, Option<u8>)>,
+    }
+
+    impl Conductor for RecordingConductor {
+        fn init(&mut self, context: &mut Context) -> Vec<Instruction> {
+            // Not the external clock's BPM: the slave loop clears it.
+            context.set_bpm(90);
+            vec![]
+        }
+
+        fn update(&mut self, _context: &mut Context) -> Vec<Instruction> {
+            vec![]
+        }
+
+        fn context_changed(&mut self, context: &Context) {
+            self.changes.push((context.is_paused(), context.get_bpm()));
+        }
+    }
+
+    type SlaveState = (RecordingConductor, MidiController<NullMidiOut>, Context);
+
+    /// Waits until `condition` holds on the state shared with `run_slave`, for at most 5 s.
+    fn wait_until(run: &Arc<Mutex<SlaveState>>, condition: impl Fn(&SlaveState) -> bool) {
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while !condition(&run.lock().unwrap()) {
+            assert!(Instant::now() < deadline, "timed out waiting on run_slave");
+            thread::sleep(Duration::from_millis(1));
+        }
+    }
+
+    /// Waits for the conductor to have seen `n` context changes, and returns them.
+    fn wait_for_changes(run: &Arc<Mutex<SlaveState>>, n: usize) -> Vec<(bool, Option<u8>)> {
+        wait_until(run, |(conductor, _, _)| conductor.changes.len() >= n);
+        run.lock().unwrap().0.changes.clone()
+    }
+
+    #[test]
+    fn run_slave_tells_the_conductor_when_the_context_changes_between_steps() {
+        let run = Arc::new(Mutex::new((
+            RecordingConductor::default(),
+            MidiController::new(NullMidiOut),
+            Context::default(),
+        )));
+        let slave = NotifyQueue::new();
+        let handle = {
+            let (run, slave) = (run.clone(), slave.clone());
+            thread::spawn(move || run_slave(run, slave))
+        };
+
+        // After init: paused, and the BPM init set is cleared.
+        assert_eq!(wait_for_changes(&run, 1), [(true, None)]);
+
+        slave.push(MidiMessage::Start);
+        assert_eq!(wait_for_changes(&run, 2)[1], (false, None));
+
+        // One beat of clock at 200 BPM. The BPM gets measured on a clock, where update sees
+        // it, so the conductor is not told.
+        let period = Duration::from_micros(60_000_000 / 24 / 200);
+        let mut last_clock = Instant::now();
+        for i in 0..=CLOCKS_PER_BEAT {
+            if i > 0 {
+                thread::sleep(period);
+            }
+            last_clock = Instant::now();
+            slave.push(MidiMessage::Clock);
+        }
+        wait_until(&run, |(_, _, ctx)| ctx.get_bpm().is_some());
+        assert_eq!(run.lock().unwrap().0.changes.len(), 2);
+
+        // The clock stops: once it has been silent for the timeout, the BPM is unknown.
+        assert_eq!(wait_for_changes(&run, 3)[2], (false, None));
+        assert!(last_clock.elapsed() >= CLOCK_TIMEOUT);
+
+        // A Stop with no clock after it, as from a master that stops its clock on stop.
+        slave.push(MidiMessage::Stop);
+        assert_eq!(wait_for_changes(&run, 4)[3], (true, None));
+
+        // Quit on the next clock.
+        run.lock().unwrap().2.quit();
+        slave.push(MidiMessage::Clock);
+        handle.join().unwrap().unwrap();
+        assert_eq!(run.lock().unwrap().0.changes.len(), 4);
     }
 }

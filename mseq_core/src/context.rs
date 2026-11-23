@@ -59,9 +59,9 @@ impl Context {
     /// (24 clocks). It is `None` until the first beat has been measured, and again once the
     /// external clock stops (the desktop `mseq` crate treats 500 ms without a clock pulse
     /// as a stop).
-    /// [`Conductor::update`] is only called on a clock pulse, so while the clock is
-    /// stopped a conductor sees `None` in [`Conductor::handle_input`], and in `update`
-    /// during the first beat after the clock resumes.
+    /// [`Conductor::update`] is only called on a clock pulse, so the runtime calls
+    /// [`Conductor::context_changed`] when it clears the BPM: while the clock is stopped,
+    /// `update` does not run to see it.
     pub fn get_bpm(&self) -> Option<u8> {
         self.bpm.get_bpm()
     }
