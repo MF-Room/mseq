@@ -72,7 +72,7 @@ How the sequencer is clocked depends on the inputs you give to [`run`]:
 
 - **No input** → runs standalone with its internal clock and transport, generating MIDI clock and transport messages but ignoring external MIDI input.
 - **Master mode** → runs with its internal clock while also processing incoming MIDI events (except for external clock/transport).
-- **Slave mode** → synchronizes playback to an external MIDI clock and responds to Start/Stop/Continue messages, dynamically adjusting BPM to match the clock source. `ctx.get_bpm()` returns `None` until the first beat of clock is measured, and again after 500 ms without a clock pulse.
+- **Slave mode** → synchronizes playback to an external MIDI clock and responds to Start/Stop/Continue messages, dynamically adjusting BPM to match the clock source. Each clock pulse of the source plays one step: the first one after a Start plays step 0, and the first one after a Continue plays the step the Stop left off at. `ctx.get_bpm()` returns `None` until the first beat of clock is measured, and again after 500 ms without a clock pulse.
 
 ## Tracks
 

@@ -33,6 +33,11 @@ pub trait Conductor {
     /// the returned instructions are dropped rather than sent to the MIDI output.
     /// Use [`Context::is_paused`] if you want to alter behavior while paused.
     ///
+    /// A [`Context::start`], [`Context::resume`] or [`Context::pause`] called from `update`
+    /// applies to the tick being prepared: after `start`, [`Context::get_step`] returns 0 and the
+    /// returned instructions play on the next clock, right after the MIDI Start; after `pause`,
+    /// they are dropped and the MIDI Stop goes out before that clock.
+    ///
     /// # Returns
     ///
     /// A `Vec<Instruction>` containing the actions to be passed to the MIDI controller

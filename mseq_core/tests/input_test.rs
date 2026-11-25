@@ -230,7 +230,7 @@ fn test_handle_input_pause_forwarding() {
         std::mem::take(&mut queue),
     );
 
-    controller.update(1);
+    controller.update();
 
     {
         let inner = debug_conn.borrow();
@@ -253,7 +253,7 @@ fn test_handle_input_pause_forwarding() {
         &mut controller,
         std::mem::take(&mut queue),
     );
-    controller.update(2);
+    controller.update();
     assert!(
         debug_conn
             .borrow()

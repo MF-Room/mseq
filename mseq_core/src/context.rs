@@ -107,22 +107,25 @@ impl Context {
     }
 
     /// Starts the sequencer and send a MIDI start message. The current step is set to 0.
+    ///
+    /// If it was already running, the notes playing keep playing to their end.
     pub fn start(&mut self) {
         self.step = 0;
         self.on_pause = false;
         self.sys_instructions.push(Instruction::Start);
     }
 
-    /// Retrieves the current MIDI step.
-    /// - 96 steps make a bar
-    /// - 24 steps make a whole note
-    /// - 12 steps make a half note
-    /// - 6 steps make a quarter note
+    /// Retrieves the current MIDI step: in [`Conductor::update`], the step that the next clock
+    /// plays. There is one step per MIDI clock:
+    /// - 96 steps make a 4/4 bar
+    /// - 24 steps make a quarter note (a beat)
+    /// - 12 steps make an eighth note
+    /// - 6 steps make a sixteenth note
     pub fn get_step(&self) -> u32 {
         self.step
     }
 
-    /// MIDI logic called at the initialization.
+    /// MIDI logic called at the initialization, when the sequencer makes its own clock.
     /// This function is not intended to be called directly by users.
     /// `init` is used internally to enable code reuse across platforms.
     pub fn init(
@@ -136,7 +139,29 @@ impl Context {
             .for_each(|instruction| controller.execute(instruction));
     }
 
-    /// MIDI logic called before the clock tick.
+    /// MIDI logic called at the initialization in slave mode, when an external clock source drives
+    /// the sequencer through [`process_transport`](Self::process_transport).
+    ///
+    /// The clock source owns the transport: the sequencer waits paused for its Start, at step 0,
+    /// and the transport that [`Conductor::init`] asked for is dropped, not sent. A BPM set in
+    /// `init` is not the clock source's: it is unknown until a beat of clock is measured. The
+    /// conductor is then told through [`Conductor::context_changed`].
+    /// This function is not intended to be called directly by users.
+    pub fn init_slave(
+        &mut self,
+        conductor: &mut impl Conductor,
+        controller: &mut MidiController<impl MidiOut>,
+    ) {
+        self.init(conductor, controller);
+        self.sys_instructions.clear();
+        self.step = 0;
+        self.on_pause = true;
+        self.clear_bpm();
+        conductor.context_changed(self);
+    }
+
+    /// MIDI logic called before the clock tick, when the sequencer makes its own clock: prepares
+    /// what the next clock plays.
     /// This function is not intended to be called directly by users.
     /// `process_pre_tick` is used internally to enable code reuse across platforms.
     pub fn process_pre_tick(
@@ -144,37 +169,94 @@ impl Context {
         conductor: &mut impl Conductor,
         controller: &mut MidiController<impl MidiOut>,
     ) {
-        self.flush_sys_instructions(controller);
+        self.prepare(conductor, controller);
+    }
 
-        if self.on_pause {
-            conductor.update(self);
-        } else {
-            conductor
-                .update(self)
-                .into_iter()
-                .for_each(|instruction| controller.execute(instruction));
+    /// MIDI logic called after the clock tick, when the sequencer makes its own clock: sends the
+    /// clock and what [`process_pre_tick`](Self::process_pre_tick) prepared for it.
+    /// This function is not intended to be called directly by users.
+    /// `process_post_tick` is used internally to enable code reuse across platforms.
+    pub fn process_post_tick(&mut self, controller: &mut MidiController<impl MidiOut>) {
+        controller.send_clock();
+        self.advance(controller);
+    }
+
+    /// MIDI logic called in slave mode, on each transport message of the clock source (see
+    /// [`MidiMessage::is_transport`]), in the order they arrive. Other messages are ignored.
+    ///
+    /// - A Start, Stop or Continue is applied and sent on at once: a master may stop its clock
+    ///   across a transport change. As no [`Conductor::update`] may follow, the conductor is told
+    ///   through [`Conductor::context_changed`].
+    /// - A Clock is sent on, then plays a step: [`Conductor::update`] runs on it, after the
+    ///   transport received before it. The first Clock after a Start plays step 0, and the first
+    ///   Clock after a Continue plays the step that the Stop left off at.
+    ///
+    /// The runtime sets the BPM it measures before handing over the Clock, for `update` to see it.
+    /// This function is not intended to be called directly by users.
+    pub fn process_transport(
+        &mut self,
+        conductor: &mut impl Conductor,
+        controller: &mut MidiController<impl MidiOut>,
+        message: MidiMessage,
+    ) {
+        match message {
+            MidiMessage::Clock => {
+                controller.send_clock();
+                self.prepare(conductor, controller);
+                self.advance(controller);
+                return;
+            }
+            MidiMessage::Start => self.start(),
+            MidiMessage::Stop => self.pause(),
+            MidiMessage::Continue => self.resume(),
+            _ => return,
         }
+        self.send_sys_instructions(controller);
+        conductor.context_changed(self);
     }
 
     /// Immediately sends the pending system instructions (Start / Stop / Continue /
     /// StopAllNotes) queued by [`start`](Self::start), [`pause`](Self::pause) and
-    /// [`resume`](Self::resume). The slave loop calls this so transport changes take
-    /// effect right away instead of waiting for the next external clock tick.
+    /// [`resume`](Self::resume).
     /// This function is not intended to be called directly by users.
+    #[deprecated(
+        since = "2.2.0",
+        note = "slave runtimes hand the transport to `process_transport`, which sends it"
+    )]
     pub fn flush_sys_instructions(&mut self, controller: &mut MidiController<impl MidiOut>) {
+        self.send_sys_instructions(controller);
+    }
+
+    fn send_sys_instructions(&mut self, controller: &mut MidiController<impl MidiOut>) {
         core::mem::take(&mut self.sys_instructions)
             .into_iter()
             .for_each(|instruction| controller.execute(instruction));
     }
 
-    /// MIDI logic called after the clock tick.
-    /// This function is not intended to be called directly by users.
-    /// `process_post_tick` is used internally to enable code reuse across platforms.
-    pub fn process_post_tick(&mut self, controller: &mut MidiController<impl MidiOut>) {
-        controller.send_clock();
+    /// Prepares what the next clock plays: runs [`Conductor::update`], sends the transport it (or
+    /// `init`) asked for, then hands its instructions to the controller unless the sequencer is
+    /// paused. The pause is checked after `update`, so that a `start`, `resume` or `pause` it calls
+    /// applies to this step.
+    fn prepare(
+        &mut self,
+        conductor: &mut impl Conductor,
+        controller: &mut MidiController<impl MidiOut>,
+    ) {
+        let instructions = conductor.update(self);
+        self.send_sys_instructions(controller);
+        if !self.on_pause {
+            instructions
+                .into_iter()
+                .for_each(|instruction| controller.execute(instruction));
+        }
+    }
+
+    /// Moves on to the next step once a clock is sent, unless the sequencer is paused, and plays
+    /// what was prepared for that clock.
+    fn advance(&mut self, controller: &mut MidiController<impl MidiOut>) {
         if !self.on_pause {
             self.step += 1;
-            controller.update(self.step);
+            controller.update();
         }
     }
 
