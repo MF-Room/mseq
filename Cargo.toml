@@ -4,7 +4,7 @@ members = ["mseq_core", "mseq_tracks"]
 
 [package]
 name = "mseq"
-version = "5.0.0"
+version = "5.1.0"
 edition = "2024"
 license = "LGPL-2.1-only"
 readme = "README.md"
@@ -15,11 +15,11 @@ keywords = ["midi", "music", "sequencer"]
 categories = ["multimedia"]
 
 [dependencies]
-mseq_core = { version = "2.1.0", path = "mseq_core" }
+mseq_core = { version = "2.2.0", path = "mseq_core" }
 mseq_tracks = { version = "3.0.0", path = "mseq_tracks" }
 spin_sleep = "1.3.3"
 thiserror = "2.0.21"
-midir = "0.11.1"
+midir = "0.11.2"
 promptly = "0.3.1"
 serde = {version = "1.0.229", features = ["derive"] }
 csv = {version = "1.4.0"}
