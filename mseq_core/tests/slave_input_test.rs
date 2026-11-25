@@ -60,31 +60,17 @@ fn route(
     }
 }
 
-/// Mirrors the per-clock stepping of `mseq::run_slave`: the sequencer advances exactly
-/// one step for every Clock message read from the slave system queue, after applying any
-/// Start/Stop/Continue that arrived before it.
+/// Mirrors `mseq::run_slave`: the slave system queue is handed over message by message, so the
+/// sequencer advances exactly one step for every Clock, after the Start/Stop/Continue that arrived
+/// before it.
 fn run_slave_sim(
     ctx: &mut Context,
     conductor: &mut impl Conductor,
     controller: &mut MidiController<impl MidiOut>,
     system_queue: VecDeque<MidiMessage>,
 ) {
-    let mut pending_start = false;
-    for m in system_queue {
-        match m {
-            MidiMessage::Clock => {
-                ctx.process_pre_tick(conductor, controller);
-                if pending_start {
-                    ctx.start();
-                    pending_start = false;
-                }
-                ctx.process_post_tick(controller);
-            }
-            MidiMessage::Start => pending_start = true,
-            MidiMessage::Stop => ctx.pause(),
-            MidiMessage::Continue => ctx.resume(),
-            _ => unreachable!("only transport messages reach the system queue"),
-        }
+    for message in system_queue {
+        ctx.process_transport(conductor, controller, message);
     }
 }
 
@@ -102,9 +88,8 @@ fn test_slave_multi_input() {
     };
 
     let mut ctx = Context::default();
-    conductor.init(&mut ctx);
     // Slave mode starts paused, like `mseq::run_slave`.
-    ctx.pause();
+    ctx.init_slave(&mut conductor, &mut controller);
 
     // One system queue for the slave input and one message queue per input.
     let mut system_queue: VecDeque<MidiMessage> = VecDeque::new();

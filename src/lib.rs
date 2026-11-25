@@ -15,9 +15,10 @@
 //! - **Master mode** → runs with its internal clock while also processing incoming MIDI events
 //!   (except for external clock/transport).
 //! - **Slave mode** → synchronizes playback to an external MIDI clock and responds to
-//!   Start/Stop/Continue messages, dynamically adjusting BPM to match the clock source. The BPM
-//!   is unknown (`None`) until the first beat of clock is measured, and again after 500 ms
-//!   without a clock pulse.
+//!   Start/Stop/Continue messages, dynamically adjusting BPM to match the clock source. Each
+//!   clock pulse plays one step: the first one after a Start plays step 0, and the first one
+//!   after a Continue plays the step the Stop left off at. The BPM is unknown (`None`) until the
+//!   first beat of clock is measured, and again after 500 ms without a clock pulse.
 //!
 //! ## Usage
 //!
@@ -123,6 +124,8 @@ pub enum MSeqError {
 ///   messages while also handling incoming MIDI events (except for clock/transport).
 /// - **Slave mode** (the first `slave` input) → sequencer synchronizes to that input's MIDI clock,
 ///   Start/Stop/Continue messages, and dynamically adjusts BPM to match the external clock source.
+///   Each clock pulse plays one step, and the transport the conductor asks for in
+///   [`Conductor::init`] is not sent: the clock source owns it.
 ///   [`Context::get_bpm`] returns `None` until the first beat of clock is measured, and again
 ///   after 500 ms without a clock pulse. Changes to the context between two clock pulses are
 ///   reported through [`Conductor::context_changed`]. The remaining inputs are handled as
@@ -252,92 +255,44 @@ fn run_slave(
     {
         let mut r = run.lock().unwrap();
         let (ref mut conductor, ref mut controller, ref mut ctx) = *r;
-        ctx.init(conductor, controller);
-
-        // We start in pause mode
-        ctx.pause();
-        // A BPM set in init is not the master's: it is unknown until a beat is measured.
-        ctx.clear_bpm();
-        // Both override what init left in the context.
-        conductor.context_changed(ctx);
+        // Paused until the clock source's Start, with the BPM unknown until a beat is measured.
+        ctx.init_slave(conductor, controller);
     }
 
     let mut meter = BpmMeter::default();
     // Time of the last clock, while the external clock is running.
     let mut last_clock: Option<Instant> = None;
-    loop {
-        {
+    'run: loop {
+        let Some(messages) = take_sys_messages(&slave, last_clock.map(|t| t + CLOCK_TIMEOUT))
+        else {
+            // The external clock stopped: the BPM is unknown until it runs for a beat again.
+            last_clock = None;
+            meter.reset();
             let mut r = run.lock().unwrap();
-            let (ref mut conductor, ref mut controller, ref mut ctx) = *r;
-            ctx.process_pre_tick(conductor, controller);
-        }
-
-        enum SysMessage {
-            Start,
-            Stop,
-            Continue,
-        }
-        // Wait for the next clock, but apply transport messages immediately so
-        // pause/start/resume work even when the master stops clock on stop.
-        let clock_time = loop {
-            let mut quit_loop = false;
-            let mut transport = vec![];
-            let Some(messages) = take_sys_messages(&slave, last_clock.map(|t| t + CLOCK_TIMEOUT))
-            else {
-                // The external clock stopped: the BPM is unknown until it runs for a beat again.
-                last_clock = None;
-                meter.reset();
-                let mut r = run.lock().unwrap();
-                let (ref mut conductor, _, ref mut ctx) = *r;
-                ctx.clear_bpm();
-                // No update runs until the clock is back, so tell the conductor now.
-                conductor.context_changed(ctx);
-                continue;
-            };
-            let received = Instant::now();
-            for message in messages {
-                match message {
-                    MidiMessage::Clock => quit_loop = true,
-                    MidiMessage::Start => transport.push(SysMessage::Start),
-                    MidiMessage::Stop => transport.push(SysMessage::Stop),
-                    MidiMessage::Continue => transport.push(SysMessage::Continue),
-                    _ => unreachable!(),
-                }
-            }
-
-            // Apply transport with sys_queue released, so the callback isn't blocked.
-            if !transport.is_empty() {
-                let mut r = run.lock().unwrap();
-                let (ref mut conductor, ref mut controller, ref mut ctx) = *r;
-                for message in transport {
-                    match message {
-                        SysMessage::Start => ctx.start(),
-                        SysMessage::Stop => ctx.pause(),
-                        SysMessage::Continue => ctx.resume(),
-                    }
-                }
-                ctx.flush_sys_instructions(controller);
-                // A master that stops its clock on stop sends no clock after it, so no update
-                // would see the transport change.
-                conductor.context_changed(ctx);
-            }
-
-            if quit_loop {
-                break received;
-            }
+            let (ref mut conductor, _, ref mut ctx) = *r;
+            ctx.clear_bpm();
+            // No update runs until the clock is back, so tell the conductor now.
+            conductor.context_changed(ctx);
+            continue;
         };
+        let received = Instant::now();
 
+        // Apply the messages in order with sys_queue released, so the callback isn't blocked.
+        // Each clock plays a step, even when several queued up.
         let mut r = run.lock().unwrap();
-        let (_, ref mut controller, ref mut ctx) = *r;
-
-        last_clock = Some(clock_time);
-        if let Some(bpm) = meter.clock(clock_time) {
-            ctx.set_bpm(bpm);
-        }
-
-        ctx.process_post_tick(controller);
-        if !ctx.is_running() {
-            break;
+        let (ref mut conductor, ref mut controller, ref mut ctx) = *r;
+        for message in messages {
+            if message == MidiMessage::Clock {
+                last_clock = Some(received);
+                // Before the step, so that its update sees it.
+                if let Some(bpm) = meter.clock(received) {
+                    ctx.set_bpm(bpm);
+                }
+            }
+            ctx.process_transport(conductor, controller, message);
+            if !ctx.is_running() {
+                break 'run;
+            }
         }
     }
     let mut r = run.lock().unwrap();
@@ -638,5 +593,36 @@ mod tests {
         slave.push(MidiMessage::Clock);
         handle.join().unwrap().unwrap();
         assert_eq!(run.lock().unwrap().0.changes.len(), 4);
+    }
+
+    #[test]
+    fn run_slave_plays_a_step_per_clock_when_clocks_queue_up() {
+        let run = Arc::new(Mutex::new((
+            RecordingConductor::default(),
+            MidiController::new(NullMidiOut),
+            Context::default(),
+        )));
+        let slave = NotifyQueue::new();
+        let handle = {
+            let (run, slave) = (run.clone(), slave.clone());
+            thread::spawn(move || run_slave(run, slave))
+        };
+        wait_for_changes(&run, 1);
+
+        // While the state is locked, run_slave cannot apply what it takes from the queue, so the
+        // clocks queue up and it takes them together.
+        {
+            let _state = run.lock().unwrap();
+            slave.push(MidiMessage::Start);
+            for _ in 0..3 {
+                slave.push(MidiMessage::Clock);
+            }
+        }
+        wait_until(&run, |(_, _, ctx)| ctx.get_step() == 3);
+
+        run.lock().unwrap().2.quit();
+        slave.push(MidiMessage::Clock);
+        handle.join().unwrap().unwrap();
+        assert_eq!(run.lock().unwrap().2.get_step(), 4);
     }
 }

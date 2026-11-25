@@ -129,19 +129,30 @@ impl Instruction {
 /// [`Conductor`]: crate::conductor::Conductor
 /// [`Context`]: crate::Context
 pub struct MidiController<T: MidiOut> {
-    step: u32,
+    /// Clocks played so far: the time base of the note-offs. It is not the sequencer's step, which
+    /// a Start resets, so that a Start does not move the end of the notes playing.
+    tick: u32,
 
-    // Every note currently being played triggered by play_note. The key is the step at which to
+    // Every note currently being played triggered by play_note. The key is the tick at which to
     // stop the note.
     play_note_set: HashMap<u32, Vec<NotePlay>>,
 
     // Every note currently being played triggered by start_note.
     start_note_set: HashSet<NotePlay>,
 
-    // Notes to play at the next update call
-    notes_to_play: Vec<NotePlay>,
+    // Notes to play at the next update call. Their note-off is scheduled, or they join
+    // `start_note_set`, once their note-on is sent: until then nothing of them is on the wire.
+    notes_to_play: Vec<PendingNote>,
 
     midi_out: T,
+}
+
+/// A note requested for the next clock.
+struct PendingNote {
+    note_play: NotePlay,
+    /// Its length in ticks for [`Instruction::PlayNote`], `None` for [`Instruction::StartNote`],
+    /// which plays until its [`Instruction::StopNote`].
+    len: Option<u32>,
 }
 
 impl<T: MidiOut> MidiController<T> {
@@ -150,7 +161,7 @@ impl<T: MidiOut> MidiController<T> {
     /// It exists to facilitate code reuse across different environments and platforms.
     pub fn new(midi_out: T) -> Self {
         Self {
-            step: 0,
+            tick: 0,
             play_note_set: HashMap::new(),
             start_note_set: HashSet::new(),
             notes_to_play: vec![],
@@ -189,39 +200,43 @@ impl<T: MidiOut> MidiController<T> {
         }
     }
 
-    /// Requests the MIDI controller to play a note at the current MIDI step. Specify the length
-    /// (`len`) of the note and the MIDI channel id (`channel_id`) on which to send the note.
+    /// Requests the MIDI controller to play a note at the next clock. Specify the length (`len`)
+    /// of the note and the MIDI channel id (`channel_id`) on which to send the note.
     fn play_note(&mut self, midi_note: MidiNote, len: u32, channel_id: u8) {
         if len == 0 || !is_valid_channel(channel_id) {
             return;
         }
-
-        let note_play = NotePlay {
-            midi_note,
-            channel_id,
-        };
-        self.notes_to_play.push(note_play);
-        self.stop_note_at_step(note_play, self.step + len);
+        self.notes_to_play.push(PendingNote {
+            note_play: NotePlay {
+                midi_note,
+                channel_id,
+            },
+            len: Some(len),
+        });
     }
 
-    /// Requests the MIDI controller to start playing a note. Specify the MIDI channel id
-    /// (`channel_id`). The note will not stop until [`MidiController::stop_note`] is called with
-    /// the same note, ocatve and MIDI channel id.
+    /// Requests the MIDI controller to start playing a note at the next clock. Specify the MIDI
+    /// channel id (`channel_id`). The note will not stop until [`MidiController::stop_note`] is
+    /// called with the same note, octave and MIDI channel id.
     fn start_note(&mut self, midi_note: MidiNote, channel_id: u8) {
         if !is_valid_channel(channel_id) {
             return;
         }
-        let note_play = NotePlay {
-            midi_note,
-            channel_id,
-        };
-        self.notes_to_play.push(note_play);
-        self.start_note_set.insert(note_play);
+        self.notes_to_play.push(PendingNote {
+            note_play: NotePlay {
+                midi_note,
+                channel_id,
+            },
+            len: None,
+        });
     }
 
     /// Requests the MIDI controller to stop playing a note that was started by
     /// [`MidiController::start_note`]. The note will stop only if the note, octave and MIDI
     /// channel are identical to what was used in [`MidiController::start_note`].
+    ///
+    /// A note started since the last clock has not been sent yet: it is cancelled instead, as its
+    /// note-off would otherwise go out before its note-on and leave it playing.
     fn stop_note(&mut self, midi_note: MidiNote, channel_id: u8) {
         if !is_valid_channel(channel_id) {
             return;
@@ -230,12 +245,20 @@ impl<T: MidiOut> MidiController<T> {
             midi_note,
             channel_id,
         };
+        if let Some(i) = self
+            .notes_to_play
+            .iter()
+            .position(|pending| pending.len.is_none() && pending.note_play == note_play)
+        {
+            self.notes_to_play.remove(i);
+            return;
+        }
         self.start_note_set.remove(&note_play);
-        self.stop_note_at_step(note_play, self.step);
-    }
-
-    fn stop_note_at_step(&mut self, note_play: NotePlay, step: u32) {
-        self.play_note_set.entry(step).or_default().push(note_play);
+        // Sent at the next clock, with the note-offs due then.
+        self.play_note_set
+            .entry(self.tick)
+            .or_default()
+            .push(note_play);
     }
 
     /// This function directly sends a MIDI message.
@@ -267,7 +290,6 @@ impl<T: MidiOut> MidiController<T> {
 
     /// This function directly sends a MIDI message.
     fn start(&mut self) {
-        self.step = 0;
         if let Err(e) = self.midi_out.send_start() {
             error!("MIDI: {e}");
         }
@@ -280,75 +302,79 @@ impl<T: MidiOut> MidiController<T> {
         }
     }
 
-    /// Advance the controller to `next_step`, flushing the pending note off/on
-    /// messages for the current step.
+    /// Plays a clock: sends the note-offs due at this clock, then the notes requested since the
+    /// last one.
     ///
     /// This is an internal entry point driven by [`Context`](crate::Context);
     /// it is only made `pub` for integration tests via the internal
     /// `test-internals` feature and is not part of the public API.
     #[cfg(feature = "test-internals")]
-    pub fn update(&mut self, next_step: u32) {
-        self.update_internal(next_step)
+    pub fn update(&mut self) {
+        self.update_internal()
     }
 
     #[cfg(not(feature = "test-internals"))]
-    pub(crate) fn update(&mut self, next_step: u32) {
-        self.update_internal(next_step)
+    pub(crate) fn update(&mut self) {
+        self.update_internal()
     }
 
-    fn update_internal(&mut self, next_step: u32) {
-        // First send the off signal to every note that end this step.
-        let notes = self.play_note_set.remove(&self.step);
-        if let Some(notes_off) = notes {
+    fn update_internal(&mut self) {
+        // First send the off signal to every note that ends this tick.
+        if let Some(notes_off) = self.play_note_set.remove(&self.tick) {
             for n in notes_off {
-                if let Err(e) = self
-                    .midi_out
-                    .send_note_off(n.channel_id, n.midi_note.midi_value())
-                {
-                    error!("MIDI: {e}");
-                }
+                self.send_note_off(n);
             }
         };
 
-        // Then play all the notes that were triggered this step...
-        for n in &self.notes_to_play {
+        // Then play all the notes that were triggered this tick, and schedule their end.
+        for pending in self.notes_to_play.drain(..) {
+            let n = pending.note_play;
             if let Err(e) =
                 self.midi_out
                     .send_note_on(n.channel_id, n.midi_note.midi_value(), n.midi_note.vel)
             {
                 error!("MIDI: {e}");
             }
-        }
-        // ...and clear them.
-        self.notes_to_play.clear();
-
-        // Finally update the step.
-        self.step = next_step;
-    }
-
-    /// This function directly sends MIDI messages.
-    pub(crate) fn stop_all_notes(&mut self) {
-        self.start_note_set.iter().for_each(|n| {
-            if let Err(e) = self
-                .midi_out
-                .send_note_off(n.channel_id, n.midi_note.midi_value())
-            {
-                error!("MIDI: {e}");
-            }
-        });
-        self.start_note_set.clear();
-
-        self.play_note_set.values().for_each(|notes| {
-            for n in notes {
-                if let Err(e) = self
-                    .midi_out
-                    .send_note_off(n.channel_id, n.midi_note.midi_value())
-                {
-                    error!("MIDI: {e}");
+            match pending.len {
+                Some(len) => self
+                    .play_note_set
+                    .entry(self.tick.wrapping_add(len))
+                    .or_default()
+                    .push(n),
+                None => {
+                    self.start_note_set.insert(n);
                 }
             }
-        });
-        self.play_note_set.clear();
+        }
+
+        // Finally move on to the next tick.
+        self.tick = self.tick.wrapping_add(1);
+    }
+
+    fn send_note_off(&mut self, n: NotePlay) {
+        if let Err(e) = self
+            .midi_out
+            .send_note_off(n.channel_id, n.midi_note.midi_value())
+        {
+            error!("MIDI: {e}");
+        }
+    }
+
+    /// Stops every note playing, and drops the notes requested since the last clock, which have
+    /// not been sent.
+    ///
+    /// This function directly sends MIDI messages.
+    pub(crate) fn stop_all_notes(&mut self) {
+        self.notes_to_play.clear();
+        for n in core::mem::take(&mut self.start_note_set) {
+            self.send_note_off(n);
+        }
+        for n in core::mem::take(&mut self.play_note_set)
+            .into_values()
+            .flatten()
+        {
+            self.send_note_off(n);
+        }
     }
 
     /// This function directly send a MIDI message.
@@ -361,6 +387,12 @@ impl<T: MidiOut> MidiController<T> {
     /// Forwards a [`MidiMessage`] straight to the MIDI output, bypassing the
     /// controller's note buffering and step scheduling.
     fn send_message(&mut self, message: MidiMessage) {
+        if message
+            .channel()
+            .is_some_and(|channel| !is_valid_channel(channel))
+        {
+            return;
+        }
         if let Err(e) = self.midi_out.send_message(message) {
             error!("MIDI: {e}");
         }

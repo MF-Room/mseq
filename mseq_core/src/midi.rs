@@ -132,6 +132,20 @@ impl MidiMessage {
         )
     }
 
+    /// The channel of a channel message, `None` for a transport message.
+    pub(crate) fn channel(&self) -> Option<u8> {
+        match *self {
+            MidiMessage::NoteOff { channel, .. }
+            | MidiMessage::NoteOn { channel, .. }
+            | MidiMessage::CC { channel, .. }
+            | MidiMessage::PC { channel, .. }
+            | MidiMessage::PitchBend { channel, .. } => Some(channel),
+            MidiMessage::Clock | MidiMessage::Start | MidiMessage::Continue | MidiMessage::Stop => {
+                None
+            }
+        }
+    }
+
     /// Parses a byte slice into a `MidiMessage` struct.
     ///
     /// This function is not intended to be called directly by end users.
